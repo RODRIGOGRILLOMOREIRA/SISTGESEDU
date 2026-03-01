@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const SchoolContext = createContext();
@@ -15,6 +15,12 @@ export const SchoolProvider = ({ children }) => {
   const [schoolSettings, setSchoolSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Dados centralizados para sincronização
+  const [alunos, setAlunos] = useState([]);
+  const [turmas, setTurmas] = useState([]);
+  const [alunosLoading, setAlunosLoading] = useState(false);
+  const [turmasLoading, setTurmasLoading] = useState(false);
 
   const loadSchoolSettings = async () => {
     try {
@@ -30,8 +36,40 @@ export const SchoolProvider = ({ children }) => {
     }
   };
 
+  // Carregar alunos
+  const loadAlunos = useCallback(async () => {
+    try {
+      setAlunosLoading(true);
+      const response = await axios.get('http://localhost:5000/api/alunos');
+      setAlunos(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar alunos:', error);
+    } finally {
+      setAlunosLoading(false);
+    }
+  }, []);
+
+  // Carregar turmas
+  const loadTurmas = useCallback(async () => {
+    try {
+      setTurmasLoading(true);
+      const response = await axios.get('http://localhost:5000/api/turmas');
+      setTurmas(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar turmas:', error);
+    } finally {
+      setTurmasLoading(false);
+    }
+  }, []);
+
+  // Sincronizar dados (atualizar ambos quando um aluno é modificado)
+  const syncData = useCallback(async () => {
+    await Promise.all([loadAlunos(), loadTurmas()]);
+  }, [loadAlunos, loadTurmas]);
+
   useEffect(() => {
     loadSchoolSettings();
+    syncData(); // Carregar dados iniciais
   }, []);
 
   const updateSchoolSettings = (newSettings) => {
@@ -46,7 +84,15 @@ export const SchoolProvider = ({ children }) => {
       loading, 
       loadSchoolSettings,
       updateSchoolSettings,
-      refreshKey
+      refreshKey,
+      // Dados e funções para sincronização
+      alunos,
+      turmas,
+      alunosLoading,
+      turmasLoading,
+      loadAlunos,
+      loadTurmas,
+      syncData
     }}>
       {children}
     </SchoolContext.Provider>
