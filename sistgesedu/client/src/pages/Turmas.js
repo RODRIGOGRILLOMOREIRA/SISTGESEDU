@@ -4,12 +4,6 @@ import {
   Typography,
   Button,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -27,17 +21,43 @@ import {
   ListItemText,
   Fade,
   Zoom,
+  Card,
+  CardContent,
+  CardActions,
+  Avatar,
+  Grid,
+  Skeleton,
+  InputAdornment,
+  Divider,
 } from '@mui/material';
-import { Add, Edit, Delete, Upload, Download } from '@mui/icons-material';
+import { 
+  Add, 
+  Edit, 
+  Delete, 
+  Upload, 
+  Download,
+  People as PeopleIcon,
+  PersonAdd as PersonAddIcon,
+  School as SchoolIcon,
+  Event as EventIcon,
+  WbSunny as WbSunnyIcon,
+  NightsStay as NightsStayIcon,
+  WbTwilight as WbTwilightIcon,
+  Search as SearchIcon,
+} from '@mui/icons-material';
 import { turmaService, professorService, disciplinaService } from '../services';
 import { toast } from 'react-toastify';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import PageHeader from '../components/PageHeader';
 import { People as TurmasIcon } from '@mui/icons-material';
+import { useSchool } from '../context/SchoolContext';
 
 const Turmas = () => {
-  const [turmas, setTurmas] = useState([]);
+  const { alunos, turmas, syncData, turmasLoading } = useSchool();
+  const [localTurmas, setLocalTurmas] = useState([]);
+  const [filteredTurmas, setFilteredTurmas] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [professores, setProfessores] = useState([]);
   const [disciplinas, setDisciplinas] = useState([]);
   const [open, setOpen] = useState(false);
@@ -52,19 +72,33 @@ const Turmas = () => {
   const [editId, setEditId] = useState(null);
   const [importData, setImportData] = useState([]);
 
+  // Sincronizar com o contexto
   useEffect(() => {
-    loadTurmas();
+    setLocalTurmas(turmas);
+    setFilteredTurmas(turmas);
+  }, [turmas]);
+
+  // Filtrar turmas baseado na pesquisa
+  useEffect(() => {
+    if (searchTerm) {
+      const filtered = localTurmas.filter(turma => 
+        turma.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        turma.serie.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        turma.turno.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredTurmas(filtered);
+    } else {
+      setFilteredTurmas(localTurmas);
+    }
+  }, [searchTerm, localTurmas]);
+
+  useEffect(() => {
     loadProfessores();
     loadDisciplinas();
   }, []);
 
   const loadTurmas = async () => {
-    try {
-      const data = await turmaService.getAll();
-      setTurmas(data);
-    } catch (error) {
-      toast.error('Erro ao carregar turmas');
-    }
+    await syncData(); // Atualiza tanto turmas quanto alunos
   };
 
   const loadProfessores = async () => {
@@ -134,7 +168,7 @@ const Turmas = () => {
         toast.success('Turma criada com sucesso!');
       }
       handleClose();
-      loadTurmas();
+      await syncData();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erro ao salvar turma');
     }
@@ -145,7 +179,7 @@ const Turmas = () => {
       try {
         await turmaService.delete(id);
         toast.success('Turma excluída com sucesso!');
-        loadTurmas();
+        await syncData();
       } catch (error) {
         toast.error('Erro ao excluir turma');
       }
@@ -238,7 +272,7 @@ const Turmas = () => {
       }
       
       handleClose();
-      loadTurmas();
+      await syncData();
     } catch (error) {
       toast.error('Erro ao importar turmas');
     }
@@ -280,6 +314,27 @@ const Turmas = () => {
     return colors[turno] || 'default';
   };
 
+  const getTurnoIcon = (turno) => {
+    const icons = {
+      matutino: <WbSunnyIcon />,
+      vespertino: <WbTwilightIcon />,
+      noturno: <NightsStayIcon />,
+      integral: <SchoolIcon />
+    };
+    return icons[turno] || <SchoolIcon />;
+  };
+
+  const getAlunosPorTurma = (turmaId) => {
+    return alunos.filter(aluno => aluno.turma?._id === turmaId);
+  };
+
+  const getInitials = (nome) => {
+    if (!nome) return 'T';
+    const names = nome.split(' ');
+    if (names.length === 1) return names[0].charAt(0).toUpperCase();
+    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+  };
+
   return (
     <Container maxWidth="xl">
       <PageHeader 
@@ -292,11 +347,36 @@ const Turmas = () => {
         <Box 
           sx={{ 
             display: 'flex', 
-            justifyContent: 'flex-end', 
+            justifyContent: 'space-between', 
             mb: 3,
-            alignItems: 'center' 
+            alignItems: 'center',
+            gap: 2,
+            flexWrap: 'wrap' 
           }}
         >
+          <TextField
+            placeholder="Buscar turma..."
+            variant="outlined"
+            size="small"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ 
+              flex: 1,
+              minWidth: 250,
+              maxWidth: 400,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+              }
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          
           <Button
             variant="contained"
             startIcon={<Add />}
@@ -320,88 +400,291 @@ const Turmas = () => {
         </Box>
       </Zoom>
 
-      <Fade in={true} timeout={600}>
-        <TableContainer 
-          component={Paper}
-          sx={{
-            borderRadius: 3,
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
-            }
+      {/* Contador de turmas */}
+      <Fade in={true} timeout={400}>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            mb: 3, 
+            color: 'text.secondary',
+            fontWeight: 500 
           }}
         >
-        <Table>
-          <TableHead>
-            <TableRow 
+          {filteredTurmas.length} {filteredTurmas.length === 1 ? 'turma encontrada' : 'turmas encontradas'}
+        </Typography>
+      </Fade>
+
+      {/* Grid de Cards */}
+      <Grid container spacing={3}>
+        {turmasLoading ? (
+          // Skeleton loading
+          [...Array(6)].map((_, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 3 }} />
+            </Grid>
+          ))
+        ) : filteredTurmas.length === 0 ? (
+          <Grid item xs={12}>
+            <Paper
               sx={{
+                p: 6,
+                textAlign: 'center',
+                borderRadius: 3,
                 bgcolor: (theme) => theme.palette.mode === 'dark' 
-                  ? 'rgba(0, 188, 212, 0.15)' 
-                  : 'rgba(102, 126, 234, 0.1)',
+                  ? 'rgba(255,255,255,0.05)' 
+                  : 'rgba(0,0,0,0.02)',
               }}
             >
-              <TableCell sx={{ fontWeight: 700 }}>Nome</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Ano</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Série</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Turno</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 700 }}>Alunos</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 700 }}>Capacidade</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 700 }}>Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {turmas.map((turma) => (
-              <TableRow 
-                key={turma._id}
-                sx={{
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    bgcolor: (theme) => theme.palette.mode === 'dark' 
-                      ? 'rgba(0, 188, 212, 0.08)' 
-                      : 'rgba(102, 126, 234, 0.05)',
-                    transform: 'scale(1.01)',
-                  }
-                }}
-              >
-                <TableCell>{turma.nome}</TableCell>
-                <TableCell>{turma.ano}</TableCell>
-                <TableCell>{turma.serie}</TableCell>
-                <TableCell>
-                  <Chip 
-                    label={turma.turno} 
-                    color={getTurnoColor(turma.turno)}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell align="center">
-                  {turma.alunos?.length || 0}
-                </TableCell>
-                <TableCell align="center">
-                  {turma.capacidadeMaxima || 35}
-                </TableCell>
-                <TableCell align="center">
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleOpen(turma)}
-                    size="small"
+              <SchoolIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                Nenhuma turma encontrada
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {searchTerm ? 
+                  'Tente buscar com outros termos' : 
+                  'Clique em "Nova Turma" para começar'}
+              </Typography>
+            </Paper>
+          </Grid>
+        ) : (
+          filteredTurmas.map((turma, index) => {
+            const alunosDaTurma = getAlunosPorTurma(turma._id);
+            const totalAlunos = alunosDaTurma.length;
+            const capacidade = turma.capacidadeMaxima || 35;
+            const percentualOcupacao = (totalAlunos / capacidade) * 100;
+            const isCheio = percentualOcupacao >= 100;
+            const isQuaseCompleto = percentualOcupacao >= 80 && percentualOcupacao < 100;
+
+            return (
+              <Grid item xs={12} sm={6} md={4} key={turma._id}>
+                <Fade in={true} timeout={400 + index * 50}>
+                  <Card
+                    sx={{
+                      height: '100%',
+                      borderRadius: 3,
+                      transition: 'all 0.3s ease',
+                      bgcolor: (theme) => theme.palette.mode === 'dark' 
+                        ? 'rgba(0, 188, 212, 0.05)' 
+                        : '#ffffff',
+                      border: (theme) => theme.palette.mode === 'dark'
+                        ? '1px solid rgba(0, 188, 212, 0.2)'
+                        : '1px solid rgba(0, 0, 0, 0.08)',
+                      boxShadow: (theme) => theme.palette.mode === 'dark'
+                        ? '0 4px 12px rgba(0, 0, 0, 0.4)'
+                        : '0 4px 12px rgba(0, 0, 0, 0.08)',
+                      '&:hover': {
+                        transform: 'translateY(-8px)',
+                        boxShadow: (theme) => theme.palette.mode === 'dark'
+                          ? '0 12px 24px rgba(0, 188, 212, 0.3)'
+                          : '0 12px 24px rgba(102, 126, 234, 0.2)',
+                        border: (theme) => theme.palette.mode === 'dark'
+                          ? '1px solid rgba(0, 188, 212, 0.4)'
+                          : '1px solid rgba(102, 126, 234, 0.3)',
+                      }
+                    }}
                   >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    color="error"
-                    onClick={() => handleDelete(turma._id)}
-                    size="small"
-                  >
-                    <Delete />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      </Fade>
+                    <CardContent>
+                      {/* Header com Avatar e Nome */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <Avatar
+                          sx={{
+                            width: 56,
+                            height: 56,
+                            mr: 2,
+                            bgcolor: (theme) => theme.palette.mode === 'dark'
+                              ? 'rgba(0, 188, 212, 0.3)'
+                              : 'primary.main',
+                            fontSize: 20,
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          {getInitials(turma.nome)}
+                        </Avatar>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography 
+                            variant="h6" 
+                            sx={{ 
+                              fontWeight: 700,
+                              fontSize: '1.1rem',
+                              mb: 0.5,
+                              color: (theme) => theme.palette.mode === 'dark'
+                                ? '#00bcd4'
+                                : 'primary.main',
+                            }}
+                          >
+                            {turma.nome}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            <Chip 
+                              icon={getTurnoIcon(turma.turno)}
+                              label={turma.turno}
+                              size="small"
+                              color={getTurnoColor(turma.turno)}
+                              sx={{ 
+                                height: 24,
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                              }}
+                            />
+                            <Chip 
+                              label={turma.ano}
+                              size="small"
+                              variant="outlined"
+                              sx={{ height: 24, fontSize: '0.75rem' }}
+                            />
+                          </Box>
+                        </Box>
+                      </Box>
+
+                      <Divider sx={{ my: 2 }} />
+
+                      {/* Informações */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                        {/* Série */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <SchoolIcon 
+                            sx={{ 
+                              fontSize: 20, 
+                              color: (theme) => theme.palette.mode === 'dark'
+                                ? 'rgba(0, 188, 212, 0.7)'
+                                : 'text.secondary'
+                            }} 
+                          />
+                          <Typography variant="body2" color="text.secondary">
+                            <strong>Série:</strong> {turma.serie}
+                          </Typography>
+                        </Box>
+
+                        {/* Alunos Matriculados (TEMPO REAL!) */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <PeopleIcon 
+                            sx={{ 
+                              fontSize: 20, 
+                              color: isCheio ? 'error.main' : 
+                                     isQuaseCompleto ? 'warning.main' : 
+                                     (theme) => theme.palette.mode === 'dark'
+                                       ? 'rgba(0, 188, 212, 0.7)'
+                                       : 'text.secondary'
+                            }} 
+                          />
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{ flex: 1 }}
+                          >
+                            <strong>Alunos:</strong> {totalAlunos} / {capacidade}
+                          </Typography>
+                          <Chip 
+                            label={`${Math.round(percentualOcupacao)}%`}
+                            size="small"
+                            color={isCheio ? 'error' : isQuaseCompleto ? 'warning' : 'success'}
+                            sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700 }}
+                          />
+                        </Box>
+
+                        {/* Lista de alguns alunos */}
+                        {totalAlunos > 0 && (
+                          <Box 
+                            sx={{ 
+                              mt: 1,
+                              p: 1.5,
+                              borderRadius: 2,
+                              bgcolor: (theme) => theme.palette.mode === 'dark'
+                                ? 'rgba(0, 188, 212, 0.05)'
+                                : 'rgba(102, 126, 234, 0.05)',
+                              border: (theme) => theme.palette.mode === 'dark'
+                                ? '1px solid rgba(0, 188, 212, 0.1)'
+                                : '1px solid rgba(102, 126, 234, 0.1)',
+                            }}
+                          >
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                fontWeight: 600,
+                                color: (theme) => theme.palette.mode === 'dark'
+                                  ? '#00bcd4'
+                                  : 'primary.main',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                mb: 0.5,
+                              }}
+                            >
+                              <PersonAddIcon sx={{ fontSize: 14 }} />
+                              Alunos Matriculados:
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                              {alunosDaTurma.slice(0, 3).map((aluno) => (
+                                <Typography 
+                                  key={aluno._id}
+                                  variant="caption" 
+                                  color="text.secondary"
+                                  sx={{ fontSize: '0.7rem', pl: 1 }}
+                                >
+                                  • {aluno.nome}
+                                </Typography>
+                              ))}
+                              {totalAlunos > 3 && (
+                                <Typography 
+                                  variant="caption" 
+                                  color="text.secondary"
+                                  sx={{ fontSize: '0.7rem', pl: 1, fontStyle: 'italic' }}
+                                >
+                                  + {totalAlunos - 3} outros alunos
+                                </Typography>
+                              )}
+                            </Box>
+                          </Box>
+                        )}
+                      </Box>
+                    </CardContent>
+
+                    <CardActions 
+                      sx={{ 
+                        justifyContent: 'flex-end', 
+                        px: 2, 
+                        pb: 2,
+                        pt: 0,
+                      }}
+                    >
+                      <IconButton
+                        color="primary"
+                        onClick={() => handleOpen(turma)}
+                        size="small"
+                        sx={{
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            transform: 'scale(1.1)',
+                            bgcolor: (theme) => theme.palette.mode === 'dark'
+                              ? 'rgba(0, 188, 212, 0.1)'
+                              : 'rgba(102, 126, 234, 0.1)',
+                          }
+                        }}
+                      >
+                        <Edit />
+                      </IconButton>
+                      <IconButton
+                        color="error"
+                        onClick={() => handleDelete(turma._id)}
+                        size="small"
+                        sx={{
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            transform: 'scale(1.1)',
+                            bgcolor: 'rgba(244, 67, 54, 0.1)',
+                          }
+                        }}
+                      >
+                        <Delete />
+                      </IconButton>
+                    </CardActions>
+                  </Card>
+                </Fade>
+              </Grid>
+            );
+          })
+        )}
+      </Grid>
 
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>

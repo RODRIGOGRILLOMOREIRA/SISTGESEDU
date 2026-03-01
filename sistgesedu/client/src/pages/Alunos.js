@@ -4,12 +4,6 @@ import {
   Typography,
   Button,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -28,18 +22,41 @@ import {
   Grid,
   Fade,
   Zoom,
+  Card,
+  CardContent,
+  CardActions,
+  Avatar,
+  Skeleton,
+  InputAdornment,
 } from '@mui/material';
-import { Add, Edit, Delete, Upload, Download } from '@mui/icons-material';
+import { 
+  Add, 
+  Edit, 
+  Delete, 
+  Upload, 
+  Download,
+  Person as PersonIcon,
+  School as SchoolIcon,
+  Phone as PhoneIcon,
+  Email as EmailIcon,
+  CalendarToday as CalendarIcon,
+  Badge as BadgeIcon,
+  Search as SearchIcon,
+} from '@mui/icons-material';
 import { alunoService, turmaService } from '../services';
 import { toast } from 'react-toastify';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import PageHeader from '../components/PageHeader';
 import { Person as AlunosIcon } from '@mui/icons-material';
+import { useSchool } from '../context/SchoolContext';
 
 const Alunos = () => {
-  const [alunos, setAlunos] = useState([]);
-  const [turmas, setTurmas] = useState([]);
+  const { alunos, turmas, syncData, alunosLoading } = useSchool();
+  const [localAlunos, setLocalAlunos] = useState([]);
+  const [localTurmas, setLocalTurmas] = useState([]);
+  const [filteredAlunos, setFilteredAlunos] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [open, setOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [formData, setFormData] = useState({
@@ -57,24 +74,38 @@ const Alunos = () => {
   const [importData, setImportData] = useState([]);
   const [turmaSelecionadaTemplate, setTurmaSelecionadaTemplate] = useState('');
 
+  // Sincronizar com o contexto
   useEffect(() => {
-    loadAlunos();
-    loadTurmas();
-  }, []);
+    setLocalAlunos(alunos);
+    setFilteredAlunos(alunos);
+  }, [alunos]);
+
+  useEffect(() => {
+    setLocalTurmas(turmas);
+  }, [turmas]);
+
+  // Filtrar alunos baseado na pesquisa
+  useEffect(() => {
+    if (searchTerm) {
+      const filtered = localAlunos.filter(aluno => 
+        aluno.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        aluno.matricula.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        aluno.turma?.nome.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredAlunos(filtered);
+    } else {
+      setFilteredAlunos(localAlunos);
+    }
+  }, [searchTerm, localAlunos]);
 
   const loadAlunos = async () => {
-    try {
-      const data = await alunoService.getAll();
-      setAlunos(data);
-    } catch (error) {
-      toast.error('Erro ao carregar alunos');
-    }
+    await syncData(); // Atualiza tanto alunos quanto turmas
   };
 
   const loadTurmas = async () => {
     try {
       const data = await turmaService.getAll();
-      setTurmas(data);
+      setLocalTurmas(data);
     } catch (error) {
       console.error('Erro ao carregar turmas');
     }
@@ -141,7 +172,7 @@ const Alunos = () => {
         toast.success('Aluno cadastrado com sucesso!');
       }
       handleClose();
-      loadAlunos();
+      await syncData(); // Sincroniza tanto alunos quanto turmas
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erro ao salvar aluno');
     }
@@ -152,7 +183,7 @@ const Alunos = () => {
       try {
         await alunoService.delete(id);
         toast.success('Aluno excluído com sucesso!');
-        loadAlunos();
+        await syncData(); // Sincroniza tanto alunos quanto turmas
       } catch (error) {
         toast.error('Erro ao excluir aluno');
       }
@@ -227,8 +258,8 @@ const Alunos = () => {
         try {
           // Buscar turma pelo nome se fornecido
           let turmaId = null;
-          if (row.turma && turmas.length > 0) {
-            const turmaEncontrada = turmas.find(t => 
+          if (row.turma && localTurmas.length > 0) {
+            const turmaEncontrada = localTurmas.find(t => 
               t.nome.toLowerCase() === row.turma.toLowerCase()
             );
             turmaId = turmaEncontrada?._id;
@@ -258,7 +289,7 @@ const Alunos = () => {
       }
       
       handleClose();
-      loadAlunos();
+      await syncData();
     } catch (error) {
       toast.error('Erro ao importar alunos');
     }
@@ -382,6 +413,13 @@ const Alunos = () => {
     return date.toLocaleDateString('pt-BR');
   };
 
+  const getInitials = (nome) => {
+    if (!nome) return '?';
+    const names = nome.split(' ');
+    if (names.length === 1) return names[0].charAt(0).toUpperCase();
+    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+  };
+
   return (
     <Container maxWidth="xl">
       <PageHeader 
@@ -394,11 +432,36 @@ const Alunos = () => {
         <Box 
           sx={{ 
             display: 'flex', 
-            justifyContent: 'flex-end', 
+            justifyContent: 'space-between', 
             mb: 3,
-            alignItems: 'center' 
+            alignItems: 'center',
+            gap: 2,
+            flexWrap: 'wrap'
           }}
         >
+          <TextField
+            placeholder="Buscar aluno..."
+            variant="outlined"
+            size="small"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ 
+              flex: 1,
+              minWidth: 250,
+              maxWidth: 400,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+              }
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          
           <Button
             variant="contained"
             startIcon={<Add />}
@@ -422,80 +485,248 @@ const Alunos = () => {
         </Box>
       </Zoom>
 
-      <Fade in={true} timeout={600}>
-        <TableContainer 
-          component={Paper}
-          sx={{
-            borderRadius: 3,
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
-            }
+      {/* Contador de alunos */}
+      <Fade in={true} timeout={400}>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            mb: 3, 
+            color: 'text.secondary',
+            fontWeight: 500 
           }}
         >
-        <Table>
-          <TableHead>
-            <TableRow 
+          {filteredAlunos.length} {filteredAlunos.length === 1 ? 'aluno encontrado' : 'alunos encontrados'}
+        </Typography>
+      </Fade>
+
+      {/* Grid de Cards */}
+      <Grid container spacing={3}>
+        {alunosLoading ? (
+          // Skeleton loading
+          [...Array(6)].map((_, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <Skeleton variant="rectangular" height={280} sx={{ borderRadius: 3 }} />
+            </Grid>
+          ))
+        ) : filteredAlunos.length === 0 ? (
+          <Grid item xs={12}>
+            <Paper
               sx={{
+                p: 6,
+                textAlign: 'center',
+                borderRadius: 3,
                 bgcolor: (theme) => theme.palette.mode === 'dark' 
-                  ? 'rgba(0, 188, 212, 0.15)' 
-                  : 'rgba(102, 126, 234, 0.1)',
+                  ? 'rgba(255,255,255,0.05)' 
+                  : 'rgba(0,0,0,0.02)',
               }}
             >
-              <TableCell sx={{ fontWeight: 700 }}>Matrícula</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Nome</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Data Nascimento</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Turma</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Responsável</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 700 }}>Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {alunos.map((aluno) => (
-              <TableRow 
-                key={aluno._id}
-                sx={{
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
+              <PersonIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                Nenhum aluno encontrado
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {searchTerm ? 
+                  'Tente buscar com outros termos' : 
+                  'Clique em "Novo Aluno" para começar'}
+              </Typography>
+            </Paper>
+          </Grid>
+        ) : (
+          filteredAlunos.map((aluno, index) => (
+            <Grid item xs={12} sm={6} md={4} key={aluno._id}>
+              <Fade in={true} timeout={400 + index * 50}>
+                <Card
+                  sx={{
+                    height: '100%',
+                    borderRadius: 3,
+                    transition: 'all 0.3s ease',
                     bgcolor: (theme) => theme.palette.mode === 'dark' 
-                      ? 'rgba(0, 188, 212, 0.08)' 
-                      : 'rgba(102, 126, 234, 0.05)',
-                    transform: 'scale(1.01)',
-                  }
-                }}
-              >
-                <TableCell>
-                  <Chip label={aluno.matricula} size="small" color="primary" variant="outlined" />
-                </TableCell>
-                <TableCell>{aluno.nome}</TableCell>
-                <TableCell>{formatDate(aluno.dataNascimento)}</TableCell>
-                <TableCell>
-                  {aluno.turma?.nome || '-'}
-                </TableCell>
-                <TableCell>{aluno.responsavel?.nome || '-'}</TableCell>
-                <TableCell align="center">
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleOpen(aluno)}
-                    size="small"
+                      ? 'rgba(0, 188, 212, 0.05)' 
+                      : '#ffffff',
+                    border: (theme) => theme.palette.mode === 'dark'
+                      ? '1px solid rgba(0, 188, 212, 0.2)'
+                      : '1px solid rgba(0, 0, 0, 0.08)',
+                    boxShadow: (theme) => theme.palette.mode === 'dark'
+                      ? '0 4px 12px rgba(0, 0, 0, 0.4)'
+                      : '0 4px 12px rgba(0, 0, 0, 0.08)',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      boxShadow: (theme) => theme.palette.mode === 'dark'
+                        ? '0 12px 24px rgba(0, 188, 212, 0.3)'
+                        : '0 12px 24px rgba(102, 126, 234, 0.2)',
+                      border: (theme) => theme.palette.mode === 'dark'
+                        ? '1px solid rgba(0, 188, 212, 0.4)'
+                        : '1px solid rgba(102, 126, 234, 0.3)',
+                    }
+                  }}
+                >
+                  <CardContent>
+                    {/* Header com Avatar e Nome */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <Avatar
+                        sx={{
+                          width: 56,
+                          height: 56,
+                          mr: 2,
+                          bgcolor: (theme) => theme.palette.mode === 'dark'
+                            ? 'rgba(0, 188, 212, 0.3)'
+                            : 'primary.main',
+                          fontSize: 20,
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        {getInitials(aluno.nome)}
+                      </Avatar>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography 
+                          variant="h6" 
+                          sx={{ 
+                            fontWeight: 700,
+                            fontSize: '1.1rem',
+                            mb: 0.5,
+                            color: (theme) => theme.palette.mode === 'dark'
+                              ? '#00bcd4'
+                              : 'primary.main',
+                          }}
+                        >
+                          {aluno.nome}
+                        </Typography>
+                        <Chip 
+                          icon={<BadgeIcon sx={{ fontSize: 14 }} />}
+                          label={aluno.matricula}
+                          size="small"
+                          sx={{ 
+                            height: 24,
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                          }}
+                          color="primary"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </Box>
+
+                    {/* Informações */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {/* Turma */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <SchoolIcon 
+                          sx={{ 
+                            fontSize: 20, 
+                            color: (theme) => theme.palette.mode === 'dark'
+                              ? 'rgba(0, 188, 212, 0.7)'
+                              : 'text.secondary'
+                          }} 
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          <strong>Turma:</strong> {aluno.turma?.nome || 'Não definida'}
+                          {aluno.turma && (
+                            <Chip 
+                              label={aluno.turma.turno}
+                              size="small"
+                              sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
+                            />
+                          )}
+                        </Typography>
+                      </Box>
+
+                      {/* Data de Nascimento */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CalendarIcon 
+                          sx={{ 
+                            fontSize: 20, 
+                            color: (theme) => theme.palette.mode === 'dark'
+                              ? 'rgba(0, 188, 212, 0.7)'
+                              : 'text.secondary'
+                          }} 
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          <strong>Nascimento:</strong> {formatDate(aluno.dataNascimento)}
+                        </Typography>
+                      </Box>
+
+                      {/* Responsável */}
+                      {aluno.responsavel?.nome && (
+                        <>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <PersonIcon 
+                              sx={{ 
+                                fontSize: 20, 
+                                color: (theme) => theme.palette.mode === 'dark'
+                                  ? 'rgba(0, 188, 212, 0.7)'
+                                  : 'text.secondary'
+                              }} 
+                            />
+                            <Typography variant="body2" color="text.secondary" noWrap>
+                              <strong>Resp.:</strong> {aluno.responsavel.nome}
+                            </Typography>
+                          </Box>
+
+                          {aluno.responsavel?.telefone && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <PhoneIcon 
+                                sx={{ 
+                                  fontSize: 20, 
+                                  color: (theme) => theme.palette.mode === 'dark'
+                                    ? 'rgba(0, 188, 212, 0.7)'
+                                    : 'text.secondary'
+                                }} 
+                              />
+                              <Typography variant="body2" color="text.secondary">
+                                {aluno.responsavel.telefone}
+                              </Typography>
+                            </Box>
+                          )}
+                        </>
+                      )}
+                    </Box>
+                  </CardContent>
+
+                  <CardActions 
+                    sx={{ 
+                      justifyContent: 'flex-end', 
+                      px: 2, 
+                      pb: 2,
+                      pt: 0,
+                    }}
                   >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    color="error"
-                    onClick={() => handleDelete(aluno._id)}
-                    size="small"
-                  >
-                    <Delete />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      </Fade>
+                    <IconButton
+                      color="primary"
+                      onClick={() => handleOpen(aluno)}
+                      size="small"
+                      sx={{
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          transform: 'scale(1.1)',
+                          bgcolor: (theme) => theme.palette.mode === 'dark'
+                            ? 'rgba(0, 188, 212, 0.1)'
+                            : 'rgba(102, 126, 234, 0.1)',
+                        }
+                      }}
+                    >
+                      <Edit />
+                    </IconButton>
+                    <IconButton
+                      color="error"
+                      onClick={() => handleDelete(aluno._id)}
+                      size="small"
+                      sx={{
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          transform: 'scale(1.1)',
+                          bgcolor: 'rgba(244, 67, 54, 0.1)',
+                        }
+                      }}
+                    >
+                      <Delete />
+                    </IconButton>
+                  </CardActions>
+                </Card>
+              </Fade>
+            </Grid>
+          ))
+        )}
+      </Grid>
 
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>
@@ -552,7 +783,7 @@ const Alunos = () => {
                 fullWidth
               >
                 <MenuItem value="">Sem turma</MenuItem>
-                {turmas.map((turma) => (
+                {localTurmas.map((turma) => (
                   <MenuItem key={turma._id} value={turma._id}>
                     {turma.nome} - {turma.serie} ({turma.turno})
                   </MenuItem>
@@ -635,7 +866,7 @@ const Alunos = () => {
                   <MenuItem value="">
                     <em>Template genérico (todas as turmas)</em>
                   </MenuItem>
-                  {turmas.map((turma) => (
+                  {localTurmas.map((turma) => (
                     <MenuItem key={turma._id} value={turma._id}>
                       {turma.nome} - {turma.serie} ({turma.turno})
                     </MenuItem>
