@@ -77,12 +77,14 @@ const Alunos = () => {
 
   // Sincronizar com o contexto
   useEffect(() => {
-    setLocalAlunos(alunos);
-    setFilteredAlunos(alunos);
+    const alunosArray = Array.isArray(alunos) ? alunos : [];
+    setLocalAlunos(alunosArray);
+    setFilteredAlunos(alunosArray);
   }, [alunos]);
 
   useEffect(() => {
-    setLocalTurmas(turmas);
+    const turmasArray = Array.isArray(turmas) ? turmas : [];
+    setLocalTurmas(turmasArray);
   }, [turmas]);
 
   // Carregar turmas independentemente (fallback se contexto falhar)
@@ -94,6 +96,11 @@ const Alunos = () => {
 
   // Filtrar alunos baseado na pesquisa
   useEffect(() => {
+    if (!Array.isArray(localAlunos)) {
+      setFilteredAlunos([]);
+      return;
+    }
+    
     if (searchTerm) {
       const filtered = localAlunos.filter(aluno => 
         aluno.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -538,7 +545,7 @@ const Alunos = () => {
               <Skeleton variant="rectangular" height={280} sx={{ borderRadius: 3 }} />
             </Grid>
           ))
-        ) : filteredAlunos.length === 0 ? (
+        ) : !Array.isArray(filteredAlunos) || filteredAlunos.length === 0 ? (
           <Grid item xs={12}>
             <Paper
               sx={{
