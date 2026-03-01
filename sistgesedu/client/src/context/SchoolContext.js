@@ -41,9 +41,11 @@ export const SchoolProvider = ({ children }) => {
     try {
       setAlunosLoading(true);
       const response = await api.get('/alunos');
-      setAlunos(response.data);
+      // Backend retorna { data: [], pagination: {} }
+      setAlunos(response.data.data || []);
     } catch (error) {
       console.error('Erro ao carregar alunos:', error);
+      setAlunos([]); // Garantir que sempre seja array
     } finally {
       setAlunosLoading(false);
     }
@@ -54,9 +56,11 @@ export const SchoolProvider = ({ children }) => {
     try {
       setTurmasLoading(true);
       const response = await api.get('/turmas');
-      setTurmas(response.data);
+      // Backend retorna { data: [], pagination: {} }
+      setTurmas(response.data.data || []);
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
+      setTurmas([]); // Garantir que sempre seja array
     } finally {
       setTurmasLoading(false);
     }
