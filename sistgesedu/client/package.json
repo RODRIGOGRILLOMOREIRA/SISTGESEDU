@@ -1,6 +1,13 @@
 {
-  "name": "client",
-  "version": "0.1.0",
+  "name": "sistgesedu-frontend",
+  "version": "1.0.0",
+  "description": "Frontend do Sistema de Gestão Escolar",
+  "author": "Rodrigo Grillo Moreira <rodrigo@example.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RODRIGOGRILLOMOREIRA/SISTGESEDU.git"
+  },
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.14.0",

@@ -1,5 +1,8 @@
 # 🎓 Sistema de Gestão Escolar Completo
 
+**Copyright © 2026 RODRIGO GRILLO MOREIRA**  
+**Licenciado sob Apache License 2.0**
+
 Sistema completo para gestão de notas, habilidades, frequências e análise de desempenho escolar desenvolvido com React, Node.js e MongoDB Atlas.
 
 ## ✨ Status do Projeto: 100% FUNCIONAL + NOVAS FUNCIONALIDADES
@@ -1545,37 +1548,64 @@ O sistema está 100% funcional, mas pode ser expandido com as seguintes funciona
 
 ## 📝 Licença e Copyright
 
-### © 2026 Rodrigo Grillo Moreira - Todos os direitos reservados
+### Licença Apache 2.0
 
-#### Termos de Uso:
+Copyright © 2026 **RODRIGO GRILLO MOREIRA**
 
-**PROPRIEDADE INTELECTUAL**: Este software é propriedade exclusiva de **Rodrigo Grillo Moreira**. Todo o código-fonte, documentação, arquitetura e design são protegidos por direitos autorais.
+Este projeto está licenciado sob a Apache License 2.0 - veja o arquivo [LICENSE](LICENSE) para detalhes completos.
 
-**USO EDUCACIONAL**: Permitido apenas para fins educacionais e de aprendizado, desde que mantidos os créditos ao desenvolvedor original.
+#### Resumo da Licença:
 
-**PROIBIÇÕES**:
-- ❌ Uso comercial sem autorização expressa por escrito
-- ❌ Redistribuição ou venda do código ou sistema
-- ❌ Remoção dos créditos do desenvolvedor
-- ❌ Modificação para fins comerciais sem licença
+**PERMISSÕES**:
+- ✅ Uso comercial permitido
+- ✅ Modificação do código permitida
+- ✅ Distribuição permitida
+- ✅ Uso privado permitido
+- ✅ Concessão de licença de patente
 
-**DESENVOLVIMENTO PERSONALIZADO**: Para licenças comerciais, desenvolvimento personalizado ou consultoria, entre em contato com o desenvolvedor.
+**CONDIÇÕES**:
+- 📋 Incluir aviso de licença e copyright
+- 📋 Incluir arquivo NOTICE nas distribuições
+- 📋 Indicar mudanças significativas no código
+- 📋 Manter os avisos de copyright originais
 
-**GARANTIAS**: Este software é fornecido "como está", sem garantias de qualquer tipo, expressas ou implícitas. O desenvolvedor não se responsabiliza por danos decorrentes do uso do sistema.
+**LIMITAÇÕES**:
+- ⚖️ Sem garantia
+- ⚖️ Sem responsabilidade do autor
+- ⚖️ Uso de marcas registradas não permitido
 
-**CONTRIBUIÇÕES**: Contribuições ao projeto são bem-vindas mediante pull request, desde que mantida a autoria original e respeitados estes termos.
+**PROTEÇÃO DE PATENTES**: Esta licença inclui uma concessão expressa de direitos de patente dos colaboradores para você. Se você iniciar litígio de patente contra qualquer entidade alegando que o software constitui infração de patente, sua licença será encerrada.
+
+Para mais detalhes, consulte:
+- 📄 [LICENSE](LICENSE) - Texto completo da licença
+- 📄 [NOTICE](NOTICE) - Avisos de atribuição
+- 🌐 [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
 ---
 
 ### 👨‍💻 Desenvolvedor
 
-**Rodrigo Grillo Moreira**
+**RODRIGO GRILLO MOREIRA**
 - Desenvolvedor Full Stack
 - Especialista em Node.js, React e MongoDB
 - Arquitetura de Sistemas Educacionais
+
+**Repositório**: [github.com/RODRIGOGRILLOMOREIRA/SISTGESEDU](https://github.com/RODRIGOGRILLOMOREIRA/SISTGESEDU)
+
+---
+
+### 🤝 Contribuições
+
+Contribuições são bem-vindas! Sinta-se livre para:
+- 🐛 Reportar bugs via Issues
+- 💡 Sugerir novas funcionalidades
+- 🔧 Enviar Pull Requests
+- 📖 Melhorar a documentação
+
+Ao contribuir, você concorda que suas contribuições serão licenciadas sob a mesma licença Apache 2.0.
 
 ---
 
 **🎉 Sistema 100% funcional e pronto para uso em produção!**
 
-*Desenvolvido com ♥️ por Rodrigo Grillo Moreira | Fevereiro 2026*
+*Desenvolvido com ♥️ por RODRIGO GRILLO MOREIRA | Março 2026*

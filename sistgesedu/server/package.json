@@ -19,10 +19,17 @@
   "keywords": [
     "escola",
     "notas",
-    "gestao"
+    "gestao",
+    "frequencia",
+    "habilidades",
+    "avaliacao"
   ],
-  "author": "Rodrigo Grillo Moreira",
-  "license": "ISC",
+  "author": "Rodrigo Grillo Moreira <rodrigo@example.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RODRIGOGRILLOMOREIRA/SISTGESEDU.git"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "chartjs-node-canvas": "^5.0.0",
