@@ -19,8 +19,12 @@ export const SchoolProvider = ({ children }) => {
   // Dados centralizados para sincronização
   const [alunos, setAlunos] = useState([]);
   const [turmas, setTurmas] = useState([]);
+  const [avaliacoes, setAvaliacoes] = useState([]);
+  const [habilidades, setHabilidades] = useState([]);
   const [alunosLoading, setAlunosLoading] = useState(false);
   const [turmasLoading, setTurmasLoading] = useState(false);
+  const [avaliacoesLoading, setAvaliacoesLoading] = useState(false);
+  const [habilidadesLoading, setHabilidadesLoading] = useState(false);
 
   const loadSchoolSettings = async () => {
     try {
@@ -66,10 +70,48 @@ export const SchoolProvider = ({ children }) => {
     }
   }, []);
 
+  // Carregar avaliações (opcional: por filtros)
+  const loadAvaliacoes = useCallback(async (filtros = {}) => {
+    try {
+      setAvaliacoesLoading(true);
+      const response = await api.get('/avaliacoes', { params: filtros });
+      setAvaliacoes(response.data.data || []);
+    } catch (error) {
+      console.error('Erro ao carregar avaliações:', error);
+      setAvaliacoes([]);
+    } finally {
+      setAvaliacoesLoading(false);
+    }
+  }, []);
+
+  // Carregar habilidades (opcional: por filtros)
+  const loadHabilidades = useCallback(async (filtros = {}) => {
+    try {
+      setHabilidadesLoading(true);
+      const response = await api.get('/habilidades', { params: filtros });
+      setHabilidades(response.data || []);
+    } catch (error) {
+      console.error('Erro ao carregar habilidades:', error);
+      setHabilidades([]);
+    } finally {
+      setHabilidadesLoading(false);
+    }
+  }, []);
+
   // Sincronizar dados (atualizar ambos quando um aluno é modificado)
   const syncData = useCallback(async () => {
     await Promise.all([loadAlunos(), loadTurmas()]);
   }, [loadAlunos, loadTurmas]);
+
+  // Sincronizar tudo (incluindo avaliações e habilidades)
+  const syncAll = useCallback(async (filtros = {}) => {
+    await Promise.all([
+      loadAlunos(),
+      loadTurmas(),
+      loadAvaliacoes(filtros),
+      loadHabilidades(filtros)
+    ]);
+  }, [loadAlunos, loadTurmas, loadAvaliacoes, loadHabilidades]);
 
   useEffect(() => {
     loadSchoolSettings();
@@ -92,13 +134,24 @@ export const SchoolProvider = ({ children }) => {
       // Dados e funções para sincronização
       alunos,
       turmas,
+      avaliacoes,
+      habilidades,
       alunosLoading,
       turmasLoading,
+      avaliacoesLoading,
+      habilidadesLoading,
       loadAlunos,
       loadTurmas,
-      syncData
+      loadAvaliacoes,
+      loadHabilidades,
+      syncData,
+      syncAll
     }}>
       {children}
+    </SchoolContext.Provider>
+  );
+};
+
     </SchoolContext.Provider>
   );
 };

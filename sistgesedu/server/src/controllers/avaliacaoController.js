@@ -1,5 +1,7 @@
 const Avaliacao = require('../models/Avaliacao');
+const Habilidade = require('../models/Habilidade');
 const { paginate, paginatedResponse } = require('../utils/helpers');
+const { validarAvaliacao, gerarEstatisticas } = require('../utils/classificacao');
 
 // @desc    Listar avaliações com filtros
 // @route   GET /api/avaliacoes
@@ -89,7 +91,170 @@ exports.createAvaliacao = async (req, res) => {
   }
 };
 
-// @desc    Adicionar nota a uma avaliação existente
+// @desc    Atualizar pontos de corte (PC1, PC2 ou EAC)
+// @route   PUT /api/avaliacoes/:id/pontos-corte
+exports.atualizarPontosCorte = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { pontosCorte } = req.body;
+    
+    // Validar dados
+    const validacao = validarAvaliacao(pontosCorte);
+    if (!validacao.valid) {
+      return res.status(400).json({ 
+        message: 'Validação falhou', 
+        errors: validacao.errors 
+      });
+    }
+    
+    const avaliacao = await Avaliacao.findById(id);
+    if (!avaliacao) {
+      return res.status(404).json({ message: 'Avaliação não encontrada' });
+    }
+    
+    // Atualizar pontos de corte
+    if (pontosCorte.pc1) {
+      avaliacao.pontosCorte.pc1 = {
+        ...avaliacao.pontosCorte.pc1,
+        ...pontosCorte.pc1
+      };
+    }
+    
+    if (pontosCorte.pc2) {
+      avaliacao.pontosCorte.pc2 = {
+        ...avaliacao.pontosCorte.pc2,
+        ...pontosCorte.pc2
+      };
+    }
+    
+    if (pontosCorte.eac) {
+      avaliacao.pontosCorte.eac = {
+        ...avaliacao.pontosCorte.eac,
+        ...pontosCorte.eac
+      };
+    }
+    
+    // Atualizar observações se fornecidas
+    if (req.body.observacoes !== undefined) {
+      avaliacao.observacoes = req.body.observacoes;
+    }
+    
+    // Salvar (triggers automáticos calculam tudo)
+    await avaliacao.save();
+    
+    // Atualizar habilidades se fornecidas
+    const todasHabilidades = [
+      ...(pontosCorte.pc1?.habilidades || []),
+      ...(pontosCorte.pc2?.habilidades || []),
+      ...(pontosCorte.eac?.habilidades || [])
+    ].filter(Boolean);
+    
+    if (todasHabilidades.length > 0) {
+      await atualizarHabilidadesAluno(avaliacao.aluno, todasHabilidades, avaliacao.trimestre);
+    }
+    
+    // Repopular e retornar
+    const avaliacaoAtualizada = await Avaliacao.findById(id)
+      .populate('aluno', 'nome matricula')
+      .populate('disciplina', 'nome codigo')
+      .populate('turma', 'nome')
+      .populate('pontosCorte.pc1.habilidades', 'codigo descricao')
+      .populate('pontosCorte.pc2.habilidades', 'codigo descricao')
+      .populate('pontosCorte.eac.habilidades', 'codigo descricao');
+    
+    res.json(avaliacaoAtualizada);
+  } catch (error) {
+    res.status(400).json({ message: 'Erro ao atualizar pontos de corte', error: error.message });
+  }
+};
+
+// @desc    Buscar avaliações por turma/disciplina com todos os alunos
+// @route   GET /api/avaliacoes/turma/:turmaId/disciplina/:disciplinaId
+exports.getAvaliacoesPorTurmaDisciplina = async (req, res) => {
+  try {
+    const { turmaId, disciplinaId } = req.params;
+    const { trimestre, ano = new Date().getFullYear() } = req.query;
+    
+    if (!trimestre) {
+      return res.status(400).json({ message: 'Trimestre é obrigatório' });
+    }
+    
+    // Buscar todos os alunos da turma
+    const Aluno = require('../models/Aluno');
+    const alunos = await Aluno.find({ turma: turmaId, ativo: true }).sort({ nome: 1 });
+    
+    // Buscar avaliações existentes
+    const avaliacoes = await Avaliacao.find({
+      turma: turmaId,
+      disciplina: disciplinaId,
+      ano: parseInt(ano),
+      trimestre: parseInt(trimestre)
+    })
+    .populate('aluno', 'nome matricula')
+    .populate('pontosCorte.pc1.habilidades', 'codigo descricao')
+    .populate('pontosCorte.pc2.habilidades', 'codigo descricao')
+    .populate('pontosCorte.eac.habilidades', 'codigo descricao');
+    
+    // Criar map de avaliações por aluno
+    const avaliacoesMap = new Map();
+    avaliacoes.forEach(av => {
+      avaliacoesMap.set(av.aluno._id.toString(), av);
+    });
+    
+    // Montar resposta com todos os alunos
+    const resultado = alunos.map(aluno => {
+      const avaliacao = avaliacoesMap.get(aluno._id.toString());
+      return {
+        aluno: {
+          _id: aluno._id,
+          nome: aluno.nome,
+          matricula: aluno.matricula
+        },
+        avaliacao: avaliacao || null
+      };
+    });
+    
+    // Gerar estatísticas
+    const stats = gerarEstatisticas(avaliacoes);
+    
+    res.json({
+      alunos: resultado,
+      estatisticas: stats,
+      total: resultado.length
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao buscar avaliações', error: error.message });
+  }
+};
+
+// Função auxiliar para atualizar habilidades do aluno
+async function atualizarHabilidadesAluno(alunoId, habilidadesIds, trimestre) {
+  try {
+    for (const habId of habilidadesIds) {
+      // Verificar se habilidade existe
+      const habilidade = await Habilidade.findById(habId);
+      if (!habilidade) continue;
+      
+      // Verificar se aluno já está na lista
+      const alunoExiste = habilidade.alunosDesempenho.some(
+        ad => ad.aluno.toString() === alunoId.toString()
+      );
+      
+      if (!alunoExiste) {
+        habilidade.alunosDesempenho.push({
+          aluno: alunoId,
+          nivel: 'em-desenvolvimento',
+          observacao: `Trabalhada no ${trimestre}º trimestre`
+        });
+        await habilidade.save();
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar habilidades:', error);
+  }
+}
+
+// @desc    Adicionar nota a uma avaliação existente (SISTEMA ANTIGO - mantido para compatibilidade)
 // @route   POST /api/avaliacoes/:id/notas
 exports.adicionarNota = async (req, res) => {
   try {

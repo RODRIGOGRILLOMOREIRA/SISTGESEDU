@@ -709,83 +709,199 @@ const Habilidades = () => {
         </Box>
       )}
 
-      {/* Tabela de Habilidades */}
+      {/* Cards de Habilidades - Visualização Geral */}
       {viewMode === 'geral' && (
-      <TableContainer component={Paper} sx={{ width: '100%', overflowX: 'auto' }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Código</TableCell>
-              <TableCell>Descrição</TableCell>
-              <TableCell>Disciplina</TableCell>
-              <TableCell>Turma</TableCell>
-              <TableCell>Ano</TableCell>
-              <TableCell>Trimestre</TableCell>
-              <TableCell>Acompanhamentos</TableCell>
-              <TableCell align="right">Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {habilidades.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} align="center">
-                  <Typography color="text.secondary">
-                    Nenhuma habilidade encontrada
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              habilidades.map((habilidade) => (
-                <TableRow key={habilidade._id}>
-                  <TableCell>{habilidade.codigo}</TableCell>
-                  <TableCell>{habilidade.descricao}</TableCell>
-                  <TableCell>{habilidade.disciplina?.nome}</TableCell>
-                  <TableCell>{habilidade.turma?.nome}</TableCell>
-                  <TableCell>{habilidade.ano}</TableCell>
-                  <TableCell>{habilidade.trimestre}º</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={habilidade.alunosDesempenho?.length || 0}
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Tooltip title="Acompanhar Alunos">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleDesempenhoOpen(habilidade)}
-                      >
-                        <Assessment />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Editar">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleEdit(habilidade)}
-                      >
-                        <Edit />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Excluir">
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDelete(habilidade._id)}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+        habilidades.length === 0 ? (
+          <Paper sx={{ p: 6, textAlign: 'center' }}>
+            <HabilidadesIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary">
+              Nenhuma habilidade encontrada
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Clique em "Nova Habilidade" para começar
+            </Typography>
+          </Paper>
+        ) : (
+          <Grid container spacing={3}>
+            {habilidades.map((habilidade) => {
+              const totalAlunos = habilidade.alunosDesempenho?.length || 0;
+              const alunosPorNivel = {
+                'nao-desenvolvido': 0,
+                'em-desenvolvimento': 0,
+                'desenvolvido': 0,
+                'plenamente-desenvolvido': 0
+              };
+
+              // Contar alunos por nível
+              habilidade.alunosDesempenho?.forEach(ad => {
+                if (alunosPorNivel.hasOwnProperty(ad.nivel)) {
+                  alunosPorNivel[ad.nivel]++;
+                }
+              });
+
+              const alunosDesenvolvidos = alunosPorNivel['desenvolvido'] + alunosPorNivel['plenamente-desenvolvido'];
+              const percentualDesenvolvido = totalAlunos > 0 ? (alunosDesenvolvidos / totalAlunos) * 100 : 0;
+
+              return (
+                <Grid item xs={12} sm={6} md={4} key={habilidade._id}>
+                  <Card
+                    sx={{
+                      height: '100%',
+                      borderRadius: 3,
+                      transition: 'all 0.3s ease',
+                      border: '1px solid',
+                      borderColor: (theme) =>
+                        theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                      '&:hover': {
+                        transform: 'translateY(-4px)',
+                        boxShadow: (theme) =>
+                          theme.palette.mode === 'dark'
+                            ? '0 8px 24px rgba(0,188,212,0.3)'
+                            : '0 8px 24px rgba(0,0,0,0.15)',
+                      },
+                    }}
+                  >
+                    <CardContent>
+                      {/* Cabeçalho */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
+                            {habilidade.codigo}
+                          </Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.3, mt: 0.5 }}>
+                            {habilidade.descricao.length > 80
+                              ? `${habilidade.descricao.substring(0, 80)}...`
+                              : habilidade.descricao}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Divider sx={{ my: 2 }} />
+
+                      {/* Informações */}
+                      <Grid container spacing={1} sx={{ mb: 2 }}>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">
+                            Disciplina
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {habilidade.disciplina?.nome || 'N/A'}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">
+                            Turma
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {habilidade.turma?.nome || 'N/A'}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">
+                            Ano
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {habilidade.ano}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">
+                            Trimestre
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {habilidade.trimestre}º
+                          </Typography>
+                        </Grid>
+                      </Grid>
+
+                      {/* Estatísticas de Alunos */}
+                      <Box sx={{ mb: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Acompanhamentos
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                            {alunosDesenvolvidos}/{totalAlunos} desenvolvido
+                          </Typography>
+                        </Box>
+                        <Box sx={{ position: 'relative', height: 8, bgcolor: 'grey.200', borderRadius: 4, overflow: 'hidden' }}>
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              left: 0,
+                              top: 0,
+                              height: '100%',
+                              width: `${percentualDesenvolvido}%`,
+                              bgcolor: percentualDesenvolvido >= 70 ? 'success.main' : percentualDesenvolvido >= 40 ? 'warning.main' : 'error.main',
+                              transition: 'width 0.3s ease',
+                            }}
+                          />
+                        </Box>
+                      </Box>
+
+                      {/* Distribuição por Níveis */}
+                      {totalAlunos > 0 && (
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 2 }}>
+                          {NIVEIS_DESENVOLVIMENTO.map((nivel) => {
+                            const count = alunosPorNivel[nivel.value] || 0;
+                            if (count === 0) return null;
+                            return (
+                              <Chip
+                                key={nivel.value}
+                                size="small"
+                                icon={<nivel.icon />}
+                                label={`${count}`}
+                                color={nivel.color}
+                                variant="outlined"
+                              />
+                            );
+                          })}
+                        </Box>
+                      )}
+
+                      <Divider sx={{ my: 2 }} />
+
+                      {/* Ações */}
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="Acompanhar Alunos">
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            fullWidth
+                            startIcon={<Assessment />}
+                            onClick={() => handleDesempenhoOpen(habilidade)}
+                          >
+                            Alunos ({totalAlunos})
+                          </Button>
+                        </Tooltip>
+                        <Tooltip title="Editar">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handleEdit(habilidade)}
+                            sx={{ border: 1, borderColor: 'primary.main' }}
+                          >
+                            <Edit />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Excluir">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDelete(habilidade._id)}
+                            sx={{ border: 1, borderColor: 'error.main' }}
+                          >
+                            <Delete />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
+        )
       )}
 
       {/* Dialog - Cadastro/Edição de Habilidade */}
