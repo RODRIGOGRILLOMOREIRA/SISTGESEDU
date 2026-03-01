@@ -1,7 +1,5 @@
 const Avaliacao = require('../models/Avaliacao');
-const Habilidade = require('../models/Habilidade');
 const { paginate, paginatedResponse } = require('../utils/helpers');
-const { validarAvaliacao, gerarEstatisticas } = require('../utils/classificacao');
 
 // @desc    Listar avaliações com filtros
 // @route   GET /api/avaliacoes
@@ -91,170 +89,7 @@ exports.createAvaliacao = async (req, res) => {
   }
 };
 
-// @desc    Atualizar pontos de corte (PC1, PC2 ou EAC)
-// @route   PUT /api/avaliacoes/:id/pontos-corte
-exports.atualizarPontosCorte = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { pontosCorte } = req.body;
-    
-    // Validar dados
-    const validacao = validarAvaliacao(pontosCorte);
-    if (!validacao.valid) {
-      return res.status(400).json({ 
-        message: 'Validação falhou', 
-        errors: validacao.errors 
-      });
-    }
-    
-    const avaliacao = await Avaliacao.findById(id);
-    if (!avaliacao) {
-      return res.status(404).json({ message: 'Avaliação não encontrada' });
-    }
-    
-    // Atualizar pontos de corte
-    if (pontosCorte.pc1) {
-      avaliacao.pontosCorte.pc1 = {
-        ...avaliacao.pontosCorte.pc1,
-        ...pontosCorte.pc1
-      };
-    }
-    
-    if (pontosCorte.pc2) {
-      avaliacao.pontosCorte.pc2 = {
-        ...avaliacao.pontosCorte.pc2,
-        ...pontosCorte.pc2
-      };
-    }
-    
-    if (pontosCorte.eac) {
-      avaliacao.pontosCorte.eac = {
-        ...avaliacao.pontosCorte.eac,
-        ...pontosCorte.eac
-      };
-    }
-    
-    // Atualizar observações se fornecidas
-    if (req.body.observacoes !== undefined) {
-      avaliacao.observacoes = req.body.observacoes;
-    }
-    
-    // Salvar (triggers automáticos calculam tudo)
-    await avaliacao.save();
-    
-    // Atualizar habilidades se fornecidas
-    const todasHabilidades = [
-      ...(pontosCorte.pc1?.habilidades || []),
-      ...(pontosCorte.pc2?.habilidades || []),
-      ...(pontosCorte.eac?.habilidades || [])
-    ].filter(Boolean);
-    
-    if (todasHabilidades.length > 0) {
-      await atualizarHabilidadesAluno(avaliacao.aluno, todasHabilidades, avaliacao.trimestre);
-    }
-    
-    // Repopular e retornar
-    const avaliacaoAtualizada = await Avaliacao.findById(id)
-      .populate('aluno', 'nome matricula')
-      .populate('disciplina', 'nome codigo')
-      .populate('turma', 'nome')
-      .populate('pontosCorte.pc1.habilidades', 'codigo descricao')
-      .populate('pontosCorte.pc2.habilidades', 'codigo descricao')
-      .populate('pontosCorte.eac.habilidades', 'codigo descricao');
-    
-    res.json(avaliacaoAtualizada);
-  } catch (error) {
-    res.status(400).json({ message: 'Erro ao atualizar pontos de corte', error: error.message });
-  }
-};
-
-// @desc    Buscar avaliações por turma/disciplina com todos os alunos
-// @route   GET /api/avaliacoes/turma/:turmaId/disciplina/:disciplinaId
-exports.getAvaliacoesPorTurmaDisciplina = async (req, res) => {
-  try {
-    const { turmaId, disciplinaId } = req.params;
-    const { trimestre, ano = new Date().getFullYear() } = req.query;
-    
-    if (!trimestre) {
-      return res.status(400).json({ message: 'Trimestre é obrigatório' });
-    }
-    
-    // Buscar todos os alunos da turma
-    const Aluno = require('../models/Aluno');
-    const alunos = await Aluno.find({ turma: turmaId, ativo: true }).sort({ nome: 1 });
-    
-    // Buscar avaliações existentes
-    const avaliacoes = await Avaliacao.find({
-      turma: turmaId,
-      disciplina: disciplinaId,
-      ano: parseInt(ano),
-      trimestre: parseInt(trimestre)
-    })
-    .populate('aluno', 'nome matricula')
-    .populate('pontosCorte.pc1.habilidades', 'codigo descricao')
-    .populate('pontosCorte.pc2.habilidades', 'codigo descricao')
-    .populate('pontosCorte.eac.habilidades', 'codigo descricao');
-    
-    // Criar map de avaliações por aluno
-    const avaliacoesMap = new Map();
-    avaliacoes.forEach(av => {
-      avaliacoesMap.set(av.aluno._id.toString(), av);
-    });
-    
-    // Montar resposta com todos os alunos
-    const resultado = alunos.map(aluno => {
-      const avaliacao = avaliacoesMap.get(aluno._id.toString());
-      return {
-        aluno: {
-          _id: aluno._id,
-          nome: aluno.nome,
-          matricula: aluno.matricula
-        },
-        avaliacao: avaliacao || null
-      };
-    });
-    
-    // Gerar estatísticas
-    const stats = gerarEstatisticas(avaliacoes);
-    
-    res.json({
-      alunos: resultado,
-      estatisticas: stats,
-      total: resultado.length
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Erro ao buscar avaliações', error: error.message });
-  }
-};
-
-// Função auxiliar para atualizar habilidades do aluno
-async function atualizarHabilidadesAluno(alunoId, habilidadesIds, trimestre) {
-  try {
-    for (const habId of habilidadesIds) {
-      // Verificar se habilidade existe
-      const habilidade = await Habilidade.findById(habId);
-      if (!habilidade) continue;
-      
-      // Verificar se aluno já está na lista
-      const alunoExiste = habilidade.alunosDesempenho.some(
-        ad => ad.aluno.toString() === alunoId.toString()
-      );
-      
-      if (!alunoExiste) {
-        habilidade.alunosDesempenho.push({
-          aluno: alunoId,
-          nivel: 'em-desenvolvimento',
-          observacao: `Trabalhada no ${trimestre}º trimestre`
-        });
-        await habilidade.save();
-      }
-    }
-  } catch (error) {
-    console.error('Erro ao atualizar habilidades:', error);
-  }
-}
-
-// @desc    Adicionar nota a uma avaliação existente (SISTEMA ANTIGO - mantido para compatibilidade)
+// @desc    Adicionar nota a uma avaliação existente
 // @route   POST /api/avaliacoes/:id/notas
 exports.adicionarNota = async (req, res) => {
   try {
@@ -510,7 +345,7 @@ exports.getEvolucaoHabilidades = async (req, res) => {
   }
 };
 
-// @desc    Gerar template de avaliações por turma (Sistema de Pontos de Corte)
+// @desc    Gerar template de avaliações por turma
 // @route   GET /api/avaliacoes/template/:turmaId
 exports.gerarTemplatePorTurma = async (req, res) => {
   try {
@@ -539,9 +374,6 @@ exports.gerarTemplatePorTurma = async (req, res) => {
     let disciplina = null;
     if (disciplinaId) {
       disciplina = await Disciplina.findById(disciplinaId);
-      if (!disciplina) {
-        return res.status(404).json({ message: 'Disciplina não encontrada' });
-      }
     }
     
     // Buscar habilidades disponíveis para a disciplina (se especificada)
@@ -553,24 +385,21 @@ exports.gerarTemplatePorTurma = async (req, res) => {
       }).select('codigo descricao').sort({ codigo: 1 });
     }
     
-    // Gerar template com dados dos alunos - SISTEMA DE PONTOS DE CORTE
+    // Gerar template com dados dos alunos
     const template = alunos.map(aluno => ({
       matricula_aluno: aluno.matricula,
       aluno_nome: aluno.nome,
       turma_nome: turma.nome,
       codigo_disciplina: disciplina?.codigo || '',
       disciplina_nome: disciplina?.nome || '',
+      tipo_avaliacao: 'prova', // Valor padrão
+      descricao: '',
+      nota: '',
+      peso: '1',
+      data_avaliacao: new Date().toISOString().split('T')[0],
       trimestre: trimestre || '1',
       ano: ano || new Date().getFullYear(),
-      pc1_nota: '', // 0 a 50
-      pc1_data: '', // Formato: YYYY-MM-DD
-      pc1_habilidades: '', // Ex: EF06MA01,EF06MA02 ou EF06MA01;EF06MA02
-      pc2_nota: '', // 0 a 50
-      pc2_data: '', // Formato: YYYY-MM-DD
-      pc2_habilidades: '', // Ex: EF06MA03,EF06MA04
-      eac_nota: '', // 0 a 100
-      eac_data: '', // Formato: YYYY-MM-DD
-      eac_habilidades: '', // Ex: EF06MA01,EF06MA05
+      habilidades_codigos: '', // Ex: EF06MA01,EF06MA02 ou EF06MA01;EF06MA02
       observacoes: ''
     }));
     
@@ -591,15 +420,11 @@ exports.gerarTemplatePorTurma = async (req, res) => {
       })),
       template,
       instrucoes: {
-        sistema: 'Sistema de Pontos de Corte (PC1, PC2, EAC)',
-        pc1: 'Nota de 0 a 10 (com uma casa decimal, ex: 8,5). Data no formato YYYY-MM-DD (ex: 2026-03-15)',
-        pc2: 'Nota de 0 a 10 (com uma casa decimal, ex: 7,5). Data no formato YYYY-MM-DD',
-        eac: 'Nota de 0 a 10 (com uma casa decimal, ex: 9,0). Data no formato YYYY-MM-DD',
-        habilidades: 'Preencha as colunas de habilidades (pc1_habilidades, pc2_habilidades, eac_habilidades) com os códigos separados por vírgula ou ponto e vírgula. Exemplo: EF06MA01,EF06MA02 ou EF06MA01;EF06MA02',
-        notaFinal: 'A nota final do trimestre será calculada automaticamente como o maior valor entre: (PC1 + PC2) ou EAC',
+        habilidades: 'Preencha a coluna "habilidades_codigos" com os códigos das habilidades separados por vírgula ou ponto e vírgula. Exemplo: EF06MA01,EF06MA02 ou EF06MA01;EF06MA02',
+        tipos_avaliacao: ['prova', 'trabalho', 'participacao', 'simulado', 'atividade', 'seminario', 'projeto', 'pesquisa', 'outro'],
         trimestre: 'Valores: 1, 2 ou 3',
-        formato_data: 'YYYY-MM-DD (ex: 2026-03-15)',
-        multiplas_habilidades: 'Sim, você pode informar várias habilidades separadas por vírgula em cada ponto de corte'
+        nota: 'Valor de 0 a 10',
+        peso: 'Valor decimal, padrão 1'
       }
     });
     
@@ -608,7 +433,7 @@ exports.gerarTemplatePorTurma = async (req, res) => {
   }
 };
 
-// @desc    Importar avaliações em lote - Sistema de Pontos de Corte
+// @desc    Importar avaliações em lote (CSV/Excel)
 // @route   POST /api/avaliacoes/importar
 exports.importarAvaliacoes = async (req, res) => {
   try {
@@ -627,35 +452,7 @@ exports.importarAvaliacoes = async (req, res) => {
     const resultados = {
       sucesso: 0,
       erros: 0,
-      atualizados: 0,
-      criados: 0,
       detalhes: []
-    };
-
-    // Função auxiliar para processar habilidades
-    const processarHabilidades = async (habilidadesString, disciplinaId) => {
-      if (!habilidadesString || habilidadesString.trim() === '') {
-        return [];
-      }
-      
-      // Separar por vírgula ou ponto e vírgula
-      const codigosHabilidades = habilidadesString
-        .split(/[,;]/)
-        .map(codigo => codigo.trim())
-        .filter(codigo => codigo.length > 0);
-      
-      if (codigosHabilidades.length === 0) {
-        return [];
-      }
-      
-      // Buscar habilidades pelos códigos
-      const habilidadesEncontradas = await Habilidade.find({
-        codigo: { $in: codigosHabilidades },
-        disciplina: disciplinaId,
-        ativo: true
-      }).select('_id');
-      
-      return habilidadesEncontradas.map(h => h._id);
     };
     
     for (const item of avaliacoes) {
@@ -666,30 +463,42 @@ exports.importarAvaliacoes = async (req, res) => {
         let turmaId = null;
         let professorId = null;
         
-        // Buscar aluno por matrícula
+        // Buscar aluno por matrícula ou nome
         if (item.matricula_aluno) {
           const aluno = await Aluno.findOne({ 
             matricula: item.matricula_aluno, 
             ativo: true 
           });
           alunoId = aluno?._id;
+        } else if (item.aluno_nome) {
+          const aluno = await Aluno.findOne({ 
+            nome: { $regex: new RegExp(item.aluno_nome, 'i') },
+            ativo: true 
+          }).limit(1);
+          alunoId = aluno?._id;
         }
         
-        // Buscar disciplina por código
+        // Buscar disciplina por código ou nome
         if (item.codigo_disciplina) {
           const disciplina = await Disciplina.findOne({ 
             codigo: item.codigo_disciplina,
             ativo: true 
           });
           disciplinaId = disciplina?._id;
+        } else if (item.disciplina_nome) {
+          const disciplina = await Disciplina.findOne({ 
+            nome: { $regex: new RegExp(item.disciplina_nome, 'i') },
+            ativo: true 
+          }).limit(1);
+          disciplinaId = disciplina?._id;
         }
         
         // Buscar turma por nome
         if (item.turma_nome) {
           const turma = await Turma.findOne({ 
-            nome: { $regex: new RegExp(`^${item.turma_nome}$`, 'i') },
+            nome: { $regex: new RegExp(item.turma_nome, 'i') },
             ativo: true 
-          });
+          }).limit(1);
           turmaId = turma?._id;
         }
         
@@ -702,123 +511,74 @@ exports.importarAvaliacoes = async (req, res) => {
           professorId = professor?._id;
         }
         
-        if (!alunoId) {
+        if (!alunoId || !disciplinaId || !turmaId) {
           resultados.erros++;
           resultados.detalhes.push({
-            linha: resultados.sucesso + resultados.erros,
-            erro: `Aluno com matrícula "${item.matricula_aluno}" não encontrado`,
-            dados: { matricula: item.matricula_aluno, nome: item.aluno_nome }
-          });
-          continue;
-        }
-
-        if (!disciplinaId) {
-          resultados.erros++;
-          resultados.detalhes.push({
-            linha: resultados.sucesso + resultados.erros,
-            erro: `Disciplina com código "${item.codigo_disciplina}" não encontrada`,
-            dados: { codigo: item.codigo_disciplina }
-          });
-          continue;
-        }
-
-        if (!turmaId) {
-          resultados.erros++;
-          resultados.detalhes.push({
-            linha: resultados.sucesso + resultados.erros,
-            erro: `Turma "${item.turma_nome}" não encontrada`,
-            dados: { turma: item.turma_nome }
+            linha: item.linha || resultados.sucesso + resultados.erros,
+            erro: 'Aluno, disciplina ou turma não encontrados',
+            dados: item
           });
           continue;
         }
         
-        // Processar habilidades de cada ponto de corte
-        const pc1Habilidades = await processarHabilidades(item.pc1_habilidades, disciplinaId);
-        const pc2Habilidades = await processarHabilidades(item.pc2_habilidades, disciplinaId);
-        const eacHabilidades = await processarHabilidades(item.eac_habilidades, disciplinaId);
-        
-        // Preparar dados da avaliação - SISTEMA DE PONTOS DE CORTE
+        // Preparar dados da avaliação
         const avaliacaoData = {
           aluno: alunoId,
           disciplina: disciplinaId,
           turma: turmaId,
           ano: parseInt(item.ano) || new Date().getFullYear(),
           trimestre: parseInt(item.trimestre) || 1,
-          pontosCorte: {
-            pc1: {
-              nota: parseFloat(item.pc1_nota) || 0,
-              data: item.pc1_data ? new Date(item.pc1_data) : null,
-              habilidades: pc1Habilidades
-            },
-            pc2: {
-              nota: parseFloat(item.pc2_nota) || 0,
-              data: item.pc2_data ? new Date(item.pc2_data) : null,
-              habilidades: pc2Habilidades
-            },
-            eac: {
-              nota: parseFloat(item.eac_nota) || 0,
-              data: item.eac_data ? new Date(item.eac_data) : null,
-              habilidades: eacHabilidades
-            }
-          },
           observacoes: item.observacoes || ''
         };
-
-        // Validar limites de notas (0 a 10 com uma casa decimal)
-        if (avaliacaoData.pontosCorte.pc1.nota < 0 || avaliacaoData.pontosCorte.pc1.nota > 10) {
-          resultados.erros++;
-          resultados.detalhes.push({
-            linha: resultados.sucesso + resultados.erros,
-            erro: `PC1 deve estar entre 0 e 10. Valor fornecido: ${avaliacaoData.pontosCorte.pc1.nota}`,
-            dados: item
-          });
-          continue;
-        }
-
-        if (avaliacaoData.pontosCorte.pc2.nota < 0 || avaliacaoData.pontosCorte.pc2.nota > 10) {
-          resultados.erros++;
-          resultados.detalhes.push({
-            linha: resultados.sucesso + resultados.erros,
-            erro: `PC2 deve estar entre 0 e 10. Valor fornecido: ${avaliacaoData.pontosCorte.pc2.nota}`,
-            dados: item
-          });
-          continue;
-        }
-
-        if (avaliacaoData.pontosCorte.eac.nota < 0 || avaliacaoData.pontosCorte.eac.nota > 10) {
-          resultados.erros++;
-          resultados.detalhes.push({
-            linha: resultados.sucesso + resultados.erros,
-            erro: `EAC deve estar entre 0 e 10. Valor fornecido: ${avaliacaoData.pontosCorte.eac.nota}`,
-            dados: item
-          });
-          continue;
-        }
-
-        // Calcular Média Final e Nota Final do Trimestre (0 a 10)
-        const mediaFinal = (avaliacaoData.pontosCorte.pc1.nota + avaliacaoData.pontosCorte.pc2.nota) / 2;
-        avaliacaoData.pontosCorte.mediaFinal = parseFloat(mediaFinal.toFixed(1));
-        avaliacaoData.notaFinalTrimestre = parseFloat(Math.max(mediaFinal, avaliacaoData.pontosCorte.eac.nota).toFixed(1));
         
-        // Determinar classificação (Verde: 10-8.0, Azul: 7.9-6.0, Amarelo: 5.9-4.0, Vermelho: <4.0)
-        const notaFinal = avaliacaoData.notaFinalTrimestre;
-        if (notaFinal === 0) {
-          avaliacaoData.classificacao = 'sem-avaliacao';
-        } else if (notaFinal >= 8.0) {
-          avaliacaoData.classificacao = 'adequado';
-        } else if (notaFinal >= 6.0) {
-          avaliacaoData.classificacao = 'proficiente';
-        } else if (notaFinal >= 4.0) {
-          avaliacaoData.classificacao = 'em-alerta';
-        } else {
-          avaliacaoData.classificacao = 'intervencao-imediata';
-        }
-
         if (professorId) {
           avaliacaoData.professor = professorId;
         }
         
-        // Verificar se já existe avaliação para este aluno/disciplina/trimestre/ano
+        // Adicionar avaliações (notas)
+        const avaliacoesArray = [];
+        if (item.nota) {
+          const avaliacaoItem = {
+            tipo: item.tipo_avaliacao || 'prova',
+            descricao: item.descricao || '',
+            nota: parseFloat(item.nota),
+            peso: parseFloat(item.peso) || 1,
+            data: item.data_avaliacao ? new Date(item.data_avaliacao) : new Date()
+          };
+          
+          // Processar habilidades se fornecidas
+          if (item.habilidades_codigos) {
+            // Separar por vírgula ou ponto e vírgula
+            const codigosHabilidades = item.habilidades_codigos
+              .split(/[,;]/)
+              .map(codigo => codigo.trim())
+              .filter(codigo => codigo.length > 0);
+            
+            if (codigosHabilidades.length > 0) {
+              // Buscar habilidades pelos códigos
+              const habilidadesEncontradas = await Habilidade.find({
+                codigo: { $in: codigosHabilidades },
+                disciplina: disciplinaId,
+                ativo: true
+              }).select('_id codigo');
+              
+              // Adicionar habilidades à avaliação
+              avaliacaoItem.habilidades = habilidadesEncontradas.map(hab => ({
+                habilidade: hab._id,
+                nivel: 'em-desenvolvimento', // Padrão
+                observacao: ''
+              }));
+            }
+          }
+          
+          avaliacoesArray.push(avaliacaoItem);
+        }
+        
+        if (avaliacoesArray.length > 0) {
+          avaliacaoData.avaliacoes = avaliacoesArray;
+        }
+        
+        // Verificar se já existe avaliação para este aluno/disciplina/trimestre
         let avaliacao = await Avaliacao.findOne({
           aluno: alunoId,
           disciplina: disciplinaId,
@@ -828,37 +588,27 @@ exports.importarAvaliacoes = async (req, res) => {
         });
         
         if (avaliacao) {
-          // Atualizar avaliação existente
-          avaliacao.pontosCorte = avaliacaoData.pontosCorte;
-          avaliacao.notaFinalTrimestre = avaliacaoData.notaFinalTrimestre;
-          avaliacao.classificacao = avaliacaoData.classificacao;
-          if (avaliacaoData.observacoes) {
-            avaliacao.observacoes = avaliacaoData.observacoes;
+          // Adicionar nova nota à avaliação existente
+          if (avaliacoesArray.length > 0) {
+            avaliacao.avaliacoes.push(...avaliacoesArray);
+            await avaliacao.save();
           }
-          if (professorId) {
-            avaliacao.professor = professorId;
-          }
-          await avaliacao.save();
-          resultados.atualizados++;
         } else {
           // Criar nova avaliação
           avaliacao = await Avaliacao.create(avaliacaoData);
-          resultados.criados++;
         }
         
         resultados.sucesso++;
         resultados.detalhes.push({
-          linha: resultados.sucesso + resultados.erros,
-          status: avaliacao.isNew ? 'criado' : 'atualizado',
-          avaliacaoId: avaliacao._id,
-          aluno: item.aluno_nome,
-          notaFinal: avaliacaoData.notaFinalTrimestre
+          linha: item.linha || resultados.sucesso + resultados.erros,
+          status: 'sucesso',
+          avaliacaoId: avaliacao._id
         });
         
       } catch (error) {
         resultados.erros++;
         resultados.detalhes.push({
-          linha: resultados.sucesso + resultados.erros,
+          linha: item.linha || resultados.sucesso + resultados.erros,
           erro: error.message,
           dados: item
         });
@@ -869,8 +619,6 @@ exports.importarAvaliacoes = async (req, res) => {
       message: 'Importação concluída',
       total: avaliacoes.length,
       sucesso: resultados.sucesso,
-      criados: resultados.criados,
-      atualizados: resultados.atualizados,
       erros: resultados.erros,
       detalhes: resultados.detalhes
     });

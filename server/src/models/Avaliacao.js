@@ -41,14 +41,14 @@ const avaliacaoSchema = new mongoose.Schema({
     index: true
   },
   
-  // NOVO SISTEMA DE PONTOS DE CORTE
+  // NOVO SISTEMA DE PONTOS DE CORTE (Notas de 0 a 10)
   pontosCorte: {
     pc1: {
       nota: {
         type: Number,
         default: 0,
         min: 0,
-        max: 50
+        max: 10
       },
       data: Date,
       habilidades: [{
@@ -61,7 +61,7 @@ const avaliacaoSchema = new mongoose.Schema({
         type: Number,
         default: 0,
         min: 0,
-        max: 50
+        max: 10
       },
       data: Date,
       habilidades: [{
@@ -73,14 +73,14 @@ const avaliacaoSchema = new mongoose.Schema({
       type: Number,
       default: 0,
       min: 0,
-      max: 100
+      max: 10
     },
     eac: {
       nota: {
         type: Number,
         default: 0,
         min: 0,
-        max: 100
+        max: 10
       },
       data: Date,
       habilidades: [{
@@ -95,7 +95,7 @@ const avaliacaoSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0,
-    max: 100,
+    max: 10,
     index: true
   },
   classificacao: {

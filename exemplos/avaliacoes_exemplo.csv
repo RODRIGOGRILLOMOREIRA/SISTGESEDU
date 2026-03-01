@@ -1,11 +1,14 @@
-matricula_aluno,aluno_nome,codigo_disciplina,disciplina_nome,turma_nome,professor_nome,ano,trimestre,tipo_avaliacao,descricao,nota,peso,data_avaliacao,habilidades_codigos,observacoes
-2026001,João Silva,MAT,Matemática,1º Ano A,Prof. Carlos,2026,1,prova,Prova Bimestral,8.5,3,2026-03-15,"EF06MA01,EF06MA02",Ótimo desempenho
-2026001,João Silva,MAT,Matemática,1º Ano A,Prof. Carlos,2026,1,trabalho,Trabalho em Grupo,9.0,2,2026-03-20,"EF06MA03,EF06MA04",Excelente apresentação
-2026002,Ana Santos,POR,Português,1º Ano A,Prof. Maria,2026,1,prova,Prova Bimestral,7.5,3,2026-03-15,"EF06LP01;EF06LP02",
-2026002,Ana Santos,POR,Português,1º Ano A,Prof. Maria,2026,1,participacao,Participação em aula,8.0,1,2026-03-25,EF06LP03,Muito participativa
-2026003,Pedro Costa,MAT,Matemática,2º Ano B,Prof. Carlos,2026,1,prova,Prova Bimestral,6.5,3,2026-03-15,"EF07MA01,EF07MA02",Precisa melhorar
-2026003,Pedro Costa,MAT,Matemática,2º Ano B,Prof. Carlos,2026,1,simulado,Simulado ENEM,7.0,2,2026-03-22,EF07MA03,
-2026004,Maria Oliveira,CIE,Ciências,1º Ano A,Prof. Ana,2026,1,trabalho,Projeto de Pesquisa,9.5,3,2026-03-18,"EF06CI01,EF06CI02,EF06CI03",Trabalho excepcional
-2026004,Maria Oliveira,CIE,Ciências,1º Ano A,Prof. Ana,2026,1,seminario,Seminário sobre Ecologia,8.5,2,2026-03-28,EF06CI04;EF06CI05,Boa apresentação
-2026005,Carlos Souza,HIS,História,2º Ano B,Prof. João,2026,1,prova,Prova Mensal,7.0,3,2026-03-15,"EF07HI01,EF07HI02",
-2026005,Carlos Souza,HIS,História,2º Ano B,Prof. João,2026,1,atividade,Atividade em classe,8.0,1,2026-03-10,EF07HI03,
+matricula_aluno,aluno_nome,turma_nome,codigo_disciplina,disciplina_nome,trimestre,ano,pc1_nota,pc1_data,pc1_habilidades,pc2_nota,pc2_data,pc2_habilidades,eac_nota,eac_data,eac_habilidades,observacoes
+2026001,João Silva,1º Ano A,MAT,Matemática,1,2026,9.0,2026-03-15,"EF06MA01,EF06MA02",9.5,2026-04-20,"EF06MA03,EF06MA04,EF06MA05",9.8,2026-05-10,"EF06MA01,EF06MA02,EF06MA03",Excelente desempenho em todos os pontos de corte
+2026002,Ana Santos,1º Ano A,MAT,Matemática,1,2026,8.0,2026-03-15,EF06MA01,8.5,2026-04-20,"EF06MA02,EF06MA03",9.0,2026-05-10,"EF06MA01,EF06MA04",Bom desempenho geral
+2026003,Pedro Costa,1º Ano A,MAT,Matemática,1,2026,6.5,2026-03-15,"EF06MA01,EF06MA02",7.0,2026-04-20,EF06MA03,7.5,2026-05-10,"EF06MA01,EF06MA02,EF06MA04",Melhorou no EAC
+2026004,Maria Oliveira,1º Ano A,MAT,Matemática,1,2026,9.5,2026-03-15,"EF06MA01,EF06MA02,EF06MA03",10.0,2026-04-20,"EF06MA04,EF06MA05",10.0,2026-05-10,"EF06MA01,EF06MA02,EF06MA03,EF06MA04,EF06MA05",Desempenho excepcional
+2026005,Carlos Souza,1º Ano A,MAT,Matemática,1,2026,5.5,2026-03-15,EF06MA01,6.0,2026-04-20,"EF06MA02,EF06MA03",8.5,2026-05-10,"EF06MA01,EF06MA02,EF06MA03,EF06MA04",Recuperou bem no EAC
+2026001,João Silva,1º Ano A,POR,Português,1,2026,8.5,2026-03-15,"EF06LP01,EF06LP02",9.0,2026-04-20,"EF06LP03,EF06LP04",9.2,2026-05-10,"EF06LP01,EF06LP03,EF06LP05",Domínio das habilidades de leitura e escrita
+2026002,Ana Santos,1º Ano A,POR,Português,1,2026,7.5,2026-03-15,EF06LP01,8.0,2026-04-20,"EF06LP02,EF06LP03",8.5,2026-05-10,"EF06LP01,EF06LP02,EF06LP04",Boa evolução
+2026003,Pedro Costa,1º Ano A,POR,Português,1,2026,6.0,2026-03-15,"EF06LP01,EF06LP02",6.5,2026-04-20,EF06LP03,7.0,2026-05-10,"EF06LP01,EF06LP03",Precisa reforçar interpretação
+2026006,Juliana Lima,2º Ano B,MAT,Matemática,1,2026,8.8,2026-03-15,"EF07MA01,EF07MA02",9.2,2026-04-20,"EF07MA03,EF07MA04",9.5,2026-05-10,"EF07MA01,EF07MA02,EF07MA05",Ótimo aproveitamento
+2026007,Rafael Santos,2º Ano B,MAT,Matemática,1,2026,4.5,2026-03-15,EF07MA01,5.0,2026-04-20,"EF07MA02,EF07MA03",6.0,2026-05-10,"EF07MA01,EF07MA02,EF07MA03",Necessita intervenção em álgebra
+2026008,Beatriz Costa,2º Ano B,CIE,Ciências,1,2026,9.2,2026-03-15,"EF07CI01,EF07CI02,EF07CI03",9.8,2026-04-20,"EF07CI04,EF07CI05",10.0,2026-05-10,"EF07CI01,EF07CI02,EF07CI03,EF07CI04,EF07CI05",Excelente participação em práticas laboratoriais
+2026009,Lucas Oliveira,2º Ano B,CIE,Ciências,1,2026,8.0,2026-03-15,"EF07CI01,EF07CI02",8.5,2026-04-20,EF07CI03,9.0,2026-05-10,"EF07CI01,EF07CI04",Bom domínio de conceitos
+2026010,Camila Silva,3º Ano C,HIS,História,1,2026,8.5,2026-03-15,"EF08HI01,EF08HI02",9.0,2026-04-20,"EF08HI03,EF08HI04,EF08HI05",9.3,2026-05-10,"EF08HI01,EF08HI02,EF08HI03",Excelente análise crítica dos eventos históricos

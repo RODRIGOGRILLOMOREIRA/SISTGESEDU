@@ -9,7 +9,24 @@ Sistema completo para gestão de notas, habilidades, frequências e análise de 
 **📅 Última Atualização: 01 de março de 2026**  
 **✅ Revisão Completa Realizada - Todos os problemas críticos corrigidos**
 
-### 🔧 Correções Críticas Realizadas (Março 2026)
+### 🔧 Melhorias e Novas Funcionalidades (Março 2026)
+
+#### 📅 Sistema de Frequência Aprimorado
+- ✅ **Dashboard com Filtros Multi-Select** - 4 botões de filtro (Todos, Adequado, Atenção, Crítico) com seleção múltipla
+- ✅ **Sincronização Completa** - Dashboard sincronizado em tempo real com registros de frequência
+- ✅ **Cards Clicáveis** - 5 cards interativos na página de Frequências:
+  - 🔵 **Total de Alunos** (navy blue)
+  - 🟢 **Presentes** (verde) - hoje + acumulado
+  - 🔴 **Faltas** (vermelho) - hoje + acumulado  
+  - 🟡 **Justificadas** (amarelo) - hoje + acumulado
+  - 📊 **Percentual Geral** (cor dinâmica)
+- ✅ **Sistema de Filtro Visual** - Clique nos cards para filtrar lista de alunos
+- ✅ **Botão de Reset** - Resetar registros do dia com confirmação
+- ✅ **Salvamento Multi-Disciplinar** - Salva automaticamente em TODAS as disciplinas
+- ✅ **Workflow Simplificado** - Campo disciplina não é mais obrigatório
+- ✅ **Estatísticas Acumulativas** - Dados diários + acumulados em tempo real
+
+#### 🛠️ Correções Anteriores (Início de Março)
 - ✅ **Modelo Turma.js** - Corrigida importação do Schema do mongoose
 - ✅ **Modelo User.js** - Corrigida importação do Schema do mongoose
 - ✅ **Controller de Alunos** - Removida duplicação da função `getAlunoById`
@@ -39,7 +56,7 @@ Sistema completo para gestão de notas, habilidades, frequências e análise de 
 - ✅ **Sistema de avaliações completo** com 9 tipos de avaliação
 - ✅ **Integração Avaliações-Habilidades** (fevereiro 2026)
 - ✅ **Sistema de Frequência** com controle diário 🆕
-- ✅ **9 endpoints de frequência** (registro, batch, dashboard, justificativas) 🆕
+- ✅ **12 endpoints de frequência** (registro, batch, dashboard, justificativas, estatísticas, reset, chamada geral) 🆕
 - ✅ **Cálculo trimestral por soma simples** (não há divisão)
 - ✅ **Validação automática** de 10 pontos por trimestre
 - ✅ **Cálculo anual**: (T1×3 + T2×3 + T3×4)/10
@@ -107,14 +124,23 @@ Sistema completo para gestão de notas, habilidades, frequências e análise de 
   - 🔴 **Vermelho** = Falta
   - 🟡 **Amarelo** = Falta Justificada
 - **Toggle buttons** para marcação rápida
-- **4 cards de estatísticas** atualizados em tempo real:
-  - Total de alunos
-  - Presentes (verde)
-  - Faltas (vermelho)
-  - Percentual geral (cor dinâmica)
-- Salvamento em lote de toda a turma
+- **5 cards interativos de estatísticas** com filtragem visual 🆕:
+  - 🔵 Total de alunos (navy blue)
+  - 🟢 Presentes - hoje + acumulado (verde)
+  - 🔴 Faltas - hoje + acumulado (vermelho)
+  - 🟡 Justificadas - hoje + acumulado (amarelo) 🆕
+  - 📊 Percentual geral com cor dinâmica
+- **Sistema de filtro por cards clicáveis** 🆕:
+  - Clique em qualquer card para filtrar alunos
+  - Borda dourada indica filtro ativo
+  - Chip visual mostra filtro aplicado
+- **Workflow simplificado** 🆕:
+  - Campo disciplina não é mais obrigatório
+  - Salvamento automático em TODAS as disciplinas
+  - Interface focada em turma + data
+- **Botão de Reset** com confirmação 🆕
 - Dialog para justificar faltas individualmente
-- **Importação em massa via CSV e Excel** 🆕
+- **Importação em massa via CSV e Excel**:
   - Busca inteligente: matrícula OU nome do aluno
   - Busca inteligente: código OU nome da disciplina
   - Atualização inteligente: registros duplicados são atualizados automaticamente
@@ -124,14 +150,21 @@ Sistema completo para gestão de notas, habilidades, frequências e análise de 
   - Relatório detalhado: criados/atualizados/erros
 
 **Dashboard de Frequência**:
+- **Filtros Multi-Select** 🆕:
+  - 4 botões toggle (TODOS, ADEQUADO, ATENÇÃO, CRÍTICO)
+  - Seleção múltipla permitida
+  - Badges com contadores de alunos
+- **Sincronização em Tempo Real** 🆕:
+  - Dashboard atualizado com dados da página de Frequências
+  - Filtros por disciplina e aluno funcionais
+  - Badge de contexto visual (Visão Geral/Filtros ativos)
 - 4 cards de métricas globais
-- Tabela de alunos críticos (< 75%)
-- Indicadores visuais por status:
+- Tabela de alunos com indicadores visuais:
   - **Verde** (≥ 85%): Boa frequência
   - **Amarelo** (75-84%): Atenção
   - **Vermelho** (< 75%): Crítico
 - Alertas automáticos
-- Atualização em tempo real
+- Atualização periódica
 
 ##### 🔗 Vinculação Professor-Turma-Disciplina
 **Backend**:
@@ -246,8 +279,9 @@ npm run build          # Build para produção
 | Turmas | GET, POST, PUT, DELETE | ✅ | ✅ |
 | Alunos | GET, POST, PUT, DELETE | ✅ | ✅ |
 | Avaliações | GET, POST, PUT, DELETE + cálculos + habilidades 🆕 | ✅ | ✅ |
+| Frequências | GET, POST, PUT, DELETE + batch + dashboard + estatísticas + reset 🆕 | ✅ | ✅ |
 | Habilidades | GET, POST, PUT, DELETE + desempenho | - | ✅ |
-| Dashboard | 7 endpoints analíticos (notas + habilidades) 🆕 | - | ✅ |
+| Dashboard | 7 endpoints analíticos (notas + habilidades + frequências) 🆕 | - | ✅ |
 
 **🚀 Otimizações Implementadas:**
 - ⚡ Índices no banco para queries 10x mais rápidas
@@ -268,7 +302,8 @@ npm run build          # Build para produção
 | Turmas | ✅ Completo | useFetch, useForm | CRUD + importação/exportação CSV |
 | Alunos | ✅ Completo | useFetch, useForm | CRUD + importação/exportação CSV |
 | Avaliações | ✅ Completo | useFetch, useForm | Sistema completo com 9 tipos + cálculos + habilidades integradas 🆕 |
-| Dashboard | ✅ Completo | useFetch | Gráficos de notas + evolução de habilidades 🆕 |
+| Frequências | ✅ Completo | useFetch, useForm | Sistema completo com cards clicáveis + filtros + salvamento multi-disciplinar 🆕 |
+| Dashboard | ✅ Completo | useFetch | Gráficos de notas + evolução de habilidades + frequências com filtros 🆕 |
 | Habilidades | ✅ Completo | useFetch, useForm | Integrado com avaliações + níveis de desenvolvimento 🆕 |
 
 **🎣 6 Hooks Customizados Criados:**

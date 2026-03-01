@@ -260,10 +260,12 @@ exports.getFrequenciaTurmaDia = async (req, res) => {
 // @route   GET /api/frequencias/dashboard
 exports.getDashboardFrequencia = async (req, res) => {
   try {
-    const { turma, ano, trimestre, dataInicio, dataFim } = req.query;
+    const { turma, disciplina, aluno, ano, trimestre, dataInicio, dataFim } = req.query;
     
     const filter = { ativo: true };
     if (turma) filter.turma = turma;
+    if (disciplina) filter.disciplina = disciplina;
+    if (aluno) filter.aluno = aluno;
     if (ano) filter.ano = parseInt(ano);
     if (trimestre) filter.trimestre = parseInt(trimestre);
     
@@ -284,12 +286,16 @@ exports.getDashboardFrequencia = async (req, res) => {
     
     const percentualPresenca = total > 0 ? ((presencas / total) * 100).toFixed(2) : 100;
     
-    // Alunos com frequência crítica (abaixo de 75%)
-    const alunosComFalta = await Frequencia.aggregate([
+    // Buscar TODOS os alunos (não apenas críticos) com suas frequências
+    // Se disciplina estiver filtrada, agrupa por aluno+disciplina
+    // Caso contrário, agrupa apenas por aluno (visão geral)
+    const groupField = disciplina ? { aluno: '$aluno', disciplina: '$disciplina' } : '$aluno';
+    
+    const todosAlunos = await Frequencia.aggregate([
       { $match: filter },
       {
         $group: {
-          _id: '$aluno',
+          _id: groupField,
           totalAulas: { $sum: 1 },
           presencas: {
             $sum: { $cond: [{ $eq: ['$status', 'presente'] }, 1, 0] }
@@ -309,13 +315,39 @@ exports.getDashboardFrequencia = async (req, res) => {
           }
         }
       },
-      { $match: { percentualPresenca: { $lt: 75 } } },
-      { $sort: { percentualPresenca: 1 } },
-      { $limit: 10 }
+      { $sort: { percentualPresenca: 1 } }
     ]);
     
     // Popular dados dos alunos
-    await Aluno.populate(alunosComFalta, { path: '_id', select: 'nome matricula' });
+    // Se agrupado por disciplina, o _id é um objeto { aluno, disciplina }
+    if (disciplina) {
+      await Aluno.populate(todosAlunos, { path: '_id.aluno', select: 'nome matricula' });
+    } else {
+      await Aluno.populate(todosAlunos, { path: '_id', select: 'nome matricula' });
+    }
+    
+    // Classificar alunos por status de frequência
+    const alunosClassificados = todosAlunos.map(aluno => {
+      const percentual = aluno.percentualPresenca;
+      let classificacao = '';
+      
+      if (percentual >= 85) {
+        classificacao = 'adequado';
+      } else if (percentual >= 75) {
+        classificacao = 'atencao';
+      } else {
+        classificacao = 'critico';
+      }
+      
+      return {
+        aluno: disciplina ? aluno._id.aluno : aluno._id,
+        total: aluno.totalAulas,
+        presentes: aluno.presencas,
+        faltas: aluno.faltas,
+        percentualPresenca: parseFloat(percentual.toFixed(2)),
+        classificacao
+      };
+    });
     
     // Frequência por dia da semana
     const frequenciaPorDia = await Frequencia.aggregate([
@@ -332,22 +364,23 @@ exports.getDashboardFrequencia = async (req, res) => {
       { $sort: { _id: 1 } }
     ]);
     
+    // Contadores por classificação
+    const contadores = {
+      total: alunosClassificados.length,
+      adequado: alunosClassificados.filter(a => a.classificacao === 'adequado').length,
+      atencao: alunosClassificados.filter(a => a.classificacao === 'atencao').length,
+      critico: alunosClassificados.filter(a => a.classificacao === 'critico').length
+    };
+    
     res.json({
-      estatisticasGerais: {
-        total,
-        presencas,
-        faltas,
-        faltasJustificadas,
-        percentualPresenca: parseFloat(percentualPresenca)
-      },
-      alunosCriticos: alunosComFalta.map(a => ({
-        aluno: a._id,
-        totalAulas: a.totalAulas,
-        presencas: a.presencas,
-        faltas: a.faltas,
-        percentual: a.percentualPresenca.toFixed(2),
-        status: Frequencia.getStatusFrequencia(a.percentualPresenca)
-      })),
+      totalRegistros: total,
+      presentes: presencas,
+      faltas,
+      faltasJustificadas,
+      percentualPresenca: parseFloat(percentualPresenca),
+      percentualFaltas: total > 0 ? ((faltas / total) * 100).toFixed(2) : 0,
+      todosAlunos: alunosClassificados,
+      contadores,
       frequenciaPorDiaSemana: frequenciaPorDia
     });
   } catch (error) {
@@ -719,5 +752,198 @@ exports.importarFrequencias = async (req, res) => {
     
   } catch (error) {
     res.status(500).json({ message: 'Erro ao importar frequências', error: error.message });
+  }
+};
+
+// @desc    Estatísticas de frequência da turma (acumulativo)
+// @route   GET /api/frequencias/estatisticas-turma/:turmaId
+exports.getEstatisticasTurma = async (req, res) => {
+  try {
+    const { turmaId } = req.params;
+    const { data, ano, trimestre } = req.query;
+    
+    const Turma = require('../models/Turma');
+    const turma = await Turma.findById(turmaId).populate('alunos');
+    
+    if (!turma) {
+      return res.status(404).json({ message: 'Turma não encontrada' });
+    }
+    
+    const totalAlunos = turma.alunos.length;
+    const dataReferencia = data || new Date().toISOString().split('T')[0];
+    
+    // Filtro para o dia específico
+    const filtroHoje = {
+      turma: turmaId,
+      data: new Date(dataReferencia),
+      ativo: true
+    };
+    
+    // Filtro acumulativo
+    const filtroAcumulado = {
+      turma: turmaId,
+      ativo: true
+    };
+    
+    if (ano) {
+      filtroAcumulado.ano = parseInt(ano);
+      filtroHoje.ano = parseInt(ano);
+    }
+    if (trimestre) {
+      filtroAcumulado.trimestre = parseInt(trimestre);
+      filtroHoje.trimestre = parseInt(trimestre);
+    }
+    
+    // Stats do dia
+    const [presentesHoje, faltasHoje, justificadasHoje] = await Promise.all([
+      Frequencia.countDocuments({ ...filtroHoje, status: 'presente' }),
+      Frequencia.countDocuments({ ...filtroHoje, status: 'falta' }),
+      Frequencia.countDocuments({ ...filtroHoje, status: 'falta-justificada' })
+    ]);
+    
+    // Stats acumuladas
+    const [totalRegistros, presentesAcumulado, faltasAcumulado, justificadasAcumulado] = await Promise.all([
+      Frequencia.countDocuments(filtroAcumulado),
+      Frequencia.countDocuments({ ...filtroAcumulado, status: 'presente' }),
+      Frequencia.countDocuments({ ...filtroAcumulado, status: 'falta' }),
+      Frequencia.countDocuments({ ...filtroAcumulado, status: 'falta-justificada' })
+    ]);
+    
+    const percentualPresenca = totalRegistros > 0 
+      ? parseFloat(((presentesAcumulado / totalRegistros) * 100).toFixed(2))
+      : 100;
+    
+    const percentualFaltas = totalRegistros > 0 
+      ? parseFloat(((faltasAcumulado / totalRegistros) * 100).toFixed(2))
+      : 0;
+    
+    let classificacao = 'adequado';
+    if (percentualPresenca < 75) classificacao = 'critico';
+    else if (percentualPresenca < 85) classificacao = 'atencao';
+    
+    res.json({
+      turmaId,
+      turma: turma.nome,
+      dataReferencia,
+      totalAlunos,
+      hoje: {
+        presentes: presentesHoje,
+        faltas: faltasHoje,
+        justificadas: justificadasHoje
+      },
+      acumulado: {
+        totalRegistros,
+        presentes: presentesAcumulado,
+        faltas: faltasAcumulado,
+        justificadas: justificadasAcumulado,
+        percentualPresenca,
+        percentualFaltas
+      },
+      percentualGeral: percentualPresenca,
+      classificacao
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao buscar estatísticas', error: error.message });
+  }
+};
+
+// @desc    Resetar frequências de um dia específico
+// @route   DELETE /api/frequencias/resetar-dia
+exports.resetarDia = async (req, res) => {
+  try {
+    const { turma, data } = req.body;
+    
+    if (!turma || !data) {
+      return res.status(400).json({ message: 'Turma e data são obrigatórios' });
+    }
+    
+    const resultado = await Frequencia.deleteMany({
+      turma,
+      data: new Date(data)
+    });
+    
+    res.json({
+      message: 'Registros resetados com sucesso',
+      deletados: resultado.deletedCount
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao resetar registros', error: error.message });
+  }
+};
+
+// @desc    Registrar chamada geral da turma (todas as disciplinas)
+// @route   POST /api/frequencias/turma-geral/:turmaId
+exports.registrarChamadaTurmaGeral = async (req, res) => {
+  try {
+    const { turmaId } = req.params;
+    const { data, periodo, presencas } = req.body;
+    
+    const Turma = require('../models/Turma');
+    const turma = await Turma.findById(turmaId)
+      .populate('alunos')
+      .populate('disciplinas.disciplina')
+      .populate('disciplinas.professor');
+    
+    if (!turma) {
+      return res.status(404).json({ message: 'Turma não encontrada' });
+    }
+    
+    const frequenciasCriadas = [];
+    const erros = [];
+    
+    // Para cada aluno
+    for (const aluno of turma.alunos) {
+      const status = presencas[aluno._id] || 'presente';
+      
+      // Para cada disciplina da turma
+      for (const disc of turma.disciplinas) {
+        try {
+          const frequenciaData = {
+            aluno: aluno._id,
+            turma: turmaId,
+            disciplina: disc.disciplina._id,
+            professor: disc.professor._id,
+            data: new Date(data),
+            status,
+            periodo: periodo || turma.turno || 'matutino',
+            ano: new Date(data).getFullYear(),
+            registradoPor: req.user?._id
+          };
+          
+          // Verificar se já existe
+          const existente = await Frequencia.findOne({
+            aluno: aluno._id,
+            disciplina: disc.disciplina._id,
+            data: new Date(data)
+          });
+          
+          if (existente) {
+            existente.status = status;
+            await existente.save();
+            frequenciasCriadas.push(existente);
+          } else {
+            const freq = await Frequencia.create(frequenciaData);
+            frequenciasCriadas.push(freq);
+          }
+        } catch (error) {
+          erros.push({ 
+            aluno: aluno.nome, 
+            disciplina: disc.disciplina.nome, 
+            erro: error.message 
+          });
+        }
+      }
+    }
+    
+    res.status(201).json({
+      message: 'Chamada registrada com sucesso',
+      total: frequenciasCriadas.length,
+      alunos: turma.alunos.length,
+      disciplinas: turma.disciplinas.length,
+      registrosPorAluno: turma.disciplinas.length,
+      erros: erros.length > 0 ? erros : undefined
+    });
+  } catch (error) {
+    res.status(400).json({ message: 'Erro ao registrar chamada', error: error.message });
   }
 };
