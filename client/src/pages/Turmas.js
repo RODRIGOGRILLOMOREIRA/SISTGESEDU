@@ -160,16 +160,23 @@ const Turmas = () => {
 
   const handleSubmit = async () => {
     try {
+      // Validações básicas
+      if (!formData.nome || !formData.serie) {
+        toast.error('Por favor, preencha o nome e a série da turma');
+        return;
+      }
+
       if (editId) {
         await turmaService.update(editId, formData);
         toast.success('Turma atualizada com sucesso!');
       } else {
         await turmaService.create(formData);
-        toast.success('Turma criada com sucesso!');
+        toast.success('Turma criada com sucesso! Agora você pode adicionar alunos.');
       }
       handleClose();
       await syncData();
     } catch (error) {
+      console.error('Erro ao salvar turma:', error);
       toast.error(error.response?.data?.message || 'Erro ao salvar turma');
     }
   };
@@ -437,13 +444,29 @@ const Turmas = () => {
             >
               <SchoolIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
               <Typography variant="h6" color="text.secondary">
-                Nenhuma turma encontrada
+                {searchTerm ? 'Nenhuma turma encontrada' : 'Nenhuma turma cadastrada'}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
                 {searchTerm ? 
                   'Tente buscar com outros termos' : 
-                  'Clique em "Nova Turma" para começar'}
+                  'Crie sua primeira turma para começar a organizar os alunos'}
               </Typography>
+              {!searchTerm && (
+                <Button
+                  variant="contained"
+                  startIcon={<Add />}
+                  onClick={() => handleOpen()}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    px: 4,
+                    py: 1.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  Criar Primeira Turma
+                </Button>
+              )}
             </Paper>
           </Grid>
         ) : (
@@ -698,6 +721,14 @@ const Turmas = () => {
 
           {tabValue === 0 && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+              {!editId && (
+                <Alert severity="success" sx={{ mb: 1 }}>
+                  <strong>💡 Dica:</strong> Você pode criar a turma vazia agora e adicionar alunos depois!
+                  <br />
+                  <small>Os alunos podem ser cadastrados individualmente ou importados em lote.</small>
+                </Alert>
+              )}
+              
               <TextField
                 autoFocus
                 label="Nome da Turma"
@@ -705,6 +736,7 @@ const Turmas = () => {
                 value={formData.nome}
                 onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                 placeholder="Ex: 1º Ano A"
+                required
               />
               
               <Box sx={{ display: 'flex', gap: 2 }}>
