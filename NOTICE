@@ -1,0 +1,24 @@
+NOTICE
+
+Sistema de Gestão Escolar Completo
+Copyright 2026 RODRIGO GRILLO MOREIRA
+
+Este produto inclui software desenvolvido por RODRIGO GRILLO MOREIRA.
+
+O Sistema de Gestão Escolar é uma aplicação completa para gerenciamento
+de instituições de ensino, incluindo:
+- Gestão de alunos, professores, turmas e disciplinas
+- Sistema de avaliações com múltiplos tipos
+- Controle de frequência com estatísticas em tempo real
+- Dashboard analítico com gráficos e métricas
+- Sistema de habilidades integrado com BNCC
+- Importação e exportação de dados em CSV/Excel
+
+Tecnologias principais:
+- React 19.2.4
+- Material-UI 6.5.0
+- Node.js com Express 4.22.1
+- MongoDB com Mongoose 8.23.0
+
+Este software é licenciado sob a Apache License 2.0.
+Veja o arquivo LICENSE para mais detalhes.
