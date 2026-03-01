@@ -41,6 +41,8 @@ import {
   disciplinaService,
   relatorioService,
 } from '../services';
+import PageHeader from '../components/PageHeader';
+import { Summarize as RelatoriosIcon } from '@mui/icons-material';
 
 const Relatorios = () => {
   const [turmas, setTurmas] = useState([]);
@@ -225,11 +227,11 @@ const Relatorios = () => {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Zoom in={true} timeout={400}>
-        <Typography variant="h4" gutterBottom fontWeight="600" sx={{ mb: 3 }}>
-          📊 Relatórios e Análises
-        </Typography>
-      </Zoom>
+      <PageHeader 
+        title="Relatórios e Análises" 
+        subtitle="Visualize dados e gere relatórios completos"
+        icon={RelatoriosIcon}
+      />
 
       {/* Filtros */}
       <Fade in={true} timeout={600}>

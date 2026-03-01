@@ -50,6 +50,8 @@ import { avaliacaoService, turmaService, disciplinaService, alunoService } from 
 import { toast } from 'react-toastify';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import PageHeader from '../components/PageHeader';
+import { Assessment as AvaliacoesIcon } from '@mui/icons-material';
 
 const TIPOS_AVALIACAO = [
   { value: 'prova', label: 'Prova', color: 'primary' },
@@ -600,18 +602,21 @@ const Avaliacoes = () => {
 
   return (
     <Container maxWidth="xl">
+      <PageHeader 
+        title="Lançamento de Avaliações" 
+        subtitle="Registre e gerencie as avaliações dos alunos"
+        icon={AvaliacoesIcon}
+      />
+      
       <Zoom in={true} timeout={400}>
         <Box 
           sx={{ 
             display: 'flex', 
-            justifyContent: 'space-between', 
+            justifyContent: 'flex-end', 
             alignItems: 'center', 
             mb: 3 
           }}
         >
-          <Typography variant="h4" component="h1" fontWeight="600">
-            📊 Lançamento de Avaliações
-          </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Importar avaliações em lote">
             <Button

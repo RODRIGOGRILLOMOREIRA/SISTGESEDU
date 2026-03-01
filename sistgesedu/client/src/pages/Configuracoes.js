@@ -29,6 +29,8 @@ import { toast } from 'react-toastify';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useSchool } from '../context/SchoolContext';
+import PageHeader from '../components/PageHeader';
+import { Settings as ConfiguracoesIcon } from '@mui/icons-material';
 
 const Configuracoes = () => {
   const [searchParams] = useSearchParams();
@@ -272,14 +274,11 @@ const Configuracoes = () => {
 
   return (
     <Container maxWidth="lg">
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Configurações do Sistema
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Gerencie as configurações da escola e do sistema
-        </Typography>
-      </Box>
+      <PageHeader 
+        title="Configurações" 
+        subtitle="Gerencie as configurações da escola e do sistema"
+        icon={ConfiguracoesIcon}
+      />
 
       <Paper sx={{ mb: 3 }}>
         <Tabs 

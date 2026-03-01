@@ -118,11 +118,20 @@ const Home = () => {
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
+              WebkitTextStroke: '1px rgba(255,255,255,0.3)',
+              filter: 'drop-shadow(1px 1px 1px rgba(255,255,255,0.8)) drop-shadow(-1px -1px 1px rgba(255,255,255,0.8))',
             }}
           >
             Bem-vindo, {user?.nome}! 
           </Typography>
-          <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400 }}>
+          <Typography 
+            variant="h6" 
+            color="text.secondary" 
+            sx={{ 
+              fontWeight: 700,
+              textShadow: '1px 1px 2px rgba(255,255,255,0.8), -1px -1px 2px rgba(255,255,255,0.8), 1px -1px 2px rgba(255,255,255,0.8), -1px 1px 2px rgba(255,255,255,0.8)',
+            }}
+          >
             Sistema de Gerenciamento Escolar 
           </Typography>
         </Box>
