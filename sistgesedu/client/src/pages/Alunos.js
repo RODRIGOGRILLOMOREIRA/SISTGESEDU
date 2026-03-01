@@ -934,18 +934,16 @@ const Alunos = () => {
                     <MenuItem disabled>
                       <em>Carregando...</em>
                     </MenuItem>
-                  ) : (
-                    <>
-                      <MenuItem value="">
-                        <em>Template genérico (todas as turmas)</em>
+                  ) : [
+                    <MenuItem key="generico" value="">
+                      <em>Template genérico (todas as turmas)</em>
+                    </MenuItem>,
+                    ...localTurmas.map((turma) => (
+                      <MenuItem key={turma._id} value={turma._id}>
+                        {turma.nome} - {turma.serie} ({turma.turno})
                       </MenuItem>
-                      {localTurmas.map((turma) => (
-                        <MenuItem key={turma._id} value={turma._id}>
-                          {turma.nome} - {turma.serie} ({turma.turno})
-                        </MenuItem>
-                      ))}
-                    </>
-                  )}
+                    ))
+                  ]}
                 </TextField>
               </Box>
 

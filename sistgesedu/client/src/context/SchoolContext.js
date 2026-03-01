@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 const SchoolContext = createContext();
 
@@ -25,7 +25,7 @@ export const SchoolProvider = ({ children }) => {
   const loadSchoolSettings = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/settings');
+      const response = await api.get('/settings');
       console.log('SchoolSettings carregadas:', response.data);
       setSchoolSettings(response.data);
       setRefreshKey(prev => prev + 1); // Forçar re-renderização
@@ -40,7 +40,7 @@ export const SchoolProvider = ({ children }) => {
   const loadAlunos = useCallback(async () => {
     try {
       setAlunosLoading(true);
-      const response = await axios.get('http://localhost:5000/api/alunos');
+      const response = await api.get('/alunos');
       setAlunos(response.data);
     } catch (error) {
       console.error('Erro ao carregar alunos:', error);
@@ -53,7 +53,7 @@ export const SchoolProvider = ({ children }) => {
   const loadTurmas = useCallback(async () => {
     try {
       setTurmasLoading(true);
-      const response = await axios.get('http://localhost:5000/api/turmas');
+      const response = await api.get('/turmas');
       setTurmas(response.data);
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
