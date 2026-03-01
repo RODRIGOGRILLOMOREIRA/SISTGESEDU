@@ -49,6 +49,10 @@ import { frequenciaService, turmaService, disciplinaService, alunoService } from
 import { toast } from 'react-toastify';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import PageHeader from '../components/PageHeader';
+
+// Ícone para o cabeçalho da página
+const FrequenciasIcon = EventNote;
 
 const STATUS_COLORS = {
   presente: { color: 'success', icon: CheckCircle, label: 'Presente' },
@@ -486,16 +490,14 @@ const Frequencias = () => {
 
   return (
     <Container maxWidth="xl">
+      <PageHeader 
+        title="Controle de Frequência" 
+        subtitle="Registre e acompanhe a presença dos alunos"
+        icon={FrequenciasIcon}
+      />
+      
       <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography variant="h4" component="h1" gutterBottom>
-              Controle de Frequência
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Registre a presença dos alunos diariamente
-            </Typography>
-          </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
           <Button
             variant="outlined"
             color="primary"

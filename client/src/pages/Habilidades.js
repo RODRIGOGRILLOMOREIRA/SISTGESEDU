@@ -34,6 +34,8 @@ import {
   AccordionSummary,
   AccordionDetails,
 } from '@mui/material';
+import PageHeader from '../components/PageHeader';
+import { Assignment as HabilidadesIcon } from '@mui/icons-material';
 import {
   Add,
   Edit,
@@ -393,11 +395,14 @@ const Habilidades = () => {
 
   return (
     <Container maxWidth="xl" sx={{ px: { xs: 2, sm: 3 } }}>
+      <PageHeader 
+        title="Habilidades BNCC" 
+        subtitle="Acompanhamento de habilidades e competências"
+        icon={HabilidadesIcon}
+      />
+      
       <Box sx={{ mb: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h4" component="h1">
-            Habilidades
-          </Typography>
+        <Box display="flex" justifyContent="flex-end" alignItems="center">
           <Box>
             <Button
               variant="outlined"

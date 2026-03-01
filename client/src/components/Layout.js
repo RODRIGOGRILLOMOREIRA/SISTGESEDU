@@ -26,7 +26,6 @@ import {
   Person,
   Assessment,
   Assignment,
-  BarChart,
   Logout,
   Home as HomeIcon,
   Brightness4,
@@ -40,9 +39,11 @@ import { useTheme } from '../hooks/useTheme';
 import { useSchool } from '../context/SchoolContext';
 
 const drawerWidth = 240;
+const drawerWidthCollapsed = 80;
 
 const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [drawerCollapsed, setDrawerCollapsed] = useState(false);
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
@@ -56,6 +57,10 @@ const Layout = () => {
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleDrawerCollapse = () => {
+    setDrawerCollapsed(!drawerCollapsed);
   };
 
   const handleLogout = () => {
@@ -79,62 +84,38 @@ const Layout = () => {
 
   const drawer = (
     <div>
-      <Toolbar sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 3 }}>
-        {schoolSettings?.logo ? (
-          <Avatar
-            key={`drawer-logo-${refreshKey}`}
-            src={schoolSettings.logo}
-            alt="Logo da Escola"
-            imgProps={{ 
-              onError: (e) => {
-                console.error('Erro ao carregar logo no drawer');
-                e.target.style.display = 'none';
-              },
-              onLoad: () => {
-                console.log('Logo carregada no drawer com sucesso');
-              }
-            }}
-            sx={{ 
-              width: 80, 
-              height: 80,
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              transition: 'transform 0.3s ease',
-              '&:hover': {
-                transform: 'scale(1.05)',
-              }
-            }}
-          />
-        ) : (
-          <Avatar sx={{ 
-            width: 80, 
-            height: 80, 
-            bgcolor: 'primary.main',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          }}>
-            <School sx={{ fontSize: 48 }} />
-          </Avatar>
-        )}
-      </Toolbar>
+      <Toolbar />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
+        <IconButton onClick={handleDrawerCollapse} color="inherit">
+          <MenuIcon />
+        </IconButton>
+      </Box>
       <Divider />
       <List>
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
-            <ListItemButton onClick={() => navigate(item.path)}>
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
+            <Tooltip title={drawerCollapsed ? item.text : ''} placement="right">
+              <ListItemButton onClick={() => navigate(item.path)}>
+                <ListItemIcon sx={{ minWidth: drawerCollapsed ? 'auto' : 56, justifyContent: 'center' }}>
+                  {item.icon}
+                </ListItemIcon>
+                {!drawerCollapsed && <ListItemText primary={item.text} />}
+              </ListItemButton>
+            </Tooltip>
           </ListItem>
         ))}
       </List>
       <Divider />
       <List>
         <ListItem disablePadding>
-          <ListItemButton onClick={handleLogout}>
-            <ListItemIcon>
-              <Logout />
-            </ListItemIcon>
-            <ListItemText primary="Sair" />
-          </ListItemButton>
+          <Tooltip title={drawerCollapsed ? 'Sair' : ''} placement="right">
+            <ListItemButton onClick={handleLogout}>
+              <ListItemIcon sx={{ minWidth: drawerCollapsed ? 'auto' : 56, justifyContent: 'center' }}>
+                <Logout />
+              </ListItemIcon>
+              {!drawerCollapsed && <ListItemText primary="Sair" />}
+            </ListItemButton>
+          </Tooltip>
         </ListItem>
       </List>
     </div>
@@ -146,11 +127,11 @@ const Layout = () => {
       <AppBar
         position="fixed"
         sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+          width: '100%',
+          zIndex: (theme) => theme.zIndex.drawer + 1,
           background: (theme) => theme.palette.mode === 'dark'
             ? 'linear-gradient(135deg, #0A0E14 0%, #1a2332 100%)'
-            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            : 'linear-gradient(135deg, #008B8B 0%, #00CED1 100%)',
         }}
       >
         <Toolbar>
@@ -163,7 +144,11 @@ const Layout = () => {
           >
             <MenuIcon />
           </IconButton>
-          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            ml: { xs: 0, sm: 2 }
+          }}>
             {schoolSettings?.logo && (
               <Avatar
                 key={`appbar-logo-${refreshKey}`}
@@ -185,13 +170,23 @@ const Layout = () => {
                 fontFamily: '"Poppins", "Roboto", sans-serif',
                 fontWeight: 700,
                 letterSpacing: '0.5px',
-                textAlign: 'center',
+                textShadow: '1px 1px 2px rgba(255,255,255,0.8), -1px -1px 2px rgba(255,255,255,0.8), 1px -1px 2px rgba(255,255,255,0.8), -1px 1px 2px rgba(255,255,255,0.8)',
               }}
             >
               {schoolSettings?.nomeEscola || 'Sistema de Gerenciamento Escolar'}
             </Typography>
           </Box>
-          <Typography variant="body1" sx={{ mr: 2 }}>
+          <Box sx={{ flexGrow: 1 }} />
+          <Typography 
+            variant="h5" 
+            sx={{ 
+              mr: 2,
+              fontFamily: '"Poppins", "Roboto", sans-serif',
+              fontWeight: 700,
+              letterSpacing: '0.5px',
+              textShadow: '1px 1px 2px rgba(255,255,255,0.8), -1px -1px 2px rgba(255,255,255,0.8), 1px -1px 2px rgba(255,255,255,0.8), -1px 1px 2px rgba(255,255,255,0.8)',
+            }}
+          >
             {user?.nome} ({user?.tipo})
           </Typography>
           <Tooltip title={isDarkMode ? 'Modo Claro' : 'Modo Escuro'}>
@@ -203,7 +198,7 @@ const Layout = () => {
       </AppBar>
       <Box
         component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        sx={{ width: { sm: drawerCollapsed ? drawerWidthCollapsed : drawerWidth }, flexShrink: { sm: 0 } }}
       >
         <Drawer
           variant="temporary"
@@ -223,7 +218,12 @@ const Layout = () => {
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': { 
+              boxSizing: 'border-box', 
+              width: drawerCollapsed ? drawerWidthCollapsed : drawerWidth,
+              transition: 'width 0.3s ease',
+              overflowX: 'hidden'
+            },
           }}
           open
         >
@@ -235,7 +235,8 @@ const Layout = () => {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          width: { sm: `calc(100% - ${drawerCollapsed ? drawerWidthCollapsed : drawerWidth}px)` },
+          transition: 'width 0.3s ease',
         }}
       >
         <Toolbar />
