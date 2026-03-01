@@ -57,6 +57,7 @@ const Alunos = () => {
   const [localTurmas, setLocalTurmas] = useState([]);
   const [filteredAlunos, setFilteredAlunos] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [turmasLoading, setTurmasLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [formData, setFormData] = useState({
@@ -84,6 +85,13 @@ const Alunos = () => {
     setLocalTurmas(turmas);
   }, [turmas]);
 
+  // Carregar turmas independentemente (fallback se contexto falhar)
+  useEffect(() => {
+    if (turmas.length === 0 && !turmasLoading) {
+      loadTurmas();
+    }
+  }, []);
+
   // Filtrar alunos baseado na pesquisa
   useEffect(() => {
     if (searchTerm) {
@@ -104,10 +112,17 @@ const Alunos = () => {
 
   const loadTurmas = async () => {
     try {
+      setTurmasLoading(true);
       const data = await turmaService.getAll();
       setLocalTurmas(data);
+      if (data.length === 0) {
+        console.warn('Nenhuma turma cadastrada. Crie turmas antes de importar alunos.');
+      }
     } catch (error) {
-      console.error('Erro ao carregar turmas');
+      console.error('Erro ao carregar turmas:', error);
+      toast.error('Erro ao carregar turmas. Verifique a conexão com o servidor.');
+    } finally {
+      setTurmasLoading(false);
     }
   };
 
@@ -250,9 +265,16 @@ const Alunos = () => {
       return;
     }
 
+    // Verificar se há turmas cadastradas
+    if (localTurmas.length === 0) {
+      toast.error('Por favor, cadastre turmas antes de importar alunos!');
+      return;
+    }
+
     try {
       let successCount = 0;
       let errorCount = 0;
+      let semTurmaCount = 0;
 
       for (const row of importData) {
         try {
@@ -262,7 +284,12 @@ const Alunos = () => {
             const turmaEncontrada = localTurmas.find(t => 
               t.nome.toLowerCase() === row.turma.toLowerCase()
             );
-            turmaId = turmaEncontrada?._id;
+            if (turmaEncontrada) {
+              turmaId = turmaEncontrada._id;
+            } else {
+              console.warn(`Turma "${row.turma}" não encontrada para aluno ${row.nome}`);
+              semTurmaCount++;
+            }
           }
 
           await alunoService.create({
@@ -286,6 +313,9 @@ const Alunos = () => {
       toast.success(`${successCount} alunos importados com sucesso!`);
       if (errorCount > 0) {
         toast.warning(`${errorCount} alunos com erro`);
+      }
+      if (semTurmaCount > 0) {
+        toast.info(`${semTurmaCount} alunos importados sem turma (turma não encontrada)`);
       }
       
       handleClose();
@@ -781,13 +811,26 @@ const Alunos = () => {
                 value={formData.turma}
                 onChange={(e) => setFormData({ ...formData, turma: e.target.value })}
                 fullWidth
+                helperText={localTurmas.length === 0 ? "Crie turmas na aba 'Turmas' primeiro" : ""}
               >
-                <MenuItem value="">Sem turma</MenuItem>
-                {localTurmas.map((turma) => (
-                  <MenuItem key={turma._id} value={turma._id}>
-                    {turma.nome} - {turma.serie} ({turma.turno})
+                {turmasLoading ? (
+                  <MenuItem disabled>
+                    <em>Carregando turmas...</em>
                   </MenuItem>
-                ))}
+                ) : localTurmas.length === 0 ? (
+                  <MenuItem value="">
+                    <em>Nenhuma turma cadastrada - Crie turmas primeiro</em>
+                  </MenuItem>
+                ) : (
+                  <>
+                    <MenuItem value="">Sem turma</MenuItem>
+                    {localTurmas.map((turma) => (
+                      <MenuItem key={turma._id} value={turma._id}>
+                        {turma.nome} - {turma.serie} ({turma.turno})
+                      </MenuItem>
+                    ))}
+                  </>
+                )}
               </TextField>
 
               <Typography variant="h6" sx={{ mt: 2 }}>
@@ -836,6 +879,20 @@ const Alunos = () => {
 
           {tabValue === 1 && (
             <Box sx={{ mt: 2 }}>
+              {localTurmas.length === 0 && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                  <strong>⚠️ Nenhuma turma cadastrada!</strong>
+                  <br />
+                  <br />
+                  Para importar alunos, você precisa primeiro:
+                  <ol style={{ marginTop: 8, marginBottom: 0, paddingLeft: 20 }}>
+                    <li>Ir para a aba <strong>"Turmas"</strong></li>
+                    <li>Criar as turmas necessárias (ex: 1º Ano A, 2º Ano B, etc.)</li>
+                    <li>Voltar aqui e baixar o template com a turma selecionada</li>
+                  </ol>
+                </Alert>
+              )}
+              
               <Alert severity="info" sx={{ mb: 2 }}>
                 <strong>Formatos aceitos: CSV e Excel (.xlsx)</strong>
                 <br />
@@ -855,6 +912,14 @@ const Alunos = () => {
                   Baixe um template com o nome da turma já preenchido
                 </Typography>
                 
+                {localTurmas.length === 0 ? (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    <strong>Atenção!</strong> Nenhuma turma cadastrada.
+                    <br />
+                    Vá para a aba <strong>"Turmas"</strong> e crie turmas antes de importar alunos.
+                  </Alert>
+                ) : null}
+                
                 <TextField
                   select
                   fullWidth
@@ -862,15 +927,25 @@ const Alunos = () => {
                   value={turmaSelecionadaTemplate}
                   onChange={(e) => setTurmaSelecionadaTemplate(e.target.value)}
                   size="small"
+                  disabled={turmasLoading || localTurmas.length === 0}
+                  helperText={turmasLoading ? "Carregando turmas..." : localTurmas.length === 0 ? "Cadastre turmas primeiro" : ""}
                 >
-                  <MenuItem value="">
-                    <em>Template genérico (todas as turmas)</em>
-                  </MenuItem>
-                  {localTurmas.map((turma) => (
-                    <MenuItem key={turma._id} value={turma._id}>
-                      {turma.nome} - {turma.serie} ({turma.turno})
+                  {turmasLoading ? (
+                    <MenuItem disabled>
+                      <em>Carregando...</em>
                     </MenuItem>
-                  ))}
+                  ) : (
+                    <>
+                      <MenuItem value="">
+                        <em>Template genérico (todas as turmas)</em>
+                      </MenuItem>
+                      {localTurmas.map((turma) => (
+                        <MenuItem key={turma._id} value={turma._id}>
+                          {turma.nome} - {turma.serie} ({turma.turno})
+                        </MenuItem>
+                      ))}
+                    </>
+                  )}
                 </TextField>
               </Box>
 
