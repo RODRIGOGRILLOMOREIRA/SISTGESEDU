@@ -1,0 +1,802 @@
+# 📋 Changelog - Sistema Analisador de Notas e Habilidades
+
+## Versão 2.10 - 21 de Fevereiro de 2026 🆕
+
+### ✨ TEMPLATE PERSONALIZADO PARA IMPORTAÇÃO DE ALUNOS
+
+#### 📥 Template por Turma - Alunos
+- ✅ **Novo Endpoint: GET /api/alunos/template/:turmaId**
+  - Gera template CSV/Excel específico para uma turma
+  - Nome da turma já pré-preenchido no template
+  - Informações da turma incluídas (série, ano, turno, capacidade)
+  - Exemplos de preenchimento inclusos
+  - Reduz erros ao cadastrar alunos em turmas específicas
+
+- ✅ **Frontend Atualizado**
+  - Seletor de Turma no diálogo de importação de Alunos
+  - Interface consistente com Avaliações e Frequências
+  - Template baixado com nome personalizado: `alunos_NomeDaTurma.xlsx`
+  - Mensagem de sucesso específica da turma
+
+- ✅ **Template Excel com Instruções**
+  - Segunda aba "Instruções" com:
+    - Informações da turma (nome, ano, série, turno, capacidade)
+    - Orientações de preenchimento por campo
+    - Dicas sobre matrícula automática
+    - Formato de data e dados do responsável
+  - Exemplos de alunos no template
+  - Campo "turma" pré-preenchido
+
+#### 💡 Benefícios
+- ⏱️ **Velocidade:** Turma já preenchida economiza tempo
+- ✅ **Precisão:** Elimina erros de digitação no nome da turma
+- 🎨 **Usabilidade:** Interface consistente em todo o sistema
+- 📚 **Padronização:** Todos os módulos seguem o mesmo padrão
+
+#### 📦 Arquivos Atualizados
+- ✅ **server/src/controllers/alunoController.js**
+  - Adicionado método `gerarTemplatePorTurma`
+  - Validação de ID da turma
+  - Template com estrutura completa de alunos
+  - Instruções detalhadas
+
+- ✅ **server/src/routes/alunos.js**
+  - Nova rota GET `/api/alunos/template/:turmaId`
+  - Rota protegida por autenticação
+
+- ✅ **client/src/services/index.js**
+  - Adicionado método `alunoService.getTemplatePorTurma`
+
+- ✅ **client/src/pages/Alunos.js**
+  - Estado `turmaSelecionadaTemplate`
+  - Seletor visual no diálogo de importação
+  - Função `downloadTemplate` atualizada
+  - Suporte a template personalizado e genérico
+  - Instruções incluídas no Excel
+
+#### 🎯 Como Usar
+1. Acesse **Alunos** no menu
+2. Clique em **Novo Aluno**
+3. Vá para aba **Importar Arquivo**
+4. **Selecione a Turma** no dropdown
+5. Clique em **Baixar Modelo CSV** ou **Excel**
+6. O campo "turma" já estará preenchido
+7. Preencha apenas dados dos alunos
+8. Importe o arquivo
+
+---
+
+## Versão 2.9.1 - 21 de Fevereiro de 2026
+
+### 🐛 CORREÇÕES DE BUGS
+
+#### Template de Frequências por Turma
+- ✅ **Corrigido erro 400 ao baixar template**
+  - Problema: Frontend tentava acessar `response.data.data` em vez de apenas `response`
+  - Solução: Ajustado acesso ao objeto de resposta do serviço
+  
+- ✅ **Melhorado tratamento de erros**
+  - Validação de ID da turma antes de buscar no banco
+  - Mensagem de erro mais clara quando turma não possui alunos
+  - Frontend exibe mensagens de erro detalhadas do backend
+  - Logs de erro no console do servidor para debugging
+  
+- ✅ **Corrigido formato das instruções no Excel**
+  - Problema: Tentava mapear objeto `instrucoes` como array
+  - Solução: Criadas instruções formatadas corretamente na aba "Instruções"
+  - Adicionadas explicações detalhadas dos códigos de status
+  
+#### Melhorias na Experiência do Usuário
+- ✅ Mensagens de erro específicas quando:
+  - ID da turma é inválido
+  - Turma não é encontrada
+  - Turma não possui alunos cadastrados
+- ✅ Instruções mais claras no template Excel
+- ✅ Feedback visual melhorado para erros
+
+---
+
+## Versão 2.9 - 21 de Fevereiro de 2026
+
+### ✨ MELHORIAS NO SISTEMA DE IMPORTAÇÃO DE FREQUÊNCIAS
+
+#### 🚀 Códigos de Status Rápidos
+- ✅ **Nova Coluna `status_codigo`**
+  - Campo opcional para agilizar preenchimento de frequências
+  - Aceita códigos simples: **P**, **F**, **FJ**, **A**
+  - **P** = Presente
+  - **F** = Falta
+  - **FJ** = Falta Justificada
+  - **A** = Atestado
+  - **Vazio** = Presente (padrão)
+  - Prioridade: `status_codigo` > `status` > padrão (presente)
+
+- ✅ **Validação e Conversão Automática**
+  - Backend processa códigos e converte para status completo
+  - Valida códigos antes de salvar
+  - Mensagens de erro claras para códigos inválidos
+  - Permite deixar vazio para marcar como presente (otimização de tempo)
+
+#### 📥 Template Personalizado por Turma
+- ✅ **Novo Endpoint: GET /api/frequencias/template/:turmaId**
+  - Gera template CSV/Excel específico para uma turma
+  - Inclui todos os alunos da turma com dados pré-preenchidos
+  - Aceita parâmetros: `disciplinaId`, `data`
+  - Matrícula e nome dos alunos já preenchidos
+  - Turma e disciplina pré-selecionadas
+  - Data pré-preenchida (ou data atual)
+  - Período automático baseado no turno da turma
+  - Reduz drasticamente erros de digitação
+
+- ✅ **Frontend Atualizado**
+  - Seletores de Turma e Disciplina no diálogo de importação de Frequências
+  - Interface similar à de Avaliações para consistência
+  - Template baixado contém nome do arquivo personalizado
+  - Mensagens explicativas sobre códigos de status
+  - Feedback visual melhorado
+
+- ✅ **Template Excel com Instruções**
+  - Segunda aba "Instruções" com explicação dos códigos
+  - Orientações sobre preenchimento
+  - Dicas de produtividade
+  - Lembretes sobre campos obrigatórios
+
+#### 💡 Otimização de Tempo para Professores
+- ✅ **Marcação Rápida de Presença**
+  - Deixar células vazias = todos presentes
+  - Digitar apenas **F** nos alunos ausentes
+  - Muito mais rápido que escrever "presente" para toda turma
+  - Ideal para turmas grandes
+
+- ✅ **Template Pré-preenchido**
+  - Reduce tempo de preparação do arquivo
+  - Elimina erros de digitação de nomes
+  - Professor foca apenas em marcar faltas
+  - Workflow otimizado
+
+#### 📦 Arquivos Atualizados
+- ✅ **server/src/controllers/frequenciaController.js**
+  - Adicionado método `gerarTemplatePorTurma`
+  - Atualizado método `importarFrequencias` com processamento de `status_codigo`
+  - Validação de códigos P, F, FJ, A
+  - Conversão automática para status completo
+
+- ✅ **server/src/routes/frequencias.js**
+  - Nova rota GET `/api/frequencias/template/:turmaId`
+  - Rota protegida por autenticação
+
+- ✅ **client/src/services/index.js**
+  - Adicionado método `frequenciaService.getTemplatePorTurma`
+
+- ✅ **client/src/pages/Frequencias.js**
+  - Estados para turmaSelecionadaTemplate e disciplinaSelecionadaTemplate
+  - Seletores visuais no diálogo de importação
+  - Função `downloadTemplate` atualizada para usar novo endpoint
+  - Suporte a template personalizado e genérico
+  - Instruções sobre códigos de status
+
+- ✅ **exemplos/frequencias_exemplo.csv**
+  - Atualizado com coluna `status_codigo`
+  - Exemplos dos códigos P, F, FJ, A
+  - Demonstra uso de células vazias para presente
+  - Removida coluna `professor_nome` (opcional, reduz complexidade)
+
+- ✅ **exemplos/README.md**
+  - Seção atualizada com explicação de códigos de status
+  - Dicas de uso para rapidez
+  - Instruções sobre template personalizado
+  - Exemplos práticos
+
+- ✅ **docs/SISTEMA_IMPORTACAO_AVALIACOES_FREQUENCIAS.md**
+  - Documentação completa dos códigos de status
+  - Seção sobre template personalizado de Frequências
+  - Instruções detalhadas
+  - Exemplos de uso
+  - Dicas de produtividade
+
+#### 🎯 Benefícios da Atualização
+- ⏱️ **Velocidade:** Marcar frequência de uma turma inteira em segundos
+- ✅ **Precisão:** Dados pré-preenchidos eliminam erros de digitação
+- 🎨 **Usabilidade:** Interface consistente entre Avaliações e Frequências
+- 📚 **Documentação:** Instruções claras e exemplos práticos
+- 🔄 **Workflow:** Processo otimizado para professores
+
+---
+
+## Versão 2.8 - 20 de Fevereiro de 2026
+
+### ✨ MELHORIAS NO SISTEMA DE IMPORTAÇÃO DE AVALIAÇÕES
+
+#### 🎯 Vinculação Automática de Habilidades BNCC
+- ✅ **Nova Coluna `habilidades_codigos`**
+  - Campo opcional para vincular habilidades BNCC às avaliações
+  - Aceita códigos separados por vírgula (,) ou ponto e vírgula (;)
+  - Exemplo: `EF06MA01,EF06MA02` ou `EF06MA01;EF06MA02;EF06MA03`
+  - Sistema busca automaticamente as habilidades cadastradas
+  - Habilidades são vinculadas à avaliação para análise pedagógica
+  - Habilidades não encontradas são ignoradas sem gerar erro
+
+- ✅ **Processamento Inteligente**
+  - Backend busca habilidades pelos códigos fornecidos
+  - Valida que as habilidades pertencem à disciplina da avaliação
+  - Vincula automaticamente com nível padrão "em-desenvolvimento"
+  - Permite análise posterior do desenvolvimento das habilidades
+
+#### 📥 Template Personalizado por Turma
+- ✅ **Novo Endpoint: GET /api/avaliacoes/template/:turmaId**
+  - Gera template CSV/Excel específico para uma turma
+  - Inclui todos os alunos da turma com dados pré-preenchidos
+  - Aceita parâmetros: `disciplinaId`, `trimestre`, `ano`
+  - Reduz erros de digitação de nomes e matrículas
+  - Facilita o trabalho do professor
+
+- ✅ **Frontend Atualizado**
+  - Seletores de Turma e Disciplina no diálogo de importação
+  - Exibição visual das habilidades disponíveis para a disciplina selecionada
+  - Chips coloridos mostrando código e descrição de cada habilidade
+  - Template baixado contém nome do arquivo com turma e disciplina
+  - Mensagem de sucesso indica quantos alunos foram incluídos
+
+- ✅ **Instruções Detalhadas**
+  - Nova seção "Como Preencher a Coluna de Habilidades"
+  - Exemplos práticos de formatação
+  - Explicação clara sobre códigos BNCC
+  - Alertas e dicas de melhor uso
+  - Instruções visuais no diálogo de importação
+
+#### 📦 Arquivos Atualizados
+- ✅ **exemplos/avaliacoes_exemplo.csv**
+  - Atualizado com coluna `habilidades_codigos`
+  - 10 exemplos práticos de diferentes formatos
+  - Códigos BNCC de exemplo para diferentes disciplinas
+  - Demonstra uso de vírgula e ponto e vírgula
+
+- ✅ **exemplos/README.md**
+  - Seção completa sobre como preencher habilidades
+  - Instruções passo a passo para template personalizado
+  - Exemplos de códigos BNCC por disciplina
+  - Dicas para evitar erros comuns
+
+#### 📚 Documentação Atualizada
+- ✅ **SISTEMA_IMPORTACAO_AVALIACOES_FREQUENCIAS.md**
+  - Seção sobre vinculação de habilidades
+  - Documentação do endpoint de template por turma
+  - Instruções detalhadas sobre uso de habilidades
+  - Exemplos de formatação aceita
+
+#### 🛠️ Melhorias Técnicas
+- ✅ Busca de habilidades por código com validação de disciplina
+- ✅ Parsing robusto de strings separadas por vírgula ou ponto e vírgula
+- ✅ Tratamento de espaços em branco nos códigos
+- ✅ Vinculação automática de habilidades ao criar/atualizar avaliações
+- ✅ Mensagens de erro específicas para habilidades não encontradas
+
+#### 🎯 Benefícios Pedagógicos
+- ⚡ Professor pode rastrear quais habilidades foram trabalhadas em cada avaliação
+- 📊 Análise automática do desenvolvimento de habilidades por aluno
+- 🎓 Facilita o alinhamento com a BNCC
+- 📈 Relatórios de habilidades trabalhadas por trimestre
+- ✅ Validação do currículo planejado vs executado
+
+---
+
+## Versão 2.7 - Semana 3 de Fevereiro de 2026
+
+### ✨ SISTEMA DE IMPORTAÇÃO EM MASSA - AVALIAÇÕES E FREQUÊNCIAS
+
+#### 📊 Importação de Avaliações
+- ✅ **Interface Completa de Importação**
+  - Tab dedicada para importação em massa
+  - Upload de arquivos CSV e Excel (.xls, .xlsx)
+  - Download de templates (formato CSV e Excel)
+  - Preview dos dados antes de confirmar importação
+  - Contador de registros a importar
+  - Validação em tempo real
+
+- ✅ **Backend Robusto**
+  - Endpoint: `POST /api/avaliacoes/importar`
+  - **Busca Inteligente**: permite buscar alunos por matrícula OU nome
+  - **Busca Inteligente**: permite buscar disciplinas por código OU nome
+  - Vinculação automática com turmas e professores por nome
+  - Validação completa de campos obrigatórios
+  - Validação de tipos de avaliação (prova, trabalho, atividade, participação, recuperacao)
+  - Validação de notas (0-10) e trimestres (1-3)
+  - Relatório detalhado: total processados, sucessos, erros com detalhes por linha
+
+- ✅ **Template de Exemplo**
+  - Arquivo: `exemplos/avaliacoes_exemplo.csv`
+  - 10 registros de exemplo prontos para uso
+  - Todos os tipos de avaliação representados
+  - Campos obrigatórios e opcionais documentados
+  - Instruções detalhadas no README
+
+#### 📅 Importação de Frequências
+- ✅ **Interface Completa de Importação**
+  - Tab dedicada para importação em massa
+  - Upload de arquivos CSV e Excel (.xls, .xlsx)
+  - Download de templates (formato CSV e Excel)
+  - Preview dos dados antes de confirmar importação
+  - Contador de registros a importar
+  - Validação em tempo real
+
+- ✅ **Backend Inteligente**
+  - Endpoint: `POST /api/frequencias/importar`
+  - **Busca Inteligente**: permite buscar alunos por matrícula OU nome
+  - **Busca Inteligente**: permite buscar disciplinas por código OU nome
+  - **Atualização Inteligente**: registros duplicados (mesma data/aluno/disciplina) são atualizados automaticamente
+  - Vinculação automática com turmas e professores por nome
+  - Validação de status (presente, falta, falta-justificada, atestado)
+  - Validação de períodos (matutino, vespertino, noturno, integral)
+  - Cálculo automático de ano, mês e trimestre a partir da data
+  - Relatório detalhado: total, criados, atualizados, erros com detalhes por linha
+
+- ✅ **Template de Exemplo**
+  - Arquivo: `exemplos/frequencias_exemplo.csv`
+  - 15 registros de exemplo prontos para uso
+  - Múltiplas datas e períodos
+  - Diferentes status de frequência
+  - Campos obrigatórios e opcionais documentados
+  - Instruções detalhadas no README
+
+#### 🔌 Novos Endpoints da API
+```
+POST /api/avaliacoes/importar
+POST /api/frequencias/importar
+```
+
+#### 📦 Bibliotecas Utilizadas
+- ✅ `papaparse@^5.4.1` - Parsing de arquivos CSV no client-side
+- ✅ `xlsx@^0.18.5` (SheetJS) - Parsing e geração de arquivos Excel
+- ✅ Suporte para múltiplos formatos: CSV, XLS, XLSX
+
+#### 📚 Documentação Completa
+- ✅ **SISTEMA_IMPORTACAO_AVALIACOES_FREQUENCIAS.md** - Guia completo:
+  - Descrição detalhada de cada funcionalidade
+  - Formato dos arquivos (campos obrigatórios e opcionais)
+  - Exemplos de arquivos CSV e Excel
+  - Busca inteligente explicada
+  - Resposta da API documentada
+  - Observações e boas práticas
+  
+- ✅ **IMPORTACAO_EXCEL.md** (atualizado):
+  - Título atualizado: "Sistema Completo de Importação Excel/CSV"
+  - Novas seções: Módulo 3 (Avaliações) e Módulo 4 (Frequências)
+  - Instruções passo a passo para cada módulo
+  - Campos detalhados com tipos e obrigatoriedade
+  
+- ✅ **API_ENDPOINTS.md** (atualizado):
+  - Nova seção completa de Avaliações
+  - Nova seção completa de Frequências
+  - Endpoints de importação documentados com exemplos de request/response
+  - Busca inteligente explicada
+  - Atualização inteligente para frequências documentada
+  
+- ✅ **INDEX.md** (atualizado):
+  - Índice geral com 24 documentos organizados
+  - Novas referências para documentação de importação
+  - Estatísticas atualizadas
+  - Seção de últimas atualizações (Semana 3, Fevereiro 2026)
+
+- ✅ **exemplos/README.md** (atualizado):
+  - Seções adicionadas para Avaliações e Frequências
+  - Instruções de uso dos novos templates
+  - Formato dos arquivos explicado
+
+#### 🛠️ Implementação Técnica
+
+**Backend:**
+- ✅ `server/src/controllers/avaliacaoController.js`:
+  - Método `importarAvaliacoes` implementado
+  - Busca inteligente case-insensitive para alunos e disciplinas
+  - Processamento em lote eficiente
+  - Tratamento de erros individual por registro
+  
+- ✅ `server/src/controllers/frequenciaController.js`:
+  - Método `importarFrequencias` implementado
+  - Lógica de atualização para registros existentes (upsert)
+  - Busca inteligente case-insensitive
+  - Cálculo automático de campos derivados
+  
+- ✅ `server/src/routes/avaliacoes.js`:
+  - Rota `POST /importar` adicionada
+  - Middleware de autenticação (isProfessorOrAdmin)
+  
+- ✅ `server/src/routes/frequencias.js`:
+  - Rota `POST /importar` adicionada
+  - Middleware de autenticação padrão
+
+**Frontend:**
+- ✅ `client/src/pages/Avaliacoes.js`:
+  - Interface de importação em abas
+  - Funções: handleFileUpload, handleImport, downloadTemplate
+  - Suporte para CSV e Excel (detecção automática)
+  - Preview de dados parseados
+  - Feedback visual completo
+  
+- ✅ `client/src/pages/Frequencias.js`:
+  - Interface de importação em abas (padrão consistente)
+  - Funções: handleFileUpload, handleImport, downloadTemplate
+  - Suporte para CSV e Excel (detecção automática)
+  - Preview de dados parseados
+  - Feedback visual completo
+  
+- ✅ `client/src/services/index.js`:
+  - Método `avaliacaoService.importar(avaliacoes)` adicionado
+  - Método `frequenciaService.importar(frequencias)` adicionado
+
+#### 🎯 Benefícios
+- ⚡ Importação rápida de centenas de registros
+- 🔍 Busca flexível (matrícula ou nome, código ou nome)
+- 🔄 Atualização automática de registros duplicados (frequências)
+- ✅ Validação completa antes do processamento
+- 📊 Relatório detalhado de sucesso/erros
+- 📥 Templates prontos para uso
+- 📖 Documentação completa e organizada
+
+---
+
+## Versão 2.6 - 18 de Fevereiro de 2026
+
+### ✨ SISTEMA COMPLETO DE RELATÓRIOS
+
+#### 📄 Relatórios em PDF
+- ✅ **Boletim Individual do Aluno**
+  - Geração automática em PDF
+  - Dados completos do aluno (nome, matrícula, turma)
+  - Notas por disciplina e trimestre
+  - Média anual calculada: (T1×3 + T2×3 + T3×4)/10
+  - Situação por disciplina (aprovado/recuperação)
+  - Layout profissional com cabeçalho e rodapé
+  - Download automático no navegador
+
+- ✅ **Relatório de Desempenho da Turma**
+  - PDF em formato landscape (paisagem)
+  - Estatísticas gerais (total de alunos, média geral)
+  - Tabela com desempenho de todos os alunos
+  - Notas dos 3 trimestres + média individual
+  - Agrupamento por disciplina
+  - Filtros: disciplina, trimestre, ano
+
+#### 🎯 Relatórios Avançados de Habilidades
+- ✅ **Matriz de Habilidades por Aluno**
+  - Visualização completa da evolução do aluno
+  - Lista todas as habilidades avaliadas
+  - Percentual de desenvolvimento (0-100%)
+  - Quantidade de avaliações por habilidade
+  - Cálculo automático de evolução:
+    - Não Desenvolvido = 25%
+    - Em Desenvolvimento = 50%
+    - Desenvolvido = 75%
+    - Plenamente Desenvolvido = 100%
+
+- ✅ **Mapa de Calor de Habilidades**
+  - Visualização matricial: Alunos x Habilidades
+  - Cores indicando nível de desenvolvimento:
+    - 🔴 Vermelho: Não Desenvolvido
+    - 🟠 Laranja: Em Desenvolvimento
+    - 🟢 Verde: Desenvolvido
+    - 🔵 Azul: Plenamente Desenvolvido
+  - Identificação rápida de padrões
+  - Comparação entre alunos da turma
+  - Filtros por disciplina e trimestre
+
+- ✅ **Identificação de Habilidades Não Trabalhadas**
+  - Lista habilidades cadastradas mas não avaliadas
+  - Estatísticas: total, trabalhadas, pendentes
+  - Detalhamento: código, descrição, disciplina, trimestre
+  - Ferramenta essencial para planejamento pedagógico
+  - Garantia de cobertura do currículo BNCC
+
+#### 🖥️ Nova Página de Relatórios
+- ✅ Interface completa e intuitiva
+- ✅ Filtros avançados:
+  - Turma
+  - Aluno (carrega automaticamente ao selecionar turma)
+  - Disciplina
+  - Trimestre (1º, 2º ou 3º)
+  - Ano letivo
+- ✅ 5 cards informativos para cada tipo de relatório
+- ✅ Botões com ícones e loading states
+- ✅ Visualização inline de dados JSON (matriz, mapa, pendentes)
+- ✅ Tabelas responsivas com Material-UI
+- ✅ Feedback visual com toasts de sucesso/erro
+- ✅ Download automático de PDFs
+
+#### 🔌 Novos Endpoints da API
+```
+GET /api/relatorios/boletim/:alunoId?ano=2026
+GET /api/relatorios/desempenho-turma/:turmaId?disciplinaId=...&trimestre=...&ano=...
+GET /api/relatorios/matriz-habilidades/:alunoId?ano=...&turmaId=...&disciplinaId=...
+GET /api/relatorios/mapa-calor/:turmaId?disciplinaId=...&trimestre=...
+GET /api/relatorios/habilidades-nao-trabalhadas/:turmaId?disciplinaId=...&trimestre=...
+```
+
+#### 📦 Dependências Adicionadas
+- ✅ `pdfkit@^0.15.0` - Geração de PDFs profissionais
+- ✅ `chartjs-node-canvas@^4.1.6` - Preparação para gráficos em PDF (futura funcionalidade)
+
+#### 📚 Documentação
+- ✅ **RELATORIOS.md** - Documentação completa do sistema:
+  - Guia de uso detalhado
+  - Exemplos de requisições API
+  - Estruturas de resposta JSON
+  - Troubleshooting
+  - Fluxo de dados
+  - Casos de uso para professores e coordenação
+- ✅ Atualização do README.md com seção de relatórios
+- ✅ Exemplos práticos de uso
+- ✅ Atualização do CHANGELOG.md
+
+#### 🛠️ Implementação Técnica
+- ✅ Controller: `server/src/controllers/relatorioController.js`
+  - 5 funções principais
+  - Tratamento robusto de erros
+  - Validações de parâmetros
+  - Queries otimizadas com populate
+  - Funções auxiliares (calcularEvolucao, converterNivel)
+
+- ✅ Rotas: `server/src/routes/relatorios.js`
+  - Todas protegidas com autenticação JWT
+  - Documentação inline com JSDoc
+  - Import correto do middleware auth
+
+- ✅ Frontend:
+  - Página: `client/src/pages/Relatorios.js` (620 linhas)
+  - Serviços: `relatorioService` em `client/src/services/index.js`
+  - Download automático de PDFs via Blob API
+  - Estados de loading separados para cada relatório
+  - Componentização com Material-UI
+
+- ✅ Menu lateral atualizado com item "Relatórios"
+- ✅ Roteamento incluindo `/relatorios`
+
+#### 🎓 Casos de Uso Implementados
+
+**Para Professores:**
+- Gerar boletins individuais para entrega aos responsáveis
+- Analisar desempenho geral da turma
+- Visualizar evolução de habilidades de alunos específicos
+- Identificar habilidades que precisam ser trabalhadas
+- Preparar material para conselhos de classe
+
+**Para Coordenação Pedagógica:**
+- Comparar desempenho entre turmas
+- Verificar alinhamento com BNCC
+- Planejar intervenções pedagógicas
+- Gerar relatórios para apresentação à direção
+- Documentar evidências de aprendizagem
+
+**Para Gestão:**
+- Documentar desempenho institucional
+- Preparar relatórios para secretaria de educação
+- Evidências para avaliações externas
+- Base de dados para tomada de decisões estratégicas
+
+### 🔧 Correções e Melhorias
+- ✅ Correção de import do middleware auth (desestruturação)
+- ✅ Código limpo e bem documentado
+- ✅ Tratamento de erros sem expor detalhes internos
+- ✅ Performance otimizada com queries eficientes
+
+---
+
+## Versão 2.0 - Fevereiro 2026
+
+### ✨ Principais Novidades
+
+#### 🎓 Módulo de Turmas
+- ✅ CRUD completo (Create, Read, Update, Delete)
+- ✅ Cadastro manual de turmas com validação de campos
+- ✅ **Importação em lote via CSV** (upload de arquivo)
+- ✅ **Exportação de dados para CSV** (download)
+- ✅ Vinculação de disciplinas e professores
+- ✅ Listagem de alunos matriculados
+- ✅ Validação de dados obrigatórios
+- ✅ Interface responsiva com Material-UI
+
+#### 👨‍🎓 Módulo de Alunos
+- ✅ CRUD completo com matrícula automática
+- ✅ Cadastro manual com todos os dados pessoais
+- ✅ **Importação em lote via CSV** (upload de arquivo)
+- ✅ **Exportação de dados para CSV** (download)
+- ✅ Vinculação automática à turma
+- ✅ Dados do responsável
+- ✅ Validação de campos obrigatórios
+- ✅ Integração com biblioteca PapaParse
+
+#### 📝 Sistema de Avaliações Completo
+- ✅ 9 tipos de avaliações disponíveis:
+  1. Prova Bimestral (4.0 pontos)
+  2. Prova Mensal (2.0 pontos)
+  3. Trabalho Individual (1.5 pontos)
+  4. Trabalho em Grupo (1.5 pontos)
+  5. Seminário (1.0 ponto)
+  6. Atividade Prática (1.0 ponto)
+  7. Participação (0.5 ponto)
+  8. Simulado (2.0 pontos)
+  9. Recuperação (até 10.0 pontos)
+
+- ✅ **Cálculo trimestral**: Soma simples (SEM divisão)
+  - Exemplo: 3.0 + 2.5 + 2.0 + 1.5 = 9.0 pontos
+  - Limite máximo: 10.0 pontos por trimestre
+
+- ✅ **Validação automática**: Sistema impede ultrapassar 10 pontos
+  - Mensagem de erro amigável ao usuário
+  - Validação no frontend e backend
+
+- ✅ **Cálculo da média anual**: Fórmula ponderada
+  - (T1×3 + T2×3 + T3×4) / 10
+  - Peso maior para o 3º trimestre (40%)
+
+- ✅ **Sincronização em tempo real**:
+  - Atualização automática entre páginas
+  - Uso de hooks pre-save no MongoDB
+  - Aguarda Promise.all() antes de fechar diálogos
+
+- ✅ Interface intuitiva:
+  - Seleção em cascata: Turma → Aluno → Disciplina
+  - Botões para selecionar trimestre (1º, 2º, 3º)
+  - Visualização da nota total ao lado de cada trimestre
+  - Exibição da média anual calculada
+
+#### 📊 Dashboard Analítico Avançado
+- ✅ **Filtros avançados organizados em 2 linhas**:
+  - **Linha 1** (Entidades): Turma | Aluno Específico | Disciplina
+  - **Linha 2** (Temporal): Ano | Trimestre | Data Início | Data Fim | Ponto de Corte
+  - Campos com tamanho uniforme para melhor estética
+
+- ✅ **Filtro por aluno específico**:
+  - Seleção individual de aluno
+  - Carregamento condicional (só ativa após selecionar turma)
+  - Visualização de desempenho individual
+
+- ✅ **Filtro por período**:
+  - Seleção de data início e data fim
+  - Input nativo HTML5 (type="date")
+  - Validação: data fim não pode ser anterior à data início
+  - Filtragem no backend por campo `createdAt`
+
+- ✅ **Auto-refresh automático**:
+  - Atualização a cada 30 segundos
+  - Opcional: pode ser desativado pelo usuário
+  - Mantém sincronização com dados mais recentes
+
+- ✅ **Gráficos aprimorados** (Chart.js):
+  - Desempenho por disciplina (barra)
+  - Taxa de aprovação (pizza)
+  - Evolução trimestral (linha)
+  - Cores personalizadas do tema
+
+- ✅ **Lista de alunos em risco**:
+  - Alunos abaixo do ponto de corte
+  - Exibição dinâmica com filtros aplicados
+  - Informações detalhadas (turma, disciplina, média)
+
+### 🔧 Correções e Melhorias Técnicas
+
+#### Backend
+- ✅ Campo `professor` agora é **opcional** em avaliações
+- ✅ Uso de `.save()` ao invés de `findByIdAndUpdate`:
+  - Garante execução de hooks pre-save
+  - Cálculos automáticos funcionam corretamente
+- ✅ Hooks pre-save implementados:
+  - `calcularNotaTrimestre()` - soma simples
+  - Validação de 10 pontos máximo
+- ✅ Filtros do Dashboard otimizados:
+  - Query por `createdAt` para período
+  - Agregação por aluno específico
+  - População de referências (turma, disciplina, aluno)
+- ✅ Respostas paginadas mantidas
+- ✅ Tratamento de erros aprimorado
+
+#### Frontend
+- ✅ Extração correta de `.data` em respostas paginadas
+- ✅ Sincronização com `await Promise.all()` antes de fechar modais
+- ✅ Estados loading e error tratados adequadamente
+- ✅ Validação de formulários no cliente
+- ✅ Layout responsivo com Grid Material-UI
+- ✅ Inputs nativos HTML5 para datas (sem dependências externas)
+- ✅ Carregamento condicional de alunos baseado em turma selecionada
+
+### 📚 Documentação Atualizada
+
+- ✅ README.md completamente reescrito:
+  - Status 100% funcional
+  - Tabela de funcionalidades atualizada
+  - Exemplos de cálculo corretos
+  - Seção de melhorias implementadas
+  - Licença e copyright detalhados
+
+- ✅ Novos arquivos de documentação:
+  - CADASTRO_TURMAS_ALUNOS.md
+  - SISTEMA_AVALIACOES.md
+  - RESUMO_IMPLEMENTACAO.md
+  - CHANGELOG.md (este arquivo)
+
+- ✅ Exemplos práticos:
+  - exemplos/turmas_exemplo.csv
+  - exemplos/alunos_exemplo.csv
+  - test-api.js (testes de endpoints)
+
+### 🔐 Segurança e Licença
+
+- ✅ Seção de segurança e privacidade adicionada
+- ✅ Boas práticas de segurança implementadas
+- ✅ **Licença e Copyright definidos**:
+  - © 2026 Rodrigo Grillo Moreira
+  - Todos os direitos reservados
+  - Uso educacional permitido (com créditos)
+  - Uso comercial requer autorização
+
+### 📦 Dependências
+
+Nenhuma dependência nova foi adicionada. Sistema funciona com:
+- React 18.2.0
+- Material-UI 5.14.20
+- Node.js v22.11.0
+- MongoDB Atlas
+- Express.js
+- Mongoose
+- Chart.js 4.4.1
+- PapaParse 5.4.1
+
+### 🐛 Bugs Corrigidos
+
+1. ✅ Campo professor causava erro ao salvar avaliações
+   - **Solução**: Campo marcado como opcional no model
+
+2. ✅ Notas não atualizavam em tempo real
+   - **Solução**: Uso de `.save()` e `await Promise.all()`
+
+3. ✅ Dashboard não sincronizava com avaliações
+   - **Solução**: Auto-refresh e aguardar saves antes de fechar modais
+
+4. ✅ Cálculo de nota trimestral estava dividindo
+   - **Solução**: Alterado para soma simples no model
+
+5. ✅ Filtro de aluno carregava antes de selecionar turma
+   - **Solução**: Carregamento condicional baseado em `filters.turma`
+
+6. ✅ Layout de filtros visualmente desorganizado
+   - **Solução**: Reorganização em 2 linhas com Grid uniformes
+
+### 🎯 Objetivos Alcançados
+
+✅ Sistema 100% funcional e pronto para produção
+✅ Todas as páginas principais implementadas (exceto Habilidades)
+✅ Importação/exportação CSV funcionando
+✅ Cálculos automáticos corretos e validados
+✅ Dashboard analítico completo com filtros avançados
+✅ Sincronização em tempo real entre componentes
+✅ Interface responsiva e intuitiva
+✅ Documentação completa e atualizada
+
+### 🔜 Próxima Versão (v2.1)
+
+Planejado para implementação futura:
+- [ ] Módulo de Habilidades (BNCC)
+- [ ] Relatórios em PDF
+- [ ] Sistema de notificações
+- [ ] PWA (Progressive Web App)
+- [ ] Integração com e-mail
+- [ ] Relatórios de evolução individual
+- [ ] Dashboard para alunos/responsáveis
+
+---
+
+## Versão 1.0 - Janeiro 2026
+
+### Funcionalidades Iniciais
+- ✅ Estrutura base do projeto
+- ✅ Autenticação com JWT
+- ✅ CRUD de Professores
+- ✅ CRUD de Disciplinas
+- ✅ Dashboard básico
+- ✅ Sistema de temas (claro/escuro)
+- ✅ 6 hooks customizados
+- ✅ MongoDB Atlas conectado
+
+---
+
+**Desenvolvido por Rodrigo Grillo Moreira**  
+**© 2026 - Todos os direitos reservados**
