@@ -1,0 +1,36 @@
+{
+  "folders": [
+    {
+      "name": "📁 SISTGESEDU (Root)",
+      "path": "."
+    },
+    {
+      "name": "🖥️ Backend (Server)",
+      "path": "server"
+    },
+    {
+      "name": "🌐 Frontend (Client)",
+      "path": "client"
+    },
+    {
+      "name": "📚 Documentação",
+      "path": "docs"
+    }
+  ],
+  "settings": {
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2,
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.git": false
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "mongodb.mongodb-vscode",
+      "ms-vscode.vscode-typescript-next"
+    ]
+  }
+}
