@@ -24,6 +24,9 @@ import {
   Zoom,
   IconButton,
   Tooltip,
+  ToggleButtonGroup,
+  ToggleButton,
+  Badge,
 } from '@mui/material';
 import {
   AssessmentOutlined,
@@ -35,6 +38,7 @@ import {
   WarningAmberOutlined,
   EventBusyOutlined,
   Refresh as RefreshIcon,
+  FilterList as FilterListIcon,
 } from '@mui/icons-material';
 import {
   Chart as ChartJS,
@@ -87,6 +91,7 @@ const Dashboard = () => {
   const [evolucaoHabilidades, setEvolucaoHabilidades] = useState(null);
   const [distribuicaoHabilidades, setDistribuicaoHabilidades] = useState(null);
   const [dashboardFrequencia, setDashboardFrequencia] = useState(null);
+  const [frequenciaFiltros, setFrequenciaFiltros] = useState(['todos']);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
@@ -783,9 +788,26 @@ const Dashboard = () => {
                     }
                   }}
                 >
-                  <Typography variant="h6" gutterBottom fontWeight="600">
-                    📅 Dashboard de Frequência em Tempo Real
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                    <Typography variant="h6" fontWeight="600">
+                      📅 Dashboard de Frequência em Tempo Real
+                    </Typography>
+                    
+                    {/* Badge de Contexto */}
+                    <Chip
+                      icon={<AssessmentOutlined />}
+                      label={
+                        filters.disciplina 
+                          ? `Disciplina: ${disciplinas.find(d => d._id === filters.disciplina)?.nome || 'Selecionada'}` 
+                          : filters.aluno
+                          ? `Aluno: ${alunos.find(a => a._id === filters.aluno)?.nome || 'Selecionado'}`
+                          : 'Visão Geral - Todas as Disciplinas'
+                      }
+                      color={filters.disciplina || filters.aluno ? 'primary' : 'default'}
+                      variant={filters.disciplina || filters.aluno ? 'filled' : 'outlined'}
+                      sx={{ fontWeight: 600 }}
+                    />
+                  </Box>
                 
                 {/* Cards de Estatísticas de Frequência */}
                 <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -829,85 +851,254 @@ const Dashboard = () => {
                   </Grid>
                 </Grid>
 
-                {/* Alunos Críticos (abaixo de 75%) */}
-                {dashboardFrequencia.alunosCriticos && dashboardFrequencia.alunosCriticos.length > 0 && (
-                  <Box sx={{ mt: 3 }}>
-                    <Alert severity="error" sx={{ mb: 2 }}>
-                      <strong>⚠️ Atenção:</strong> {dashboardFrequencia.alunosCriticos.length} aluno(s) com frequência crítica (abaixo de 75%)
-                    </Alert>
-                    
-                    <TableContainer>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Aluno</TableCell>
-                            <TableCell align="center">Total</TableCell>
-                            <TableCell align="center">Presentes</TableCell>
-                            <TableCell align="center">Faltas</TableCell>
-                            <TableCell align="center">%</TableCell>
-                            <TableCell align="center">Status</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {dashboardFrequencia.alunosCriticos.map((aluno) => {
-                            const percentual = aluno.percentualPresenca;
-                            let statusColor = 'success';
-                            let statusLabel = 'Bom';
-                            
-                            if (percentual < 75) {
-                              statusColor = 'error';
-                              statusLabel = 'Crítico';
-                            } else if (percentual < 85) {
-                              statusColor = 'warning';
-                              statusLabel = 'Atenção';
-                            }
-                            
-                            return (
-                              <TableRow key={aluno.aluno._id}>
-                                <TableCell>
-                                  {aluno.aluno.nome}
-                                  <br />
-                                  <Typography variant="caption" color="text.secondary">
-                                    {aluno.aluno.matricula}
-                                  </Typography>
-                                </TableCell>
-                                <TableCell align="center">{aluno.total}</TableCell>
-                                <TableCell align="center">
-                                  <Chip 
-                                    label={aluno.presentes} 
-                                    color="success" 
-                                    size="small" 
-                                  />
-                                </TableCell>
-                                <TableCell align="center">
-                                  <Chip 
-                                    label={aluno.faltas} 
-                                    color="error" 
-                                    size="small" 
-                                  />
-                                </TableCell>
-                                <TableCell align="center">
-                                  <strong>{percentual}%</strong>
-                                </TableCell>
-                                <TableCell align="center">
-                                  <Chip 
-                                    label={statusLabel} 
-                                    color={statusColor} 
-                                    size="small" 
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                {/* Filtros de Frequência */}
+                <Box sx={{ my: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <FilterListIcon color="primary" />
+                    <Typography variant="body1" fontWeight="600">
+                      Filtrar por Status:
+                    </Typography>
                   </Box>
-                )}
+                  <ToggleButtonGroup
+                    value={frequenciaFiltros}
+                    onChange={(event, newFiltros) => {
+                      if (newFiltros.length === 0) return; // Não permitir desmarcar todos
+                      
+                      // Se selecionou "todos", desmarcar outros
+                      if (newFiltros.includes('todos') && !frequenciaFiltros.includes('todos')) {
+                        setFrequenciaFiltros(['todos']);
+                      }
+                      // Se tinha "todos" e selecionou outro, remover "todos"
+                      else if (frequenciaFiltros.includes('todos') && newFiltros.length > 1) {
+                        setFrequenciaFiltros(newFiltros.filter(f => f !== 'todos'));
+                      }
+                      // Seleção normal
+                      else {
+                        setFrequenciaFiltros(newFiltros);
+                      }
+                    }}
+                    aria-label="filtros de frequência"
+                    size="small"
+                    sx={{
+                      flexWrap: 'wrap',
+                      '& .MuiToggleButton-root': {
+                        px: 2,
+                        py: 1,
+                        border: '2px solid',
+                        fontWeight: 600,
+                        textTransform: 'none',
+                      }
+                    }}
+                  >
+                    <ToggleButton 
+                      value="todos" 
+                      sx={{ 
+                        borderColor: 'primary.main',
+                        '&.Mui-selected': { 
+                          bgcolor: 'primary.main', 
+                          color: 'white',
+                          '&:hover': { bgcolor: 'primary.dark' }
+                        }
+                      }}
+                    >
+                      <Badge 
+                        badgeContent={dashboardFrequencia.contadores?.total || 0} 
+                        color="primary"
+                        sx={{ '& .MuiBadge-badge': { bgcolor: 'white', color: 'primary.main' } }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
+                          🔵 TODOS
+                        </Box>
+                      </Badge>
+                    </ToggleButton>
+                    
+                    <ToggleButton 
+                      value="adequado"
+                      sx={{ 
+                        borderColor: 'success.main',
+                        '&.Mui-selected': { 
+                          bgcolor: 'success.main', 
+                          color: 'white',
+                          '&:hover': { bgcolor: 'success.dark' }
+                        }
+                      }}
+                    >
+                      <Badge 
+                        badgeContent={dashboardFrequencia.contadores?.adequado || 0} 
+                        color="success"
+                        sx={{ '& .MuiBadge-badge': { bgcolor: 'white', color: 'success.main' } }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
+                          ✅ ADEQUADO (&ge;85%)
+                        </Box>
+                      </Badge>
+                    </ToggleButton>
+                    
+                    <ToggleButton 
+                      value="atencao"
+                      sx={{ 
+                        borderColor: 'warning.main',
+                        '&.Mui-selected': { 
+                          bgcolor: 'warning.main', 
+                          color: 'white',
+                          '&:hover': { bgcolor: 'warning.dark' }
+                        }
+                      }}
+                    >
+                      <Badge 
+                        badgeContent={dashboardFrequencia.contadores?.atencao || 0} 
+                        color="warning"
+                        sx={{ '& .MuiBadge-badge': { bgcolor: 'white', color: 'warning.main' } }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
+                          ⚠️ ATENÇÃO (75-84%)
+                        </Box>
+                      </Badge>
+                    </ToggleButton>
+                    
+                    <ToggleButton 
+                      value="critico"
+                      sx={{ 
+                        borderColor: 'error.main',
+                        '&.Mui-selected': { 
+                          bgcolor: 'error.main', 
+                          color: 'white',
+                          '&:hover': { bgcolor: 'error.dark' }
+                        }
+                      }}
+                    >
+                      <Badge 
+                        badgeContent={dashboardFrequencia.contadores?.critico || 0} 
+                        color="error"
+                        sx={{ '& .MuiBadge-badge': { bgcolor: 'white', color: 'error.main' } }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
+                          🚨 CRÍTICO (&lt;75%)
+                        </Box>
+                      </Badge>
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+
+                {/* Tabela de Alunos Filtrados */}
+                {dashboardFrequencia.todosAlunos && dashboardFrequencia.todosAlunos.length > 0 && (() => {
+                  // Aplicar filtros
+                  const alunosFiltrados = dashboardFrequencia.todosAlunos.filter(aluno => {
+                    if (frequenciaFiltros.includes('todos')) return true;
+                    return frequenciaFiltros.includes(aluno.classificacao);
+                  });
+                  
+                  return (
+                    <Box sx={{ mt: 3 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Exibindo <strong>{alunosFiltrados.length}</strong> de <strong>{dashboardFrequencia.todosAlunos.length}</strong> alunos
+                        </Typography>
+                        
+                        {dashboardFrequencia.contadores?.critico > 0 && (
+                          <Alert severity="error" sx={{ py: 0.5, px: 2 }}>
+                            <strong>⚠️</strong> {dashboardFrequencia.contadores.critico} aluno(s) com frequência crítica
+                          </Alert>
+                        )}
+                      </Box>
+                      
+                      {alunosFiltrados.length > 0 ? (
+                        <TableContainer>
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Aluno</TableCell>
+                                <TableCell align="center">Total Aulas</TableCell>
+                                <TableCell align="center">Presentes</TableCell>
+                                <TableCell align="center">Faltas</TableCell>
+                                <TableCell align="center">Frequência</TableCell>
+                                <TableCell align="center">Status</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {alunosFiltrados.map((aluno) => {
+                                const percentual = aluno.percentualPresenca;
+                                let statusColor = 'success';
+                                let statusLabel = 'Adequado';
+                                let statusIcon = '✅';
+                                
+                                if (aluno.classificacao === 'critico') {
+                                  statusColor = 'error';
+                                  statusLabel = 'Crítico';
+                                  statusIcon = '🚨';
+                                } else if (aluno.classificacao === 'atencao') {
+                                  statusColor = 'warning';
+                                  statusLabel = 'Atenção';
+                                  statusIcon = '⚠️';
+                                }
+                                
+                                return (
+                                  <TableRow 
+                                    key={aluno.aluno._id}
+                                    sx={{
+                                      '&:hover': { bgcolor: 'action.hover' },
+                                      bgcolor: aluno.classificacao === 'critico' ? 'rgba(211, 47, 47, 0.08)' : 'inherit'
+                                    }}
+                                  >
+                                    <TableCell>
+                                      <Typography variant="body2" fontWeight="600">
+                                        {aluno.aluno.nome}
+                                      </Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        Mat: {aluno.aluno.matricula}
+                                      </Typography>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      <Typography variant="body2" fontWeight="600">
+                                        {aluno.total}
+                                      </Typography>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      <Chip 
+                                        label={aluno.presentes} 
+                                        color="success" 
+                                        size="small"
+                                        variant="outlined"
+                                      />
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      <Chip 
+                                        label={aluno.faltas} 
+                                        color="error" 
+                                        size="small"
+                                        variant="outlined"
+                                      />
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      <Typography variant="body2" fontWeight="700" color={statusColor + '.main'}>
+                                        {percentual}%
+                                      </Typography>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      <Chip 
+                                        label={`${statusIcon} ${statusLabel}`}
+                                        color={statusColor} 
+                                        size="small"
+                                      />
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      ) : (
+                        <Alert severity="info">
+                          Nenhum aluno encontrado com os filtros selecionados.
+                        </Alert>
+                      )}
+                    </Box>
+                  );
+                })()}
                 
-                {(!dashboardFrequencia.alunosCriticos || dashboardFrequencia.alunosCriticos.length === 0) && (
-                  <Alert severity="success">
-                    ✅ Todos os alunos com frequência adequada!
+                {(!dashboardFrequencia.todosAlunos || dashboardFrequencia.todosAlunos.length === 0) && (
+                  <Alert severity="info" sx={{ mt: 3 }}>
+                    📊 Nenhum registro de frequência encontrado para o período selecionado.
                   </Alert>
                 )}
               </Paper>

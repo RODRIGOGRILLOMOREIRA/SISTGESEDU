@@ -11,7 +11,10 @@ const {
   updateFrequencia,
   deleteFrequencia,
   importarFrequencias,
-  gerarTemplatePorTurma
+  gerarTemplatePorTurma,
+  getEstatisticasTurma,
+  resetarDia,
+  registrarChamadaTurmaGeral
 } = require('../controllers/frequenciaController');
 const { auth } = require('../middleware/auth');
 
@@ -48,5 +51,14 @@ router.route('/:id')
 
 // Justificar falta
 router.put('/:id/justificar', justificarFalta);
+
+// Estatísticas acumulativas da turma
+router.get('/estatisticas-turma/:turmaId', getEstatisticasTurma);
+
+// Resetar frequências de um dia
+router.delete('/resetar-dia', resetarDia);
+
+// Registrar chamada geral (todas as disciplinas)
+router.post('/turma-geral/:turmaId', registrarChamadaTurmaGeral);
 
 module.exports = router;

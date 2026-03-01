@@ -151,7 +151,3 @@ export const SchoolProvider = ({ children }) => {
     </SchoolContext.Provider>
   );
 };
-
-    </SchoolContext.Provider>
-  );
-};

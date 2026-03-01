@@ -344,4 +344,21 @@ export const frequenciaService = {
     const response = await api.get(`/frequencias/template/${turmaId}`, { params });
     return response.data;
   },
+
+  getEstatisticasTurma: async (turmaId, params = {}) => {
+    const response = await api.get(`/frequencias/estatisticas-turma/${turmaId}`, { params });
+    return response.data;
+  },
+
+  resetarDia: async (turma, data) => {
+    const response = await api.delete('/frequencias/resetar-dia', { 
+      data: { turma, data } 
+    });
+    return response.data;
+  },
+
+  registrarChamadaGeral: async (turmaId, data) => {
+    const response = await api.post(`/frequencias/turma-geral/${turmaId}`, data);
+    return response.data;
+  },
 };

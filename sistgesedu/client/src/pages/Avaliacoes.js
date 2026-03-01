@@ -21,6 +21,11 @@ import {
   Skeleton,
   Autocomplete,
   Divider,
+  Tabs,
+  Tab,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import {
   Add,
@@ -33,11 +38,16 @@ import {
   HelpOutline,
   School,
   Refresh,
+  Upload,
+  Download,
+  CloudUpload,
 } from '@mui/icons-material';
 import PageHeader from '../components/PageHeader';
 import { Assessment as AvaliacoesIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import api from '../services/api';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 
 // Configurações de classificação
 const CLASSIFICACOES = {
@@ -74,6 +84,12 @@ const Avaliacoes = () => {
     },
     observacoes: ''
   });
+
+  // Estados para importação
+  const [openImportModal, setOpenImportModal] = useState(false);
+  const [importTabValue, setImportTabValue] = useState(0);
+  const [importData, setImportData] = useState([]);
+  const [importLoading, setImportLoading] = useState(false);
 
   useEffect(() => {
     loadTurmas();
@@ -202,7 +218,7 @@ const Avaliacoes = () => {
   const calcularMediaFinal = () => {
     const pc1 = parseFloat(formData.pontosCorte.pc1.nota) || 0;
     const pc2 = parseFloat(formData.pontosCorte.pc2.nota) || 0;
-    return (pc1 + pc2).toFixed(1);
+    return ((pc1 + pc2) / 2).toFixed(1);
   };
 
   const calcularNotaFinal = () => {
@@ -213,9 +229,9 @@ const Avaliacoes = () => {
 
   const getClassificacao = (nota) => {
     if (!nota || nota === 0) return 'sem-avaliacao';
-    if (nota >= 80) return 'adequado';
-    if (nota >= 60) return 'proficiente';
-    if (nota >= 40) return 'em-alerta';
+    if (nota >= 8.0) return 'adequado';
+    if (nota >= 6.0) return 'proficiente';
+    if (nota >= 4.0) return 'em-alerta';
     return 'intervencao-imediata';
   };
 
@@ -226,6 +242,204 @@ const Avaliacoes = () => {
       .join('')
       .toUpperCase()
       .substring(0, 2);
+  };
+
+  // Funções de importação
+  const downloadTemplate = async (format = 'excel') => {
+    if (!filtros.turma || !filtros.disciplina) {
+      toast.warning('Selecione uma turma e disciplina para gerar o template');
+      return;
+    }
+
+    try {
+      const response = await api.get(`/avaliacoes/template/${filtros.turma}`, {
+        params: {
+          disciplinaId: filtros.disciplina,
+          trimestre: filtros.trimestre,
+          ano: filtros.ano
+        }
+      });
+
+      const { template, turma, disciplina, habilidadesDisponiveis, instrucoes } = response.data;
+
+      if (format === 'excel') {
+        // Criar worksheet com dados
+        const ws = XLSX.utils.json_to_sheet(template);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Avaliações');
+
+        // Adicionar aba com instruções
+        const wsInstrucoes = XLSX.utils.aoa_to_sheet([
+          ['INSTRUÇÕES PARA IMPORTAÇÃO DE AVALIAÇÕES - SISTEMA DE PONTOS DE CORTE'],
+          [''],
+          ['Sistema:', instrucoes.sistema],
+          [''],
+          ['PC1 (Ponto de Corte 1):', instrucoes.pc1],
+          ['PC2 (Ponto de Corte 2):', instrucoes.pc2],
+          ['EAC (Exame de Aprendizagem Complementar):', instrucoes.eac],
+          [''],
+          ['Habilidades:', instrucoes.habilidades],
+          ['Múltiplas Habilidades:', instrucoes.multiplas_habilidades],
+          [''],
+          ['Nota Final:', instrucoes.notaFinal],
+          ['Trimestre:', instrucoes.trimestre],
+          ['Formato de Data:', instrucoes.formato_data],
+          [''],
+          ['HABILIDADES DISPONÍVEIS PARA ESTA DISCIPLINA:'],
+          [''],
+          ...habilidadesDisponiveis.map(h => [`${h.codigo}`, h.descricao])
+        ]);
+        XLSX.utils.book_append_sheet(wb, wsInstrucoes, 'Instruções');
+
+        // Download
+        XLSX.writeFile(wb, `avaliacoes_${turma.nome}_${disciplina.nome}_T${filtros.trimestre}_${filtros.ano}.xlsx`);
+        toast.success(`Template gerado com ${turma.totalAlunos} alunos!`);
+      } else {
+        // CSV
+        const csv = Papa.unparse(template);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `avaliacoes_${turma.nome}_${disciplina.nome}_T${filtros.trimestre}_${filtros.ano}.csv`;
+        link.click();
+        toast.success(`Template CSV gerado com ${turma.totalAlunos} alunos!`);
+      }
+    } catch (error) {
+      console.error('Erro ao gerar template:', error);
+      toast.error(error.response?.data?.message || 'Erro ao gerar template');
+    }
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+
+    setImportLoading(true);
+
+    if (isExcel) {
+      // Processar Excel
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+          const validData = jsonData.filter(row => 
+            row.matricula_aluno && row.codigo_disciplina
+          );
+
+          setImportData(validData);
+          setImportLoading(false);
+
+          if (validData.length > 0) {
+            toast.success(`${validData.length} avaliações encontradas no arquivo Excel`);
+          } else {
+            toast.error('Nenhuma avaliação válida encontrada no arquivo');
+          }
+        } catch (error) {
+          setImportLoading(false);
+          toast.error('Erro ao ler arquivo Excel: ' + error.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // Processar CSV
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const validData = results.data.filter(row => 
+            row.matricula_aluno && row.codigo_disciplina
+          );
+
+          setImportData(validData);
+          setImportLoading(false);
+
+          if (validData.length > 0) {
+            toast.success(`${validData.length} avaliações encontradas no arquivo CSV`);
+          } else {
+            toast.error('Nenhuma avaliação válida encontrada no arquivo');
+          }
+        },
+        error: (error) => {
+          setImportLoading(false);
+          toast.error('Erro ao ler arquivo CSV: ' + error.message);
+        }
+      });
+    }
+  };
+
+  const handleImportAvaliacoes = async () => {
+    if (importData.length === 0) {
+      toast.error('Nenhuma avaliação para importar');
+      return;
+    }
+
+    setImportLoading(true);
+
+    try {
+      const response = await api.post('/avaliacoes/importar', {
+        avaliacoes: importData
+      });
+
+      const { sucesso, criados, atualizados, erros, detalhes } = response.data;
+
+      if (sucesso > 0) {
+        toast.success(`✅ Importação concluída! ${criados} criadas, ${atualizados} atualizadas`);
+        
+        // Mostrar erros se houver
+        if (erros > 0) {
+          const errosDetalhes = detalhes
+            .filter(d => d.erro)
+            .slice(0, 5) // Mostrar apenas os primeiros 5 erros
+            .map(d => `Linha ${d.linha}: ${d.erro}`)
+            .join('\n');
+          
+          toast.warning(`⚠️ ${erros} avaliações com erro:\n${errosDetalhes}`);
+        }
+
+        // Fechar modal e recarregar
+        setOpenImportModal(false);
+        setImportData([]);
+        loadAvaliacoes();
+      } else {
+        toast.error('Nenhuma avaliação foi importada. Verifique os dados.');
+      }
+    } catch (error) {
+      console.error('Erro ao importar avaliações:', error);
+      toast.error(error.response?.data?.message || 'Erro ao importar avaliações');
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleCloseImportModal = () => {
+    setOpenImportModal(false);
+    setImportData([]);
+    setImportTabValue(0);
+  };
+
+  const renderChipClassificacao = (nota) => {
+    const classificacao = CLASSIFICACOES[getClassificacao(parseFloat(nota))];
+    const IconComponent = classificacao.icon;
+    return (
+      <Chip
+        icon={<IconComponent />}
+        label={classificacao.label}
+        sx={{
+          bgcolor: classificacao.bgcolor,
+          color: classificacao.color,
+          fontWeight: 600,
+          fontSize: '1.1rem',
+          py: 2.5,
+        }}
+      />
+    );
   };
 
   const podeCarregar = filtros.turma && filtros.disciplina && filtros.trimestre;
@@ -312,6 +526,18 @@ const Avaliacoes = () => {
             </Button>
           </Grid>
         </Grid>
+
+        {/* Botão de Importar */}
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            variant="outlined"
+            startIcon={<Upload />}
+            onClick={() => setOpenImportModal(true)}
+            disabled={!filtros.turma || !filtros.disciplina}
+          >
+            Importar Avaliações
+          </Button>
+        </Box>
       </Paper>
 
       {/* Estatísticas */}
@@ -578,7 +804,7 @@ const Avaliacoes = () => {
                   fullWidth
                   label="Nota PC1"
                   type="number"
-                  inputProps={{ min: 0, max: 50, step: 0.5 }}
+                  inputProps={{ min: 0, max: 10, step: 0.1 }}
                   value={formData.pontosCorte.pc1.nota}
                   onChange={(e) =>
                     setFormData({
@@ -589,7 +815,7 @@ const Avaliacoes = () => {
                       },
                     })
                   }
-                  helperText="Máximo: 50 pontos"
+                  helperText="Nota de 0 a 10 (ex: 8,5)"
                 />
               </Grid>
               <Grid item xs={6}>
@@ -640,7 +866,7 @@ const Avaliacoes = () => {
                   fullWidth
                   label="Nota PC2"
                   type="number"
-                  inputProps={{ min: 0, max: 50, step: 0.5 }}
+                  inputProps={{ min: 0, max: 10, step: 0.1 }}
                   value={formData.pontosCorte.pc2.nota}
                   onChange={(e) =>
                     setFormData({
@@ -651,7 +877,7 @@ const Avaliacoes = () => {
                       },
                     })
                   }
-                  helperText="Máximo: 50 pontos"
+                  helperText="Nota de 0 a 10 (ex: 7,5)"
                 />
               </Grid>
               <Grid item xs={6}>
@@ -713,7 +939,7 @@ const Avaliacoes = () => {
                   fullWidth
                   label="Nota EAC"
                   type="number"
-                  inputProps={{ min: 0, max: 100, step: 0.5 }}
+                  inputProps={{ min: 0, max: 10, step: 0.1 }}
                   value={formData.pontosCorte.eac.nota}
                   onChange={(e) =>
                     setFormData({
@@ -724,7 +950,7 @@ const Avaliacoes = () => {
                       },
                     })
                   }
-                  helperText="Máximo: 100 pontos"
+                  helperText="Nota de 0 a 10 (ex: 9,0)"
                 />
               </Grid>
               <Grid item xs={6}>
@@ -770,22 +996,12 @@ const Avaliacoes = () => {
           <Box sx={{ p: 3, bgcolor: 'success.light', borderRadius: 2, mb: 3 }}>
             <Typography variant="h6" sx={{ mb: 1 }}>🏆 Nota Final do Trimestre</Typography>
             <Typography variant="h2" sx={{ fontWeight: 'bold', color: 'success.dark', my: 2 }}>
-              {calcularNotaFinal()} / 100
+              {calcularNotaFinal()} / 10
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Maior nota entre: Média Final ({calcularMediaFinal()}) e EAC ({formData.pontosCorte.eac.nota})
             </Typography>
-            <Chip
-              icon={<CLASSIFICACOES[getClassificacao(parseFloat(calcularNotaFinal()))].icon />}
-              label={CLASSIFICACOES[getClassificacao(parseFloat(calcularNotaFinal()))].label}
-              sx={{
-                bgcolor: CLASSIFICACOES[getClassificacao(parseFloat(calcularNotaFinal()))].bgcolor,
-                color: CLASSIFICACOES[getClassificacao(parseFloat(calcularNotaFinal()))].color,
-                fontWeight: 600,
-                fontSize: '1.1rem',
-                py: 2.5,
-              }}
-            />
+            {renderChipClassificacao(calcularNotaFinal())}
           </Box>
 
           <TextField
@@ -803,6 +1019,224 @@ const Avaliacoes = () => {
           <Button variant="contained" onClick={salvarAvaliacao} startIcon={<Assessment />}>
             Salvar Avaliação
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de Importação */}
+      <Dialog 
+        open={openImportModal} 
+        onClose={handleCloseImportModal}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Upload />
+            <Typography variant="h6">Importar Avaliações em Lote</Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent>
+          <Tabs 
+            value={importTabValue} 
+            onChange={(e, newValue) => setImportTabValue(newValue)}
+            sx={{ mb: 3 }}
+          >
+            <Tab label="Gerar Template" />
+            <Tab label="Importar Arquivo" />
+          </Tabs>
+
+          {/* Aba 0: Gerar Template */}
+          {importTabValue === 0 && (
+            <Box>
+              <Alert severity="info" sx={{ mb: 3 }}>
+                <strong>Como funciona:</strong>
+                <br />
+                1. Selecione a turma e disciplina nos filtros acima
+                <br />
+                2. Clique para baixar o template com todos os alunos da turma
+                <br />
+                3. Preencha as notas de PC1, PC2 e EAC (de 0 a 10, ex: 8,5) para cada aluno
+                <br />
+                4. Você pode adicionar múltiplas habilidades separadas por vírgula em cada ponto de corte
+                <br />
+                5. Importe o arquivo preenchido na aba "Importar Arquivo"
+              </Alert>
+
+              <Paper sx={{ p: 3, bgcolor: 'background.default' }}>
+                <Typography variant="h6" gutterBottom>
+                  📋 Configurações do Template
+                </Typography>
+                
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12}>
+                    <Alert severity="warning">
+                      <strong>Filtros Selecionados:</strong>
+                      <br />
+                      Turma: {turmas.find(t => t._id === filtros.turma)?.nome || 'Não selecionada'}
+                      <br />
+                      Disciplina: {disciplinas.find(d => d._id === filtros.disciplina)?.nome || 'Não selecionada'}
+                      <br />
+                      Trimestre: {filtros.trimestre}º Trimestre
+                      <br />
+                      Ano: {filtros.ano}
+                    </Alert>
+                  </Grid>
+                </Grid>
+
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  O template incluirá:
+                </Typography>
+                <List dense>
+                  <ListItem>
+                    <ListItemText 
+                      primary="✓ Todos os alunos da turma selecionada" 
+                      secondary="Matrícula e nome de cada aluno"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="✓ Colunas para PC1, PC2 e EAC" 
+                      secondary="Nota (0-10 com uma casa decimal, ex: 8,5), data e habilidades"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="✓ Lista de habilidades disponíveis" 
+                      secondary="Códigos de habilidades da disciplina (em aba separada no Excel)"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="✓ Instruções detalhadas" 
+                      secondary="Como preencher múltiplas habilidades: EF06MA01,EF06MA02"
+                    />
+                  </ListItem>
+                </List>
+
+                <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    startIcon={<Download />}
+                    onClick={() => downloadTemplate('excel')}
+                    disabled={!filtros.turma || !filtros.disciplina}
+                  >
+                    Baixar Template Excel (.xlsx)
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<Download />}
+                    onClick={() => downloadTemplate('csv')}
+                    disabled={!filtros.turma || !filtros.disciplina}
+                  >
+                    Baixar Template CSV
+                  </Button>
+                </Box>
+              </Paper>
+            </Box>
+          )}
+
+          {/* Aba 1: Importar Arquivo */}
+          {importTabValue === 1 && (
+            <Box>
+              <Alert severity="info" sx={{ mb: 3 }}>
+                <strong>Formatos aceitos:</strong> Excel (.xlsx, .xls) ou CSV
+                <br />
+                <strong>Sistema:</strong> Pontos de Corte (PC1, PC2, EAC) - Notas de 0 a 10
+                <br />
+                <strong>Habilidades:</strong> Separe múltiplas habilidades por vírgula (ex: EF06MA01,EF06MA02)
+              </Alert>
+
+              <Paper 
+                sx={{ 
+                  p: 4, 
+                  textAlign: 'center', 
+                  bgcolor: 'background.default',
+                  border: '2px dashed',
+                  borderColor: 'primary.main',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: 'action.hover' }
+                }}
+                component="label"
+              >
+                <input
+                  type="file"
+                  hidden
+                  accept=".csv,.xlsx,.xls"
+                  onChange={handleFileUpload}
+                  disabled={importLoading}
+                />
+                <CloudUpload sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  Clique para selecionar o arquivo
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  ou arraste e solte aqui
+                </Typography>
+                <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                  Formatos: .xlsx, .xls, .csv
+                </Typography>
+              </Paper>
+
+              {importLoading && (
+                <Box sx={{ mt: 3, textAlign: 'center' }}>
+                  <LinearProgress />
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    Processando arquivo...
+                  </Typography>
+                </Box>
+              )}
+
+              {importData.length > 0 && !importLoading && (
+                <Box sx={{ mt: 3 }}>
+                  <Alert severity="success" sx={{ mb: 2 }}>
+                    {importData.length} avaliações prontas para importar
+                  </Alert>
+
+                  <Paper sx={{ maxHeight: 300, overflow: 'auto', p: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Preview dos dados:
+                    </Typography>
+                    <List dense>
+                      {importData.slice(0, 10).map((item, index) => (
+                        <ListItem key={index} divider>
+                          <ListItemText
+                            primary={`${item.aluno_nome} (${item.matricula_aluno})`}
+                            secondary={`PC1: ${item.pc1_nota || 0} | PC2: ${item.pc2_nota || 0} | EAC: ${item.eac_nota || 0} | Nota Final: ${Math.max((parseFloat(item.pc1_nota) || 0) + (parseFloat(item.pc2_nota) || 0), (parseFloat(item.eac_nota) || 0))}`}
+                          />
+                        </ListItem>
+                      ))}
+                      {importData.length > 10 && (
+                        <ListItem>
+                          <ListItemText 
+                            secondary={`... e mais ${importData.length - 10} avaliações`}
+                          />
+                        </ListItem>
+                      )}
+                    </List>
+                  </Paper>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={handleCloseImportModal} disabled={importLoading}>
+            Cancelar
+          </Button>
+          {importTabValue === 1 && importData.length > 0 && (
+            <Button
+              variant="contained"
+              onClick={handleImportAvaliacoes}
+              disabled={importLoading}
+              startIcon={<Upload />}
+            >
+              {importLoading ? 'Importando...' : `Importar ${importData.length} Avaliações`}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Container>

@@ -32,6 +32,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  Divider,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -44,6 +45,7 @@ import {
   Warning,
   Upload,
   Download,
+  Delete,
 } from '@mui/icons-material';
 import { frequenciaService, turmaService, disciplinaService, alunoService } from '../services';
 import { toast } from 'react-toastify';
@@ -72,10 +74,9 @@ const Frequencias = () => {
   const [alunos, setAlunos] = useState([]);
   const [frequencias, setFrequencias] = useState({});
   
-  // Filtros
+  // Filtros (removido disciplina - agora é visão geral)
   const [filtros, setFiltros] = useState({
     turma: '',
-    disciplina: '',
     data: new Date().toISOString().split('T')[0],
   });
 
@@ -83,6 +84,12 @@ const Frequencias = () => {
   const [presencas, setPresencas] = useState({});
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
+
+  // Filtro por card (para filtrar alunos visualmente)
+  const [filtroCard, setFiltroCard] = useState('todos'); // todos, presentes, faltas, justificadas
+
+  // Estatísticas reais do backend
+  const [estatisticas, setEstatisticas] = useState(null);
 
   // Dialog de justificativa
   const [dialogJustificativa, setDialogJustificativa] = useState(false);
@@ -98,7 +105,7 @@ const Frequencias = () => {
   const [turmaSelecionadaTemplate, setTurmaSelecionadaTemplate] = useState('');
   const [disciplinaSelecionadaTemplate, setDisciplinaSelecionadaTemplate] = useState('');
 
-  // Estatísticas
+  // Estatísticas locais (calculadas do estado)
   const [stats, setStats] = useState({
     total: 0,
     presentes: 0,
@@ -112,11 +119,11 @@ const Frequencias = () => {
   }, []);
 
   useEffect(() => {
-    if (filtros.turma && filtros.disciplina && filtros.data) {
+    if (filtros.turma && filtros.data) {
       loadAlunos();
-      loadFrequencia();
+      loadEstatisticas();
     }
-  }, [filtros.turma, filtros.disciplina, filtros.data]);
+  }, [filtros.turma, filtros.data]);
 
   useEffect(() => {
     calcularStats();
@@ -145,10 +152,33 @@ const Frequencias = () => {
       setLoading(true);
       const data = await alunoService.getAll({ turma: filtros.turma });
       setAlunos(data);
+      
+      // Inicializar presenças como presente para todos
+      const presencasInicial = {};
+      data.forEach(aluno => {
+        presencasInicial[aluno._id] = 'presente';
+      });
+      setPresencas(presencasInicial);
     } catch (error) {
       toast.error('Erro ao carregar alunos');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadEstatisticas = async () => {
+    try {
+      if (!filtros.turma || !filtros.data) return;
+      
+      const data = await frequenciaService.getEstatisticasTurma(filtros.turma, {
+        data: filtros.data,
+        ano: new Date(filtros.data).getFullYear()
+      });
+      
+      setEstatisticas(data);
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
+      setEstatisticas(null);
     }
   };
 
@@ -207,20 +237,46 @@ const Frequencias = () => {
       
       const turma = turmas.find(t => t._id === filtros.turma);
       
-      await frequenciaService.registrarChamadaTurma(filtros.turma, {
+      // Usar a nova função que salva em TODAS as disciplinas
+      await frequenciaService.registrarChamadaGeral(filtros.turma, {
         data: filtros.data,
-        disciplina: filtros.disciplina,
-        professor: turma?.disciplinas?.find(d => d.disciplina === filtros.disciplina)?.professor,
         periodo: turma?.turno || 'matutino',
         presencas
       });
       
-      toast.success('Frequência salva com sucesso!');
-      loadFrequencia();
+      toast.success('Frequência salva com sucesso em todas as disciplinas!');
+      loadEstatisticas(); // Recarregar estatísticas
     } catch (error) {
       toast.error('Erro ao salvar frequência: ' + (error.response?.data?.message || error.message));
     } finally {
       setSalvando(false);
+    }
+  };
+
+  const handleResetRegistros = async () => {
+    const confirmacao = window.confirm(
+      `⚠️ ATENÇÃO!\n\nDeseja DELETAR todos os registros de frequência desta turma para o dia ${new Date(filtros.data).toLocaleDateString('pt-BR')}?\n\nEsta ação NÃO pode ser desfeita!`
+    );
+    
+    if (!confirmacao) return;
+    
+    try {
+      setLoading(true);
+      await frequenciaService.resetarDia(filtros.turma, filtros.data);
+      toast.success('Registros resetados com sucesso!');
+      
+      // Reinicializar presenças
+      const presencasInicial = {};
+      alunos.forEach(aluno => {
+        presencasInicial[aluno._id] = 'presente';
+      });
+      setPresencas(presencasInicial);
+      
+      loadEstatisticas();
+    } catch (error) {
+      toast.error('Erro ao resetar registros: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -516,8 +572,8 @@ const Frequencias = () => {
 
       {/* Filtros */}
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={4}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
             <TextField
               select
               fullWidth
@@ -534,25 +590,7 @@ const Frequencias = () => {
             </TextField>
           </Grid>
 
-          <Grid item xs={12} md={4}>
-            <TextField
-              select
-              fullWidth
-              label="Disciplina"
-              value={filtros.disciplina}
-              onChange={(e) => setFiltros({ ...filtros, disciplina: e.target.value })}
-              disabled={!filtros.turma}
-            >
-              <MenuItem value="">Selecione uma disciplina</MenuItem>
-              {disciplinas.map(disciplina => (
-                <MenuItem key={disciplina._id} value={disciplina._id}>
-                  {disciplina.nome}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={6}>
             <TextField
               fullWidth
               type="date"
@@ -565,67 +603,185 @@ const Frequencias = () => {
         </Grid>
       </Paper>
 
-      {/* Estatísticas */}
-      {filtros.turma && filtros.disciplina && alunos.length > 0 && (
+      {/* Estatísticas - Cards Clicáveis */}
+      {filtros.turma && alunos.length > 0 && estatisticas && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={3}>
-            <Card sx={{ bgcolor: 'primary.main', color: 'white' }}>
+          {/* Card 1 - Total de Alunos */}
+          <Grid item xs={12} sm={6} md={2.4}>
+            <Card 
+              sx={{ 
+                bgcolor: '#0D47A1', // Azul marinho forte
+                color: 'white',
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                border: filtroCard === 'todos' ? '3px solid #FFD700' : 'none',
+                '&:hover': { 
+                  transform: 'scale(1.05)',
+                  boxShadow: 6
+                }
+              }}
+              onClick={() => setFiltroCard('todos')}
+            >
               <CardContent>
-                <Typography variant="h3" align="center">{stats.total}</Typography>
-                <Typography variant="body2" align="center">Total de Alunos</Typography>
+                <Typography variant="h2" sx={{ color: '#FFF', fontWeight: 700 }} align="center">
+                  {estatisticas.totalAlunos}
+                </Typography>
+                <Typography variant="body1" align="center">Total de Alunos</Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} md={3}>
-            <Card sx={{ bgcolor: 'success.main', color: 'white' }}>
+          {/* Card 2 - Presentes */}
+          <Grid item xs={12} sm={6} md={2.4}>
+            <Card 
+              sx={{ 
+                bgcolor: 'success.main',
+                color: 'white',
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                border: filtroCard === 'presentes' ? '3px solid #FFD700' : 'none',
+                '&:hover': { 
+                  transform: 'scale(1.05)',
+                  boxShadow: 6
+                }
+              }}
+              onClick={() => setFiltroCard('presentes')}
+            >
               <CardContent>
-                <Typography variant="h3" align="center">{stats.presentes}</Typography>
-                <Typography variant="body2" align="center">Presentes</Typography>
+                <Typography variant="h2" align="center" fontWeight="700">
+                  {stats.presentes}
+                </Typography>
+                <Typography variant="body1" align="center">Presentes Hoje</Typography>
+                <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                <Typography variant="caption" align="center" display="block">
+                  Acum: {estatisticas.acumulado.presentes} ({estatisticas.acumulado.percentualPresenca}%)
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} md={3}>
-            <Card sx={{ bgcolor: 'error.main', color: 'white' }}>
+          {/* Card 3 - Faltas */}
+          <Grid item xs={12} sm={6} md={2.4}>
+            <Card 
+              sx={{ 
+                bgcolor: 'error.main',
+                color: 'white',
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                border: filtroCard === 'faltas' ? '3px solid #FFD700' : 'none',
+                '&:hover': { 
+                  transform: 'scale(1.05)',
+                  boxShadow: 6
+                }
+              }}
+              onClick={() => setFiltroCard('faltas')}
+            >
               <CardContent>
-                <Typography variant="h3" align="center">{stats.faltas}</Typography>
-                <Typography variant="body2" align="center">Faltas</Typography>
+                <Typography variant="h2" align="center" fontWeight="700">
+                  {Object.values(presencas).filter(p => p === 'falta').length}
+                </Typography>
+                <Typography variant="body1" align="center">Faltas Hoje</Typography>
+                <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                <Typography variant="caption" align="center" display="block">
+                  Acum: {estatisticas.acumulado.faltas}
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} md={3}>
-            <Card sx={{ bgcolor: statusGeral.color + '.main', color: 'white' }}>
+          {/* Card 4 - Justificadas - NOVO */}
+          <Grid item xs={12} sm={6} md={2.4}>
+            <Card 
+              sx={{ 
+                bgcolor: 'warning.main',
+                color: 'white',
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                border: filtroCard === 'justificadas' ? '3px solid #FFD700' : 'none',
+                '&:hover': { 
+                  transform: 'scale(1.05)',
+                  boxShadow: 6
+                }
+              }}
+              onClick={() => setFiltroCard('justificadas')}
+            >
               <CardContent>
-                <Typography variant="h3" align="center">{stats.percentual}%</Typography>
-                <Typography variant="body2" align="center">{statusGeral.label}</Typography>
+                <Typography variant="h2" align="center" fontWeight="700">
+                  {Object.values(presencas).filter(p => p === 'falta-justificada').length}
+                </Typography>
+                <Typography variant="body1" align="center">Justificadas Hoje</Typography>
+                <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                <Typography variant="caption" align="center" display="block">
+                  Acum: {estatisticas.acumulado.justificadas}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Card 5 - Percentual Geral com Cor Dinâmica */}
+          <Grid item xs={12} sm={12} md={2.4}>
+            <Card 
+              sx={{ 
+                bgcolor: 
+                  estatisticas.percentualGeral >= 85 ? 'success.main' :
+                  estatisticas.percentualGeral >= 75 ? 'warning.main' :
+                  'error.main',
+                color: 'white',
+              }}
+            >
+              <CardContent>
+                <Typography variant="h2" align="center" fontWeight="700">
+                  {estatisticas.percentualGeral}%
+                </Typography>
+                <Typography variant="body1" align="center">
+                  {estatisticas.classificacao === 'adequado' ? '✅ Adequado' : 
+                   estatisticas.classificacao === 'atencao' ? '⚠️ Atenção' : 
+                   '🚨 Crítico'}
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
       )}
 
-      {/* Tabela de Alunos */}
-      {filtros.turma && filtros.disciplina && alunos.length > 0 && (
+      {/* Tabela de Alunos com Filtro */}
+      {filtros.turma && alunos.length > 0 && (
         <>
           {loading && <LinearProgress sx={{ mb: 2 }} />}
           
           <Paper>
-            <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">
-                Lista de Presença - {new Date(filtros.data).toLocaleDateString('pt-BR')}
-              </Typography>
+            <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
               <Box>
+                <Typography variant="h6">
+                  Lista de Presença - {new Date(filtros.data).toLocaleDateString('pt-BR')}
+                </Typography>
+                {filtroCard !== 'todos' && (
+                  <Chip 
+                    label={`Filtro: ${
+                      filtroCard === 'presentes' ? 'Presentes' :
+                      filtroCard === 'faltas' ? 'Faltas' :
+                      'Justificadas'
+                    }`}
+                    color="primary"
+                    size="small"
+                    onDelete={() => setFiltroCard('todos')}
+                    sx={{ mt: 1 }}
+                  />
+                )}
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button
-                  startIcon={<Refresh />}
-                  onClick={loadFrequencia}
-                  sx={{ mr: 1 }}
+                  variant="outlined"
+                  color="error"
+                  startIcon={<Delete />}
+                  onClick={handleResetRegistros}
+                  disabled={!filtros.turma || !filtros.data || salvando}
                 >
-                  Atualizar
+                  Resetar
                 </Button>
                 <Button
                   variant="contained"
+                  color="primary"
                   startIcon={<Save />}
                   onClick={handleSalvarChamada}
                   disabled={salvando}
@@ -646,7 +802,16 @@ const Frequencias = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {alunos.map(aluno => {
+                  {alunos
+                    .filter(aluno => {
+                      if (filtroCard === 'todos') return true;
+                      const status = presencas[aluno._id] || 'presente';
+                      if (filtroCard === 'presentes') return status === 'presente';
+                      if (filtroCard === 'faltas') return status === 'falta';
+                      if (filtroCard === 'justificadas') return status === 'falta-justificada';
+                      return true;
+                    })
+                    .map(aluno => {
                     const status = presencas[aluno._id] || 'presente';
                     const statusConfig = STATUS_COLORS[status];
                     const IconeStatus = statusConfig.icon;
