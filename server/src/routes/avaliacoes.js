@@ -4,6 +4,8 @@ const {
   getAvaliacoes,
   getAvaliacaoById,
   createAvaliacao,
+  atualizarPontosCorte,
+  getAvaliacoesPorTurmaDisciplina,
   adicionarNota,
   getMediaAnual,
   updateAvaliacao,
@@ -21,6 +23,10 @@ router.use(auth);
 router.route('/')
   .get(getAvaliacoes)
   .post(isProfessorOrAdmin, createAvaliacao);
+
+// NOVAS ROTAS - Sistema de Pontos de Corte
+router.get('/turma/:turmaId/disciplina/:disciplinaId', getAvaliacoesPorTurmaDisciplina);
+router.put('/:id/pontos-corte', isProfessorOrAdmin, atualizarPontosCorte);
 
 router.post('/importar', isProfessorOrAdmin, importarAvaliacoes);
 router.get('/template/:turmaId', isProfessorOrAdmin, gerarTemplatePorTurma);
