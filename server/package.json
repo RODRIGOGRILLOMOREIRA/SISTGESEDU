@@ -14,6 +14,7 @@
     "criar-turmas": "node scripts/criar-turmas.js",
     "gerar-matriculas": "node scripts/gerar-matriculas.js",
     "verificar": "node scripts/verificar-saude.js",
+    "resetar-frequencias": "node scripts/resetar-frequencias.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

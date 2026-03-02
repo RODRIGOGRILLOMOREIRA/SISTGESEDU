@@ -76,6 +76,31 @@ npm run verificar
 - 🟡 Amarelo: 80-99% da capacidade
 - 🔴 Vermelho: 100% da capacidade (turma cheia)
 
+#### 5. Resetar Frequências
+Remove TODOS os registros de frequência do banco de dados:
+
+```bash
+npm run resetar-frequencias
+```
+
+**⚠️ ATENÇÃO:**
+- Esta operação é **IRREVERSÍVEL**
+- Deleta TODOS os registros de frequência de todas as turmas
+- Requer confirmação digitando "CONFIRMAR"
+- Use apenas quando precisar começar do zero
+
+**Quando usar:**
+- Fim de período letivo
+- Testes de funcionalidade
+- Correção de dados em massa incorretos
+- Reset geral do sistema
+
+**Saída do script:**
+- Quantos registros foram encontrados
+- Confirmação interativa
+- Estatísticas de registros deletados
+- Status final da coleção
+
 ## Fluxo Recomendado de Setup
 
 ### Primeira vez (ambiente novo):
@@ -111,6 +136,32 @@ npm run verificar
 npm run dev
 ```
 
+### Manutenção de dados:
+
+```bash
+# Resetar todas as frequências (requer confirmação)
+npm run resetar-frequencias
+
+# Verificar estado após reset
+npm run verificar
+
+# Gerar novas matrículas para novos alunos
+npm run gerar-matriculas
+```
+
+### Início de novo período letivo:
+
+```bash
+# 1. Resetar frequências do período anterior
+npm run resetar-frequencias
+
+# 2. Verificar integridade dos dados
+npm run verificar
+
+# 3. Preparar para novos registros
+# (As avaliações e turmas continuam mantidas)
+```
+
 ## Resolução de Problemas
 
 ### Erro: "Coleção não encontrada"
@@ -144,6 +195,49 @@ npm run verificar
    - Excluir avaliações antigas
    - Arquivar turmas de anos anteriores
    - Fazer upgrade do plano no MongoDB Atlas
+
+### Preciso recuperar dados de frequência deletados
+⚠️ **Não é possível!** O script de reset é irreversível.
+
+**Prevenção:**
+- Sempre faça backup antes de resetar dados
+- Use o MongoDB Atlas para criar snapshots
+- Documente quando e por que está resetando
+
+## Segurança e Boas Práticas
+
+### ⚠️ Comandos Destrutivos
+
+Os seguintes comandos **DELETAM dados** e requerem atenção:
+
+1. **`npm run resetar-frequencias`**
+   - ❌ Deleta TODAS as frequências
+   - ✅ Requer confirmação "CONFIRMAR"
+   - 📋 Documente o motivo do reset
+
+### 🔒 Backup Recomendado
+
+Antes de operações destrutivas:
+
+1. **MongoDB Atlas (recomendado):**
+   - Vá em Database > Cluster > Backup
+   - Faça um snapshot manual
+   - Ou configure backups automáticos
+
+2. **Export manual:**
+   ```bash
+   # No MongoDB Atlas, use a ferramenta de export
+   # Ou configure mongoexport localmente
+   ```
+
+### 📝 Log de Operações
+
+Sempre documente:
+- Data e hora
+- Usuário responsável
+- Motivo da operação
+- Quantidade de registros afetados
+- Status antes e depois
 
 ## Manutenção Regular
 

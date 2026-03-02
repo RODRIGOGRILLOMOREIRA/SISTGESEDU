@@ -2,6 +2,40 @@ const Frequencia = require('../models/Frequencia');
 const Aluno = require('../models/Aluno');
 const { paginate, paginatedResponse } = require('../utils/helpers');
 
+/**
+ * Converte uma string de data no formato 'YYYY-MM-DD' para um objeto Date
+ * garantindo que seja sempre o início do dia em UTC, evitando problemas de timezone
+ * @param {string} dataString - Data no formato 'YYYY-MM-DD'
+ * @returns {Date} - Objeto Date no início do dia UTC
+ */
+const parseDataUTC = (dataString) => {
+  if (!dataString) return null;
+  const [ano, mes, dia] = dataString.split('-').map(Number);
+  return new Date(Date.UTC(ano, mes - 1, dia, 0, 0, 0, 0));
+};
+
+/**
+ * Extrai o ano de uma string de data 'YYYY-MM-DD'
+ * @param {string} dataString - Data no formato 'YYYY-MM-DD'
+ * @returns {number} - Ano
+ */
+const extrairAno = (dataString) => {
+  if (!dataString) return null;
+  return parseInt(dataString.split('-')[0]);
+};
+
+/**
+ * Obtém a data de hoje no formato 'YYYY-MM-DD' sem problemas de timezone
+ * @returns {string} - Data atual no formato 'YYYY-MM-DD'
+ */
+const getDataHoje = () => {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+  const dia = String(hoje.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+};
+
 // @desc    Listar frequências com filtros
 // @route   GET /api/frequencias
 exports.getFrequencias = async (req, res) => {
@@ -13,7 +47,7 @@ exports.getFrequencias = async (req, res) => {
     if (aluno) filter.aluno = aluno;
     if (turma) filter.turma = turma;
     if (disciplina) filter.disciplina = disciplina;
-    if (data) filter.data = new Date(data);
+    if (data) filter.data = parseDataUTC(data);
     if (status) filter.status = status;
     if (ano) filter.ano = parseInt(ano);
     if (mes) filter.mes = parseInt(mes);
@@ -57,7 +91,7 @@ exports.registrarFrequencia = async (req, res) => {
         const existente = await Frequencia.findOne({
           aluno,
           disciplina,
-          data: new Date(data)
+          data: parseDataUTC(data)
         });
         
         if (existente) {
@@ -73,11 +107,11 @@ exports.registrarFrequencia = async (req, res) => {
             turma,
             disciplina,
             professor,
-            data: new Date(data),
+            data: parseDataUTC(data),
             status: status || 'presente',
             observacao,
             periodo,
-            ano: new Date(data).getFullYear(),
+            ano: extrairAno(data),
             registradoPor: req.user?._id
           });
           frequenciasCriadas.push(frequencia);
@@ -132,10 +166,10 @@ exports.registrarChamadaTurma = async (req, res) => {
         turma: turmaId,
         disciplina,
         professor,
-        data: new Date(data),
+        data: parseDataUTC(data),
         status,
         periodo,
-        ano: new Date(data).getFullYear(),
+        ano: extrairAno(data),
         registradoPor: req.user?._id
       };
       
@@ -143,7 +177,7 @@ exports.registrarChamadaTurma = async (req, res) => {
       const existente = await Frequencia.findOne({
         aluno: aluno._id,
         disciplina,
-        data: new Date(data)
+        data: parseDataUTC(data)
       });
       
       if (existente) {
@@ -224,7 +258,7 @@ exports.getFrequenciaTurmaDia = async (req, res) => {
     
     const filter = {
       turma: turmaId,
-      data: new Date(data),
+      data: parseDataUTC(data),
       ativo: true
     };
     
@@ -247,7 +281,7 @@ exports.getFrequenciaTurmaDia = async (req, res) => {
       : 0;
     
     res.json({
-      data: new Date(data),
+      data: parseDataUTC(data),
       resumo,
       frequencias
     });
@@ -490,7 +524,7 @@ exports.gerarTemplatePorTurma = async (req, res) => {
     }
     
     // Data padrão: hoje
-    const dataTemplate = data || new Date().toISOString().split('T')[0];
+    const dataTemplate = data || getDataHoje();
     
     // Gerar template com dados dos alunos
     const template = alunos.map(aluno => ({
@@ -629,7 +663,7 @@ exports.importarFrequencias = async (req, res) => {
         }
         
         // Validar data
-        const data = item.data ? new Date(item.data) : null;
+        const data = item.data ? parseDataUTC(item.data) : null;
         if (!data || isNaN(data.getTime())) {
           resultados.erros++;
           resultados.detalhes.push({
@@ -691,7 +725,7 @@ exports.importarFrequencias = async (req, res) => {
           status: status,
           observacao: item.observacao || '',
           periodo: item.periodo?.toLowerCase() || 'matutino',
-          ano: data.getFullYear()
+          ano: data.getUTCFullYear()
         };
         
         if (professorId) {
@@ -770,12 +804,12 @@ exports.getEstatisticasTurma = async (req, res) => {
     }
     
     const totalAlunos = turma.alunos.length;
-    const dataReferencia = data || new Date().toISOString().split('T')[0];
+    const dataReferencia = data || getDataHoje();
     
     // Filtro para o dia específico
     const filtroHoje = {
       turma: turmaId,
-      data: new Date(dataReferencia),
+      data: parseDataUTC(dataReferencia),
       ativo: true
     };
     
@@ -859,7 +893,7 @@ exports.resetarDia = async (req, res) => {
     
     const resultado = await Frequencia.deleteMany({
       turma,
-      data: new Date(data)
+      data: parseDataUTC(data)
     });
     
     res.json({
@@ -903,10 +937,10 @@ exports.registrarChamadaTurmaGeral = async (req, res) => {
             turma: turmaId,
             disciplina: disc.disciplina._id,
             professor: disc.professor._id,
-            data: new Date(data),
+            data: parseDataUTC(data),
             status,
             periodo: periodo || turma.turno || 'matutino',
-            ano: new Date(data).getFullYear(),
+            ano: extrairAno(data),
             registradoPor: req.user?._id
           };
           
@@ -914,7 +948,7 @@ exports.registrarChamadaTurmaGeral = async (req, res) => {
           const existente = await Frequencia.findOne({
             aluno: aluno._id,
             disciplina: disc.disciplina._id,
-            data: new Date(data)
+            data: parseDataUTC(data)
           });
           
           if (existente) {

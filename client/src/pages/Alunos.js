@@ -52,6 +52,15 @@ import { Person as AlunosIcon } from '@mui/icons-material';
 import { useSchool } from '../context/SchoolContext';
 
 const Alunos = () => {
+  // Função helper para formatar data sem problemas de timezone
+  const formatarDataLocal = (dataString) => {
+    if (!dataString) return '-';
+    // Se for uma string no formato ISO (com timestamp), extrair apenas a parte da data
+    const dataISO = dataString.split('T')[0];
+    const [ano, mes, dia] = dataISO.split('-');
+    return `${dia}/${mes}/${ano}`;
+  };
+
   const { alunos, turmas, syncData, alunosLoading } = useSchool();
   const [localAlunos, setLocalAlunos] = useState([]);
   const [localTurmas, setLocalTurmas] = useState([]);
@@ -445,9 +454,7 @@ const Alunos = () => {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR');
+    return formatarDataLocal(dateString);
   };
 
   const getInitials = (nome) => {

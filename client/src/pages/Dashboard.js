@@ -27,6 +27,7 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   Badge,
+  Divider,
 } from '@mui/material';
 import {
   AssessmentOutlined,
@@ -92,6 +93,7 @@ const Dashboard = () => {
   const [distribuicaoHabilidades, setDistribuicaoHabilidades] = useState(null);
   const [dashboardFrequencia, setDashboardFrequencia] = useState(null);
   const [frequenciaFiltros, setFrequenciaFiltros] = useState(['todos']);
+  const [habilidadesFiltro, setHabilidadesFiltro] = useState('todos'); // todos, nao-desenvolvido, em-desenvolvimento, desenvolvido, plenamente-desenvolvido
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
@@ -233,10 +235,32 @@ const Dashboard = () => {
     ],
   } : null;
 
-  const chartDataDistribuicaoHabilidades = distribuicaoHabilidades ? {
-    labels: ['Não Desenvolvido', 'Em Desenvolvimento', 'Desenvolvido', 'Plenamente Desenvolvido'],
-    datasets: [
-      {
+  const chartDataDistribuicaoHabilidades = distribuicaoHabilidades ? (() => {
+    const niveis = {
+      'nao-desenvolvido': { label: 'Não Desenvolvido', bg: 'rgba(244, 67, 54, 0.6)', border: 'rgba(244, 67, 54, 1)' },
+      'em-desenvolvimento': { label: 'Em Desenvolvimento', bg: 'rgba(255, 152, 0, 0.6)', border: 'rgba(255, 152, 0, 1)' },
+      'desenvolvido': { label: 'Desenvolvido', bg: 'rgba(33, 150, 243, 0.6)', border: 'rgba(33, 150, 243, 1)' },
+      'plenamente-desenvolvido': { label: 'Plenamente Desenvolvido', bg: 'rgba(76, 175, 80, 0.6)', border: 'rgba(76, 175, 80, 1)' },
+    };
+
+    // Se há filtro ativo, mostra apenas o nível selecionado
+    if (habilidadesFiltro !== 'todos') {
+      const nivelInfo = niveis[habilidadesFiltro];
+      return {
+        labels: [nivelInfo.label],
+        datasets: [{
+          data: [distribuicaoHabilidades.distribuicao?.[habilidadesFiltro]?.quantidade || 0],
+          backgroundColor: [nivelInfo.bg],
+          borderColor: [nivelInfo.border],
+          borderWidth: 1,
+        }],
+      };
+    }
+
+    // Sem filtro, mostra todos os níveis
+    return {
+      labels: ['Não Desenvolvido', 'Em Desenvolvimento', 'Desenvolvido', 'Plenamente Desenvolvido'],
+      datasets: [{
         data: [
           distribuicaoHabilidades.distribuicao?.['nao-desenvolvido']?.quantidade || 0,
           distribuicaoHabilidades.distribuicao?.['em-desenvolvimento']?.quantidade || 0,
@@ -256,9 +280,9 @@ const Dashboard = () => {
           'rgba(76, 175, 80, 1)',
         ],
         borderWidth: 1,
-      },
-    ],
-  } : null;
+      }],
+    };
+  })() : null;
 
   return (
     <Container maxWidth="xl">
@@ -422,7 +446,16 @@ const Dashboard = () => {
                       <Typography sx={{ opacity: 0.9, fontSize: '0.875rem' }} gutterBottom>
                         Total de Avaliações
                       </Typography>
-                      <Typography variant="h4" fontWeight="bold">{estatisticas.totalAvaliacoes}</Typography>
+                      <Typography 
+                        variant="h4" 
+                        fontWeight="bold"
+                        sx={{
+                          textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                          WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                        }}
+                      >
+                        {estatisticas.totalAvaliacoes}
+                      </Typography>
                     </Box>
                     <AssessmentOutlined sx={{ fontSize: 48, opacity: 0.3 }} />
                   </Box>
@@ -449,7 +482,16 @@ const Dashboard = () => {
                       <Typography sx={{ opacity: 0.9, fontSize: '0.875rem' }} gutterBottom>
                         Média Geral
                       </Typography>
-                      <Typography variant="h4" fontWeight="bold">{estatisticas.mediaGeral.toFixed(2)}</Typography>
+                      <Typography 
+                        variant="h4" 
+                        fontWeight="bold"
+                        sx={{
+                          textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                          WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                        }}
+                      >
+                        {estatisticas.mediaGeral.toFixed(2)}
+                      </Typography>
                     </Box>
                     <TrendingUpOutlined sx={{ fontSize: 48, opacity: 0.3 }} />
                   </Box>
@@ -476,7 +518,16 @@ const Dashboard = () => {
                       <Typography sx={{ opacity: 0.9, fontSize: '0.875rem' }} gutterBottom>
                         Aprovados
                       </Typography>
-                      <Typography variant="h4" fontWeight="bold">{estatisticas.aprovados}</Typography>
+                      <Typography 
+                        variant="h4" 
+                        fontWeight="bold"
+                        sx={{
+                          textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                          WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                        }}
+                      >
+                        {estatisticas.aprovados}
+                      </Typography>
                     </Box>
                     <CheckCircleOutlined sx={{ fontSize: 48, opacity: 0.3 }} />
                   </Box>
@@ -503,7 +554,16 @@ const Dashboard = () => {
                       <Typography sx={{ opacity: 0.9, fontSize: '0.875rem' }} gutterBottom>
                         % Aprovação
                       </Typography>
-                      <Typography variant="h4" fontWeight="bold">{estatisticas.percentualAprovacao}%</Typography>
+                      <Typography 
+                        variant="h4" 
+                        fontWeight="bold"
+                        sx={{
+                          textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                          WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                        }}
+                      >
+                        {estatisticas.percentualAprovacao}%
+                      </Typography>
                     </Box>
                     <SchoolOutlined sx={{ fontSize: 48, opacity: 0.3 }} />
                   </Box>
@@ -587,6 +647,201 @@ const Dashboard = () => {
           </Paper>
           </Fade>
         </Grid>
+
+        {/* Cards de Habilidades - Clicáveis para filtrar gráficos */}
+        {distribuicaoHabilidades && (
+          <Grid item xs={12}>
+            <Fade in={true} timeout={1050}>
+              <Box>
+                <Typography variant="h6" gutterBottom fontWeight="600" sx={{ mb: 2, px: 1 }}>
+                  📊 Estatísticas de Habilidades
+                </Typography>
+                <Grid container spacing={2}>
+                  {/* Card 1 - Não Desenvolvido (Vermelho) */}
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card 
+                      sx={{ 
+                        bgcolor: 'error.main',
+                        color: 'white',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                        border: habilidadesFiltro === 'nao-desenvolvido' ? '3px solid #FFD700' : 'none',
+                        '&:hover': { 
+                          transform: 'scale(1.05)',
+                          boxShadow: 6
+                        }
+                      }}
+                      onClick={() => setHabilidadesFiltro(
+                        habilidadesFiltro === 'nao-desenvolvido' ? 'todos' : 'nao-desenvolvido'
+                      )}
+                    >
+                      <CardContent>
+                        <Typography 
+                          variant="h3" 
+                          align="center"
+                          sx={{
+                            fontWeight: 700,
+                            textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                            WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {distribuicaoHabilidades.distribuicao?.['nao-desenvolvido']?.quantidade || 0}
+                        </Typography>
+                        <Typography variant="body1" align="center" sx={{ mt: 1 }}>
+                          Não Desenvolvido
+                        </Typography>
+                        <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                        <Typography variant="caption" align="center" display="block" sx={{ opacity: 0.9 }}>
+                          {distribuicaoHabilidades.distribuicao?.['nao-desenvolvido']?.percentual || 0}%
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  {/* Card 2 - Em Desenvolvimento (Amarelo) */}
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card 
+                      sx={{ 
+                        bgcolor: 'warning.main',
+                        color: 'white',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                        border: habilidadesFiltro === 'em-desenvolvimento' ? '3px solid #FFD700' : 'none',
+                        '&:hover': { 
+                          transform: 'scale(1.05)',
+                          boxShadow: 6
+                        }
+                      }}
+                      onClick={() => setHabilidadesFiltro(
+                        habilidadesFiltro === 'em-desenvolvimento' ? 'todos' : 'em-desenvolvimento'
+                      )}
+                    >
+                      <CardContent>
+                        <Typography 
+                          variant="h3" 
+                          align="center"
+                          sx={{
+                            fontWeight: 700,
+                            textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                            WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {distribuicaoHabilidades.distribuicao?.['em-desenvolvimento']?.quantidade || 0}
+                        </Typography>
+                        <Typography variant="body1" align="center" sx={{ mt: 1 }}>
+                          Em Desenvolvimento
+                        </Typography>
+                        <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                        <Typography variant="caption" align="center" display="block" sx={{ opacity: 0.9 }}>
+                          {distribuicaoHabilidades.distribuicao?.['em-desenvolvimento']?.percentual || 0}%
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  {/* Card 3 - Desenvolvido (Verde) */}
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card 
+                      sx={{ 
+                        bgcolor: 'success.main',
+                        color: 'white',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                        border: habilidadesFiltro === 'desenvolvido' ? '3px solid #FFD700' : 'none',
+                        '&:hover': { 
+                          transform: 'scale(1.05)',
+                          boxShadow: 6
+                        }
+                      }}
+                      onClick={() => setHabilidadesFiltro(
+                        habilidadesFiltro === 'desenvolvido' ? 'todos' : 'desenvolvido'
+                      )}
+                    >
+                      <CardContent>
+                        <Typography 
+                          variant="h3" 
+                          align="center"
+                          sx={{
+                            fontWeight: 700,
+                            textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                            WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {distribuicaoHabilidades.distribuicao?.['desenvolvido']?.quantidade || 0}
+                        </Typography>
+                        <Typography variant="body1" align="center" sx={{ mt: 1 }}>
+                          Desenvolvido
+                        </Typography>
+                        <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                        <Typography variant="caption" align="center" display="block" sx={{ opacity: 0.9 }}>
+                          {distribuicaoHabilidades.distribuicao?.['desenvolvido']?.percentual || 0}%
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  {/* Card 4 - Plenamente Desenvolvido (Azul Marinho) */}
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card 
+                      sx={{ 
+                        bgcolor: '#0D47A1',
+                        color: 'white',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                        border: habilidadesFiltro === 'plenamente-desenvolvido' ? '3px solid #FFD700' : 'none',
+                        '&:hover': { 
+                          transform: 'scale(1.05)',
+                          boxShadow: 6
+                        }
+                      }}
+                      onClick={() => setHabilidadesFiltro(
+                        habilidadesFiltro === 'plenamente-desenvolvido' ? 'todos' : 'plenamente-desenvolvido'
+                      )}
+                    >
+                      <CardContent>
+                        <Typography 
+                          variant="h3" 
+                          align="center"
+                          sx={{
+                            fontWeight: 700,
+                            textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                            WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {distribuicaoHabilidades.distribuicao?.['plenamente-desenvolvido']?.quantidade || 0}
+                        </Typography>
+                        <Typography variant="body1" align="center" sx={{ mt: 1 }}>
+                          Plenamente Desenvolvido
+                        </Typography>
+                        <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                        <Typography variant="caption" align="center" display="block" sx={{ opacity: 0.9 }}>
+                          {distribuicaoHabilidades.distribuicao?.['plenamente-desenvolvido']?.percentual || 0}%
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
+
+                {/* Indicador de filtro ativo */}
+                {habilidadesFiltro !== 'todos' && (
+                  <Box sx={{ mt: 2, textAlign: 'center' }}>
+                    <Chip 
+                      label={`Filtro ativo: ${
+                        habilidadesFiltro === 'nao-desenvolvido' ? 'Não Desenvolvido' :
+                        habilidadesFiltro === 'em-desenvolvimento' ? 'Em Desenvolvimento' :
+                        habilidadesFiltro === 'desenvolvido' ? 'Desenvolvido' :
+                        'Plenamente Desenvolvido'
+                      }`}
+                      color="primary"
+                      onDelete={() => setHabilidadesFiltro('todos')}
+                      sx={{ fontWeight: 600 }}
+                    />
+                  </Box>
+                )}
+              </Box>
+            </Fade>
+          </Grid>
+        )}
 
         {/* Gráficos de Habilidades */}
         <Grid item xs={12} md={6}>
@@ -812,40 +1067,128 @@ const Dashboard = () => {
                 {/* Cards de Estatísticas de Frequência */}
                 <Grid container spacing={2} sx={{ mb: 3 }}>
                   <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{ bgcolor: 'primary.main', color: 'white' }}>
+                    <Card 
+                      sx={{ 
+                        bgcolor: '#0D47A1',
+                        color: 'white',
+                        transition: 'all 0.3s',
+                        '&:hover': { 
+                          transform: 'scale(1.05)',
+                          boxShadow: 6
+                        }
+                      }}
+                    >
                       <CardContent>
-                        <Typography variant="caption">Total de Registros</Typography>
-                        <Typography variant="h4">{dashboardFrequencia.totalRegistros}</Typography>
+                        <Typography 
+                          variant="h3" 
+                          align="center"
+                          sx={{
+                            fontWeight: 700,
+                            textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                            WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {dashboardFrequencia.totalRegistros}
+                        </Typography>
+                        <Typography variant="body1" align="center" sx={{ mt: 1 }}>
+                          Total de Registros
+                        </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{ bgcolor: 'success.main', color: 'white' }}>
+                    <Card 
+                      sx={{ 
+                        bgcolor: 'success.main',
+                        color: 'white',
+                        transition: 'all 0.3s',
+                        '&:hover': { 
+                          transform: 'scale(1.05)',
+                          boxShadow: 6
+                        }
+                      }}
+                    >
                       <CardContent>
-                        <Typography variant="caption">Presentes</Typography>
-                        <Typography variant="h4">{dashboardFrequencia.presentes}</Typography>
-                        <Typography variant="caption">
+                        <Typography 
+                          variant="h3" 
+                          align="center"
+                          sx={{
+                            fontWeight: 700,
+                            textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                            WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {dashboardFrequencia.presentes}
+                        </Typography>
+                        <Typography variant="body1" align="center" sx={{ mt: 1 }}>
+                          Presentes
+                        </Typography>
+                        <Typography variant="caption" align="center" display="block" sx={{ opacity: 0.9 }}>
                           ({dashboardFrequencia.percentualPresenca || 0}%)
                         </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{ bgcolor: 'error.main', color: 'white' }}>
+                    <Card 
+                      sx={{ 
+                        bgcolor: 'error.main',
+                        color: 'white',
+                        transition: 'all 0.3s',
+                        '&:hover': { 
+                          transform: 'scale(1.05)',
+                          boxShadow: 6
+                        }
+                      }}
+                    >
                       <CardContent>
-                        <Typography variant="caption">Faltas</Typography>
-                        <Typography variant="h4">{dashboardFrequencia.faltas}</Typography>
-                        <Typography variant="caption">
+                        <Typography 
+                          variant="h3" 
+                          align="center"
+                          sx={{
+                            fontWeight: 700,
+                            textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                            WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {dashboardFrequencia.faltas}
+                        </Typography>
+                        <Typography variant="body1" align="center" sx={{ mt: 1 }}>
+                          Faltas
+                        </Typography>
+                        <Typography variant="caption" align="center" display="block" sx={{ opacity: 0.9 }}>
                           ({dashboardFrequencia.percentualFaltas || 0}%)
                         </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{ bgcolor: 'warning.main', color: 'white' }}>
+                    <Card 
+                      sx={{ 
+                        bgcolor: 'warning.main',
+                        color: 'white',
+                        transition: 'all 0.3s',
+                        '&:hover': { 
+                          transform: 'scale(1.05)',
+                          boxShadow: 6
+                        }
+                      }}
+                    >
                       <CardContent>
-                        <Typography variant="caption">Justificadas</Typography>
-                        <Typography variant="h4">{dashboardFrequencia.faltasJustificadas}</Typography>
+                        <Typography 
+                          variant="h3" 
+                          align="center"
+                          sx={{
+                            fontWeight: 700,
+                            textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                            WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {dashboardFrequencia.faltasJustificadas}
+                        </Typography>
+                        <Typography variant="body1" align="center" sx={{ mt: 1 }}>
+                          Justificadas
+                        </Typography>
                       </CardContent>
                     </Card>
                   </Grid>

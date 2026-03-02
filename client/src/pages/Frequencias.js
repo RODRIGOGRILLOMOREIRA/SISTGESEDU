@@ -69,6 +69,22 @@ const FREQUENCIA_STATUS = {
 };
 
 const Frequencias = () => {
+  // Função helper para formatar data sem problemas de timezone
+  const formatarDataLocal = (dataString) => {
+    if (!dataString) return '';
+    const [ano, mes, dia] = dataString.split('-');
+    return `${dia}/${mes}/${ano}`;
+  };
+
+  // Função helper para obter a data de hoje no formato YYYY-MM-DD sem timezone
+  const getDataHoje = () => {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+  };
+
   const [turmas, setTurmas] = useState([]);
   const [disciplinas, setDisciplinas] = useState([]);
   const [alunos, setAlunos] = useState([]);
@@ -77,7 +93,7 @@ const Frequencias = () => {
   // Filtros (removido disciplina - agora é visão geral)
   const [filtros, setFiltros] = useState({
     turma: '',
-    data: new Date().toISOString().split('T')[0],
+    data: getDataHoje(),
   });
 
   // Estado de presença dos alunos
@@ -170,9 +186,12 @@ const Frequencias = () => {
     try {
       if (!filtros.turma || !filtros.data) return;
       
+      // Extrair ano diretamente da string para evitar problemas de timezone
+      const ano = filtros.data.split('-')[0];
+      
       const data = await frequenciaService.getEstatisticasTurma(filtros.turma, {
         data: filtros.data,
-        ano: new Date(filtros.data).getFullYear()
+        ano: parseInt(ano)
       });
       
       setEstatisticas(data);
@@ -255,7 +274,7 @@ const Frequencias = () => {
 
   const handleResetRegistros = async () => {
     const confirmacao = window.confirm(
-      `⚠️ ATENÇÃO!\n\nDeseja DELETAR todos os registros de frequência desta turma para o dia ${new Date(filtros.data).toLocaleDateString('pt-BR')}?\n\nEsta ação NÃO pode ser desfeita!`
+      `⚠️ ATENÇÃO!\n\nDeseja DELETAR todos os registros de frequência desta turma para o dia ${formatarDataLocal(filtros.data)}?\n\nEsta ação NÃO pode ser desfeita!`
     );
     
     if (!confirmacao) return;
@@ -463,7 +482,7 @@ const Frequencias = () => {
       }
 
       // Template genérico (comportamento anterior)
-      const dataExemplo = new Date().toISOString().split('T')[0];
+      const dataExemplo = getDataHoje();
       
       if (format === 'excel') {
         const ws = XLSX.utils.json_to_sheet([
@@ -623,7 +642,16 @@ const Frequencias = () => {
               onClick={() => setFiltroCard('todos')}
             >
               <CardContent>
-                <Typography variant="h2" sx={{ color: '#FFF', fontWeight: 700 }} align="center">
+                <Typography 
+                  variant="h2" 
+                  sx={{ 
+                    color: '#FFF', 
+                    fontWeight: 700,
+                    textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                    WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                  }} 
+                  align="center"
+                >
                   {estatisticas.totalAlunos}
                 </Typography>
                 <Typography variant="body1" align="center">Total de Alunos</Typography>
@@ -648,7 +676,15 @@ const Frequencias = () => {
               onClick={() => setFiltroCard('presentes')}
             >
               <CardContent>
-                <Typography variant="h2" align="center" fontWeight="700">
+                <Typography 
+                  variant="h2" 
+                  align="center" 
+                  fontWeight="700"
+                  sx={{
+                    textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                    WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                  }}
+                >
                   {stats.presentes}
                 </Typography>
                 <Typography variant="body1" align="center">Presentes Hoje</Typography>
@@ -677,7 +713,15 @@ const Frequencias = () => {
               onClick={() => setFiltroCard('faltas')}
             >
               <CardContent>
-                <Typography variant="h2" align="center" fontWeight="700">
+                <Typography 
+                  variant="h2" 
+                  align="center" 
+                  fontWeight="700"
+                  sx={{
+                    textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                    WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                  }}
+                >
                   {Object.values(presencas).filter(p => p === 'falta').length}
                 </Typography>
                 <Typography variant="body1" align="center">Faltas Hoje</Typography>
@@ -706,7 +750,15 @@ const Frequencias = () => {
               onClick={() => setFiltroCard('justificadas')}
             >
               <CardContent>
-                <Typography variant="h2" align="center" fontWeight="700">
+                <Typography 
+                  variant="h2" 
+                  align="center" 
+                  fontWeight="700"
+                  sx={{
+                    textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                    WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                  }}
+                >
                   {Object.values(presencas).filter(p => p === 'falta-justificada').length}
                 </Typography>
                 <Typography variant="body1" align="center">Justificadas Hoje</Typography>
@@ -719,7 +771,7 @@ const Frequencias = () => {
           </Grid>
 
           {/* Card 5 - Percentual Geral com Cor Dinâmica */}
-          <Grid item xs={12} sm={12} md={2.4}>
+          <Grid item xs={12} sm={6} md={2.4}>
             <Card 
               sx={{ 
                 bgcolor: 
@@ -727,10 +779,23 @@ const Frequencias = () => {
                   estatisticas.percentualGeral >= 75 ? 'warning.main' :
                   'error.main',
                 color: 'white',
+                transition: 'all 0.3s',
+                '&:hover': { 
+                  transform: 'scale(1.05)',
+                  boxShadow: 6
+                }
               }}
             >
               <CardContent>
-                <Typography variant="h2" align="center" fontWeight="700">
+                <Typography 
+                  variant="h2" 
+                  align="center" 
+                  fontWeight="700"
+                  sx={{
+                    textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
+                    WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
+                  }}
+                >
                   {estatisticas.percentualGeral}%
                 </Typography>
                 <Typography variant="body1" align="center">
@@ -753,7 +818,7 @@ const Frequencias = () => {
             <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
               <Box>
                 <Typography variant="h6">
-                  Lista de Presença - {new Date(filtros.data).toLocaleDateString('pt-BR')}
+                  Lista de Presença - {formatarDataLocal(filtros.data)}
                 </Typography>
                 {filtroCard !== 'todos' && (
                   <Chip 
