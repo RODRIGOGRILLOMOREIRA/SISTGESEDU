@@ -41,3 +41,19 @@ prisma/migrations/
 
 # OS
 Thumbs.db
+
+# ========================================
+# Limpeza de Estrutura: Versões Antigas
+# ========================================
+# Pastas de versões antigas do projeto (mantidas localmente para backup)
+backend/
+frontend/
+
+# Documentação dispersa na raiz (agora organizada em sistgesedu/docs/)
+/*.md
+!README.md
+LEIA-ME.txt
+TESTE-CONFIGURACOES.md
+
+# Projetos auxiliares
+PROJETO ANALIZADOR DE NOTAS E HABILIDADES/
