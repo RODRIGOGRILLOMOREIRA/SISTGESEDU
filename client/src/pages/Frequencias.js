@@ -94,6 +94,9 @@ const Frequencias = () => {
   const [filtros, setFiltros] = useState({
     turma: '',
     data: getDataHoje(),
+    dataInicio: '', // Novo: filtro de período
+    dataFim: '',    // Novo: filtro de período
+    tipoPeriodo: 'diario', // diario, semanal, mensal, trimestral
   });
 
   // Estado de presença dos alunos
@@ -106,6 +109,14 @@ const Frequencias = () => {
 
   // Estatísticas reais do backend
   const [estatisticas, setEstatisticas] = useState(null);
+  
+  // Estatísticas por período (novo)
+  const [estatisticasPeriodo, setEstatisticasPeriodo] = useState(null);
+  
+  // Modal de frequência individual (novo)
+  const [openModalFrequenciaIndividual, setOpenModalFrequenciaIndividual] = useState(false);
+  const [alunoSelecionado, setAlunoSelecionado] = useState(null);
+  const [frequenciaAcumuladaAluno, setFrequenciaAcumuladaAluno] = useState(null);
 
   // Dialog de justificativa
   const [dialogJustificativa, setDialogJustificativa] = useState(false);
@@ -136,10 +147,16 @@ const Frequencias = () => {
 
   useEffect(() => {
     if (filtros.turma && filtros.data) {
-      loadAlunos();
-      loadEstatisticas();
+      loadDadosTurma();
     }
   }, [filtros.turma, filtros.data]);
+  
+  // Novo useEffect para carregar estatísticas quando mudar o período
+  useEffect(() => {
+    if (filtros.turma) {
+      loadEstatisticas();
+    }
+  }, [filtros.dataInicio, filtros.dataFim, filtros.tipoPeriodo]);
 
   useEffect(() => {
     calcularStats();
@@ -165,72 +182,137 @@ const Frequencias = () => {
 
   const loadAlunos = async () => {
     try {
-      setLoading(true);
       const data = await alunoService.getAll({ turma: filtros.turma });
       setAlunos(data);
-      
-      // Inicializar presenças como presente para todos
-      const presencasInicial = {};
-      data.forEach(aluno => {
-        presencasInicial[aluno._id] = 'presente';
-      });
-      setPresencas(presencasInicial);
+      return data;
     } catch (error) {
       toast.error('Erro ao carregar alunos');
-    } finally {
-      setLoading(false);
+      return [];
     }
   };
 
   const loadEstatisticas = async () => {
     try {
-      if (!filtros.turma || !filtros.data) return;
+      if (!filtros.turma) return;
       
-      // Extrair ano diretamente da string para evitar problemas de timezone
-      const ano = filtros.data.split('-')[0];
+      const params = {};
       
-      const data = await frequenciaService.getEstatisticasTurma(filtros.turma, {
-        data: filtros.data,
-        ano: parseInt(ano)
-      });
+      // Se houver período definido, usa ele
+      if (filtros.dataInicio && filtros.dataFim) {
+        params.dataInicio = filtros.dataInicio;
+        params.dataFim = filtros.dataFim;
+      } else if (filtros.data) {
+        // Senão, usa apenas a data atual
+        params.data = filtros.data;
+        const ano = filtros.data.split('-')[0];
+        params.ano = parseInt(ano);
+      }
       
+      const data = await frequenciaService.getEstatisticasTurma(filtros.turma, params);
       setEstatisticas(data);
+      
+      // Se houver filtro de período, carrega também as estatísticas detalhadas por período
+      if (filtros.dataInicio && filtros.dataFim) {
+        const dataPeriodo = await frequenciaService.getEstatisticasPorPeriodo(filtros.turma, {
+          dataInicio: filtros.dataInicio,
+          dataFim: filtros.dataFim,
+          tipo: filtros.tipoPeriodo
+        });
+        setEstatisticasPeriodo(dataPeriodo);
+      } else {
+        setEstatisticasPeriodo(null);
+      }
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
       setEstatisticas(null);
+      setEstatisticasPeriodo(null);
     }
   };
 
-  const loadFrequencia = async () => {
+  // Nova função coordenadora para carregar todos os dados da turma
+  const loadDadosTurma = async () => {
     try {
       setLoading(true);
+      
+      // 1. Carregar alunos da turma
+      const alunosDaTurma = await loadAlunos();
+      
+      // 2. Carregar frequências já salvas do dia
+      await loadFrequencia(alunosDaTurma);
+      
+      // 3. Carregar estatísticas acumuladas
+      await loadEstatisticas();
+    } catch (error) {
+      console.error('Erro ao carregar dados da turma:', error);
+      toast.error('Erro ao carregar dados da turma');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFrequencia = async (alunosDaTurma) => {
+    try {
+      console.log('📖 Frontend - Carregando frequências (visão geral):', {
+        turma: filtros.turma,
+        data: filtros.data,
+        totalAlunos: alunosDaTurma.length
+      });
+      
       const response = await frequenciaService.getFrequenciaTurmaDia(
         filtros.turma,
-        filtros.data,
-        { disciplina: filtros.disciplina }
+        filtros.data
       );
       
+      console.log('✅ Frontend - Resposta recebida:', {
+        totalRegistros: response.frequencias?.length || 0,
+        resumo: response.resumo
+      });
+      
       // Converter para objeto { alunoId: status }
+      // Agora é simples: 1 registro por aluno
       const presencasCarregadas = {};
+      const frequenciasMap = {};
+      
       response.frequencias.forEach(freq => {
-        presencasCarregadas[freq.aluno._id] = freq.status;
+        const alunoId = freq.aluno._id;
+        presencasCarregadas[alunoId] = freq.status;
+        frequenciasMap[alunoId] = freq;
+      });
+      
+      console.log('📊 Frontend - Dados carregados do banco:', {
+        alunosComRegistro: Object.keys(presencasCarregadas).length,
+        totalRegistros: response.frequencias?.length || 0,
+        statusDistribuição: {
+          presentes: Object.values(presencasCarregadas).filter(s => s === 'presente').length,
+          faltas: Object.values(presencasCarregadas).filter(s => s === 'falta').length,
+          justificadas: Object.values(presencasCarregadas).filter(s => s === 'falta-justificada').length
+        }
+      });
+      
+      // Inicializar como 'presente' apenas alunos sem registro
+      alunosDaTurma.forEach(aluno => {
+        if (!presencasCarregadas[aluno._id]) {
+          presencasCarregadas[aluno._id] = 'presente';
+        }
+      });
+      
+      console.log('💾 Frontend - Definindo estados:', {
+        totalPresenças: Object.keys(presencasCarregadas).length,
+        totalFrequenciasSalvas: Object.keys(frequenciasMap).length
       });
       
       setPresencas(presencasCarregadas);
-      setFrequencias(response.frequencias.reduce((acc, f) => {
-        acc[f.aluno._id] = f;
-        return acc;
-      }, {}));
+      setFrequencias(frequenciasMap);
     } catch (error) {
-      console.error('Erro ao carregar frequência:', error);
+      console.error('❌ Frontend - Erro ao carregar frequência:', error);
       // Se não houver frequência registrada, inicializar todos como presente
       const presencasInicial = {};
-      alunos.forEach(aluno => {
+      alunosDaTurma.forEach(aluno => {
         presencasInicial[aluno._id] = 'presente';
       });
+      console.log('⚠️ Frontend - Inicializando com valores padrão (todos presentes)');
       setPresencas(presencasInicial);
-    } finally {
-      setLoading(false);
+      setFrequencias({});
     }
   };
 
@@ -243,6 +325,32 @@ const Frequencias = () => {
     setStats({ total, presentes, faltas, percentual });
   };
 
+  const handleVisualizarFrequenciaAluno = async (aluno) => {
+    try {
+      setLoading(true);
+      setAlunoSelecionado(aluno);
+      
+      const params = {
+        turma: filtros.turma
+      };
+      
+      // Se houver filtro de período, aplica
+      if (filtros.dataInicio && filtros.dataFim) {
+        params.dataInicio = filtros.dataInicio;
+        params.dataFim = filtros.dataFim;
+      }
+      
+      const data = await frequenciaService.getFrequenciaAcumuladaAluno(aluno._id, params);
+      setFrequenciaAcumuladaAluno(data);
+      setOpenModalFrequenciaIndividual(true);
+    } catch (error) {
+      console.error('Erro ao carregar frequência do aluno:', error);
+      toast.error('Erro ao carregar frequência do aluno');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePresencaChange = (alunoId, status) => {
     setPresencas(prev => ({
       ...prev,
@@ -251,30 +359,171 @@ const Frequencias = () => {
   };
 
   const handleSalvarChamada = async () => {
+    console.log('🔵 handleSalvarChamada INICIADA');
+    console.log('📋 Estado atual:', {
+      turma: filtros.turma,
+      data: filtros.data,
+      totalAlunos: alunos.length,
+      totalPresencas: Object.keys(presencas).length
+    });
+    
+    // Validações ANTES do try-catch para não bloquear o finally
+    if (!filtros.turma) {
+      console.log('❌ Validação falhou: turma não selecionada');
+      toast.error('Selecione uma turma primeiro');
+      return;
+    }
+    
+    if (!filtros.data) {
+      console.log('❌ Validação falhou: data não selecionada');
+      toast.error('Selecione uma data');
+      return;
+    }
+    
+    if (alunos.length === 0) {
+      console.log('❌ Validação falhou: nenhum aluno');
+      toast.error('Nenhum aluno encontrado na turma');
+      return;
+    }
+    
+    if (!presencas || Object.keys(presencas).length === 0) {
+      console.log('❌ Validação falhou: nenhuma frequência definida');
+      toast.error('Nenhuma frequência para salvar');
+      return;
+    }
+    
+    console.log('✅ Todas as validações passaram, iniciando salvamento...');
+    
     try {
       setSalvando(true);
       
       const turma = turmas.find(t => t._id === filtros.turma);
       
+      console.log('💾 SALVANDO FREQUÊNCIA:', {
+        turma: turma?.nome,
+        turmaId: filtros.turma,
+        data: filtros.data,
+        totalAlunos: alunos.length,
+        presencasDefinidas: Object.keys(presencas).length,
+        periodo: turma?.turno || 'matutino'
+      });
+      
+      // Validar que todos os alunos têm status definido
+      const alunosSemStatus = alunos.filter(a => !presencas[a._id]);
+      if (alunosSemStatus.length > 0) {
+        console.warn('⚠️ Alunos sem status definido:', alunosSemStatus.length);
+      }
+      
       // Usar a nova função que salva em TODAS as disciplinas
-      await frequenciaService.registrarChamadaGeral(filtros.turma, {
+      const response = await frequenciaService.registrarChamadaGeral(filtros.turma, {
         data: filtros.data,
         periodo: turma?.turno || 'matutino',
         presencas
       });
       
-      toast.success('Frequência salva com sucesso em todas as disciplinas!');
-      loadEstatisticas(); // Recarregar estatísticas
+      console.log('✅ Resposta do backend:', response);
+      
+      // Verificar se houve erros
+      if (response.erros && response.erros.length > 0) {
+        console.error('⚠️ Salvamento com erros:', response.erros);
+        
+        // Se muitos erros, mostrar mensagem detalhada
+        if (response.erros.length > 5) {
+          toast.warning(
+            `Frequência salva parcialmente: ${response.total} registros salvos, mas ${response.totalErros} falharam. ` +
+            `Verifique se todas as disciplinas têm professores atribuídos.`,
+            { autoClose: 8000 }
+          );
+        } else {
+          // Poucos erros, mostrar quais foram
+          const errosMsg = response.erros.map(e => `${e.aluno} - ${e.disciplina}: ${e.erro}`).join('\n');
+          toast.warning(
+            `Frequência salva com ${response.totalErros} erro(s):\n${errosMsg}`,
+            { autoClose: 8000 }
+          );
+        }
+      } else {
+        // Sucesso total
+        toast.success(
+          `✅ Frequência geral salva com sucesso!\n` +
+          `${response.criados} alunos registrados\n` +
+          `${response.atualizados} alunos atualizados\n` +
+          `Total: ${response.total} de ${response.esperado} alunos (${response.percentualSucesso}%)`,
+          { autoClose: 5000 }
+        );
+      }
+      
+      // IMPORTANTE: Recarregar os dados do banco para sincronizar
+      console.log('🔄 Recarregando dados do banco...');
+      await loadFrequencia(alunos);
+      
+      // Recarregar estatísticas acumuladas
+      await loadEstatisticas();
+      
+      console.log('✅ Dados sincronizados com sucesso');
+      
     } catch (error) {
-      toast.error('Erro ao salvar frequência: ' + (error.response?.data?.message || error.message));
+      console.error('❌ ERRO ao salvar frequência:', error);
+      
+      // Tratamento de erros específicos
+      if (error.response?.status === 400) {
+        const errorData = error.response.data;
+        
+        if (errorData.disciplinasPendentes) {
+          // Erro específico: disciplinas sem professor
+          toast.error(
+            `❌ ${errorData.message}\n\n` +
+            `Configure professores para as disciplinas antes de registrar frequências.`,
+            { autoClose: 10000 }
+          );
+        } else {
+          // Outro erro de validação
+          toast.error(
+            `❌ ${errorData.message}\n` +
+            (errorData.detalhes ? `\n${errorData.detalhes}` : ''),
+            { autoClose: 7000 }
+          );
+        }
+      } else if (error.response?.status === 404) {
+        toast.error('Turma não encontrada. Recarregue a página e tente novamente.');
+      } else if (error.response?.status === 500) {
+        toast.error(
+          'Erro no servidor ao salvar frequência. ' +
+          'Verifique a conexão e tente novamente.',
+          { autoClose: 7000 }
+        );
+      } else {
+        // Erro genérico
+        toast.error(
+          `Erro ao salvar frequência: ${error.response?.data?.message || error.message}`,
+          { autoClose: 7000 }
+        );
+      }
+      
+      // Em caso de erro, recarregar os dados para garantir que estão sincronizados
+      try {
+        await loadFrequencia(alunos);
+      } catch (reloadError) {
+        console.error('Erro ao recarregar dados:', reloadError);
+      }
     } finally {
       setSalvando(false);
     }
   };
 
   const handleResetRegistros = async () => {
+    const turma = turmas.find(t => t._id === filtros.turma);
+    const totalRegistros = Object.keys(frequencias).length;
+    
     const confirmacao = window.confirm(
-      `⚠️ ATENÇÃO!\n\nDeseja DELETAR todos os registros de frequência desta turma para o dia ${formatarDataLocal(filtros.data)}?\n\nEsta ação NÃO pode ser desfeita!`
+      `⚠️ ATENÇÃO - RESETAR FREQUÊNCIA DO DIA!\n\n` +
+      `Turma: ${turma?.nome || 'Selecionada'}\n` +
+      `Data: ${formatarDataLocal(filtros.data)}\n` +
+      `Registros salvos: ${totalRegistros}\n\n` +
+      `Esta ação irá DELETAR todos os ${totalRegistros} registros de frequência desta turma APENAS para o dia selecionado.\n\n` +
+      `Os registros de outros dias NÃO serão afetados.\n\n` +
+      `Esta ação NÃO pode ser desfeita!\n\n` +
+      `Deseja continuar?`
     );
     
     if (!confirmacao) return;
@@ -282,16 +531,10 @@ const Frequencias = () => {
     try {
       setLoading(true);
       await frequenciaService.resetarDia(filtros.turma, filtros.data);
-      toast.success('Registros resetados com sucesso!');
+      toast.success(`Frequências do dia ${formatarDataLocal(filtros.data)} resetadas com sucesso!`);
       
-      // Reinicializar presenças
-      const presencasInicial = {};
-      alunos.forEach(aluno => {
-        presencasInicial[aluno._id] = 'presente';
-      });
-      setPresencas(presencasInicial);
-      
-      loadEstatisticas();
+      // Recarregar todos os dados após resetar
+      await loadDadosTurma();
     } catch (error) {
       toast.error('Erro ao resetar registros: ' + (error.response?.data?.message || error.message));
     } finally {
@@ -617,9 +860,79 @@ const Frequencias = () => {
               value={filtros.data}
               onChange={(e) => setFiltros({ ...filtros, data: e.target.value })}
               InputLabelProps={{ shrink: true }}
+              sx={{
+                '& input[type="date"]': {
+                  fontSize: '1.15rem',
+                  padding: '14px',
+                  cursor: 'pointer'
+                },
+                '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                  fontSize: '1.5rem',
+                  cursor: 'pointer'
+                }
+              }}
             />
           </Grid>
         </Grid>
+        
+        {/* Filtros de Período (Novo) */}
+        <Box sx={{ mt: 2 }}>
+          <Divider sx={{ mb: 2 }} />
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            Filtros de Período (para estatísticas acumuladas)
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Data Início"
+                value={filtros.dataInicio}
+                onChange={(e) => setFiltros({ ...filtros, dataInicio: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                size="small"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Data Fim"
+                value={filtros.dataFim}
+                onChange={(e) => setFiltros({ ...filtros, dataFim: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                size="small"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Tipo de Agrupamento"
+                value={filtros.tipoPeriodo}
+                onChange={(e) => setFiltros({ ...filtros, tipoPeriodo: e.target.value })}
+                disabled={!filtros.dataInicio || !filtros.dataFim}
+              >
+                <MenuItem value="diario">Diário</MenuItem>
+                <MenuItem value="semanal">Semanal</MenuItem>
+                <MenuItem value="mensal">Mensal</MenuItem>
+                <MenuItem value="trimestral">Trimestral</MenuItem>
+              </TextField>
+            </Grid>
+          </Grid>
+          {(filtros.dataInicio || filtros.dataFim) && (
+            <Box sx={{ mt: 1 }}>
+              <Button 
+                size="small" 
+                onClick={() => setFiltros({ ...filtros, dataInicio: '', dataFim: '' })}
+                color="secondary"
+              >
+                Limpar Filtros de Período
+              </Button>
+            </Box>
+          )}
+        </Box>
       </Paper>
 
       {/* Estatísticas - Cards Clicáveis */}
@@ -770,13 +1083,13 @@ const Frequencias = () => {
             </Card>
           </Grid>
 
-          {/* Card 5 - Percentual Geral com Cor Dinâmica */}
+          {/* Card 5 - Percentual do Dia (Dinâmico) */}
           <Grid item xs={12} sm={6} md={2.4}>
             <Card 
               sx={{ 
                 bgcolor: 
-                  estatisticas.percentualGeral >= 85 ? 'success.main' :
-                  estatisticas.percentualGeral >= 75 ? 'warning.main' :
+                  parseFloat(stats.percentual) >= 85 ? 'success.main' :
+                  parseFloat(stats.percentual) >= 75 ? 'warning.main' :
                   'error.main',
                 color: 'white',
                 transition: 'all 0.3s',
@@ -796,12 +1109,15 @@ const Frequencias = () => {
                     WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
                   }}
                 >
-                  {estatisticas.percentualGeral}%
+                  {stats.percentual}%
                 </Typography>
-                <Typography variant="body1" align="center">
-                  {estatisticas.classificacao === 'adequado' ? '✅ Adequado' : 
-                   estatisticas.classificacao === 'atencao' ? '⚠️ Atenção' : 
-                   '🚨 Crítico'}
+                <Typography variant="body1" align="center">Frequência do Dia</Typography>
+                <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                <Typography variant="caption" align="center" display="block">
+                  Acum: {estatisticas.percentualGeral}% 
+                  {estatisticas.classificacao === 'adequado' ? ' ✅' : 
+                   estatisticas.classificacao === 'atencao' ? ' ⚠️' : 
+                   ' 🚨'}
                 </Typography>
               </CardContent>
             </Card>
@@ -835,21 +1151,32 @@ const Frequencias = () => {
                 )}
               </Box>
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  startIcon={<Delete />}
-                  onClick={handleResetRegistros}
-                  disabled={!filtros.turma || !filtros.data || salvando}
+                <Tooltip 
+                  title={
+                    Object.keys(frequencias).length === 0 
+                      ? "Não há registros salvos para resetar neste dia" 
+                      : `Resetar os ${Object.keys(frequencias).length} registros salvos do dia ${formatarDataLocal(filtros.data)}`
+                  }
+                  arrow
                 >
-                  Resetar
-                </Button>
+                  <span>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      startIcon={<Delete />}
+                      onClick={handleResetRegistros}
+                      disabled={!filtros.turma || !filtros.data || salvando || loading || Object.keys(frequencias).length === 0}
+                    >
+                      Resetar Dia
+                    </Button>
+                  </span>
+                </Tooltip>
                 <Button
                   variant="contained"
                   color="primary"
                   startIcon={<Save />}
                   onClick={handleSalvarChamada}
-                  disabled={salvando}
+                  disabled={salvando || loading}
                 >
                   {salvando ? 'Salvando...' : 'Salvar Chamada'}
                 </Button>
@@ -928,10 +1255,20 @@ const Frequencias = () => {
                                 setAlunoJustificar(aluno._id);
                                 setDialogJustificativa(true);
                               }}
+                              title="Justificar falta"
                             >
                               <EventNote />
                             </IconButton>
                           )}
+                          <Tooltip title="Ver histórico de frequência">
+                            <IconButton
+                              size="small"
+                              color="info"
+                              onClick={() => handleVisualizarFrequenciaAluno(aluno)}
+                            >
+                              <Assessment />
+                            </IconButton>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     );
@@ -1173,6 +1510,208 @@ const Frequencias = () => {
             startIcon={<Upload />}
           >
             {loading ? 'Importando...' : 'Importar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de Frequência Individual do Aluno */}
+      <Dialog 
+        open={openModalFrequenciaIndividual} 
+        onClose={() => setOpenModalFrequenciaIndividual(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Assessment color="primary" />
+              <Typography variant="h6">Histórico de Frequência</Typography>
+            </Box>
+            {alunoSelecionado && (
+              <Chip 
+                label={`Mat: ${alunoSelecionado.matricula}`}
+                color="primary"
+                size="small"
+              />
+            )}
+          </Box>
+          {alunoSelecionado && (
+            <Typography variant="subtitle2" color="text.secondary">
+              {alunoSelecionado.nome}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          {frequenciaAcumuladaAluno ? (
+            <Box>
+              {/* Resumo Geral */}
+              <Paper sx={{ p: 2, mb: 3, bgcolor: 'background.default' }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  📊 Resumo Geral {frequenciaAcumuladaAluno.periodo.inicio && frequenciaAcumuladaAluno.periodo.fim && 
+                    `(${formatarDataLocal(frequenciaAcumuladaAluno.periodo.inicio)} - ${formatarDataLocal(frequenciaAcumuladaAluno.periodo.fim)})`
+                  }
+                </Typography>
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                  <Grid item xs={3}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h4" color="primary.main">
+                        {frequenciaAcumuladaAluno.resumoGeral.total}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Total de Registros
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={3}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h4" color="success.main">
+                        {frequenciaAcumuladaAluno.resumoGeral.presentes}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Presenças
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={3}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h4" color="error.main">
+                        {frequenciaAcumuladaAluno.resumoGeral.faltas}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Faltas
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={3}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h4" color="warning.main">
+                        {frequenciaAcumuladaAluno.resumoGeral.justificadas}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Justificadas
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                  <Typography variant="h5" 
+                    sx={{ 
+                      color: frequenciaAcumuladaAluno.resumoGeral.percentualPresenca >= 85 ? 'success.main' :
+                             frequenciaAcumuladaAluno.resumoGeral.percentualPresenca >= 75 ? 'warning.main' :
+                             'error.main'
+                    }}
+                  >
+                    {frequenciaAcumuladaAluno.resumoGeral.percentualPresenca}% de Presença
+                  </Typography>
+                </Box>
+              </Paper>
+
+              {/* Frequência por Disciplina */}
+              {frequenciaAcumuladaAluno.porDisciplina && frequenciaAcumuladaAluno.porDisciplina.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    📚 Por Disciplina
+                  </Typography>
+                  <TableContainer component={Paper}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Disciplina</TableCell>
+                          <TableCell align="center">Total</TableCell>
+                          <TableCell align="center">Presentes</TableCell>
+                          <TableCell align="center">Faltas</TableCell>
+                          <TableCell align="center">Percentual</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {frequenciaAcumuladaAluno.porDisciplina.map((disc, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{disc.disciplina.nome}</TableCell>
+                            <TableCell align="center">{disc.total}</TableCell>
+                            <TableCell align="center">
+                              <Chip label={disc.presentes} color="success" size="small" />
+                            </TableCell>
+                            <TableCell align="center">
+                              <Chip label={disc.faltas + disc.justificadas} color="error" size="small" />
+                            </TableCell>
+                            <TableCell align="center">
+                              <Typography
+                                sx={{
+                                  color: disc.percentualPresenca >= 85 ? 'success.main' :
+                                         disc.percentualPresenca >= 75 ? 'warning.main' :
+                                         'error.main',
+                                  fontWeight: 600
+                                }}
+                              >
+                                {disc.percentualPresenca}%
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              )}
+
+              {/* Histórico Diário */}
+              {frequenciaAcumuladaAluno.historicoDiario && frequenciaAcumuladaAluno.historicoDiario.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>
+                    📅 Histórico Diário (Últimos registros)
+                  </Typography>
+                  <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
+                    <Table size="small" stickyHeader>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Data</TableCell>
+                          <TableCell align="center">Presentes</TableCell>
+                          <TableCell align="center">Faltas</TableCell>
+                          <TableCell align="center">Percentual</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {frequenciaAcumuladaAluno.historicoDiario.map((dia, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{formatarDataLocal(dia._id.toISOString().split('T')[0])}</TableCell>
+                            <TableCell align="center">
+                              <Chip label={dia.presentes} color="success" size="small" />
+                            </TableCell>
+                            <TableCell align="center">
+                              <Chip label={dia.faltas + dia.justificadas} color="error" size="small" />
+                            </TableCell>
+                            <TableCell align="center">
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: dia.percentualPresenca >= 85 ? 'success.main' :
+                                         dia.percentualPresenca >= 75 ? 'warning.main' :
+                                         'error.main'
+                                }}
+                              >
+                                {dia.percentualPresenca}%
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              )}
+            </Box>
+          ) : (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <LinearProgress />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                Carregando dados...
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenModalFrequenciaIndividual(false)}>
+            Fechar
           </Button>
         </DialogActions>
       </Dialog>

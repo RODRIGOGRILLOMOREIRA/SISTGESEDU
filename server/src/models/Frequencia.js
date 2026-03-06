@@ -16,13 +16,13 @@ const frequenciaSchema = new mongoose.Schema({
   disciplina: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Disciplina',
-    required: [true, 'Disciplina é obrigatória'],
+    required: false, // Opcional - frequência geral não precisa de disciplina
     index: true
   },
   professor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Professor',
-    required: true
+    required: false // Opcional - frequência geral não precisa de professor
   },
   data: {
     type: Date,
@@ -82,8 +82,8 @@ const frequenciaSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Índice composto para buscar frequência única por dia/aluno/disciplina
-frequenciaSchema.index({ aluno: 1, disciplina: 1, data: 1 }, { unique: true });
+// Índice composto para buscar frequência única por dia/aluno (frequência geral)
+frequenciaSchema.index({ aluno: 1, data: 1 }, { unique: true });
 
 // Índice para consultas de dashboard
 frequenciaSchema.index({ turma: 1, data: 1, status: 1 });
@@ -100,6 +100,13 @@ frequenciaSchema.pre('save', function(next) {
     else if (this.mes <= 6) this.trimestre = 2;
     else if (this.mes <= 9) this.trimestre = 3;
     else this.trimestre = 4;
+    
+    // Garantir que o ano seja extraído da data se não foi fornecido
+    if (!this.ano) {
+      this.ano = data.getFullYear();
+    }
+    
+    console.log(`🔄 Middleware pre-save: Data=${this.data.toISOString()}, Ano=${this.ano}, Mês=${this.mes}, Trimestre=${this.trimestre}`);
   }
   next();
 });

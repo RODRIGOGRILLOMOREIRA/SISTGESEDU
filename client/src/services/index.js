@@ -90,7 +90,9 @@ export const turmaService = {
 
 export const alunoService = {
   getAll: async (params = {}) => {
-    const response = await api.get('/alunos', { params });
+    // Garantir que busque todos os alunos (sem limitação)
+    const queryParams = { ...params, limit: 5000 };
+    const response = await api.get('/alunos', { params: queryParams });
     return response.data.data || response.data;
   },
 
@@ -111,6 +113,11 @@ export const alunoService = {
 
   getTemplatePorTurma: async (turmaId, params = {}) => {
     const response = await api.get(`/alunos/template/${turmaId}`, { params });
+    return response.data;
+  },
+
+  importar: async (alunos) => {
+    const response = await api.post('/alunos/importar', { alunos });
     return response.data;
   },
 };
@@ -359,6 +366,24 @@ export const frequenciaService = {
 
   registrarChamadaGeral: async (turmaId, data) => {
     const response = await api.post(`/frequencias/turma-geral/${turmaId}`, data);
+    return response.data;
+  },
+
+  // Estatísticas por período (diário, semanal, mensal, trimestral)
+  getEstatisticasPorPeriodo: async (turmaId, params = {}) => {
+    const response = await api.get(`/frequencias/turma/${turmaId}/periodo`, { params });
+    return response.data;
+  },
+
+  // Frequência acumulada individual do aluno
+  getFrequenciaAcumuladaAluno: async (alunoId, params = {}) => {
+    const response = await api.get(`/frequencias/aluno/${alunoId}/acumulado`, { params });
+    return response.data;
+  },
+  
+  // Verificar frequências salvas (debug)
+  verificarFrequenciasSalvas: async (turmaId, data) => {
+    const response = await api.get(`/frequencias/verificar/${turmaId}/${data}`);
     return response.data;
   },
 };

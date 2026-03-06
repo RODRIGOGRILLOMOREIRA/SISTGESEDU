@@ -44,7 +44,8 @@ export const SchoolProvider = ({ children }) => {
   const loadAlunos = useCallback(async () => {
     try {
       setAlunosLoading(true);
-      const response = await api.get('/alunos');
+      // Buscar todos os alunos sem limitação
+      const response = await api.get('/alunos', { params: { limit: 5000 } });
       // Backend retorna { data: [], pagination: {} }
       setAlunos(response.data.data || []);
     } catch (error) {
