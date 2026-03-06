@@ -64,8 +64,8 @@ const STATUS_COLORS = {
 };
 
 const FREQUENCIA_STATUS = {
-  bom: { color: 'success', label: 'Boa Frequência', min: 85 },
-  atencao: { color: 'warning', label: 'Atenção', min: 75 },
+  bom: { color: 'success', label: 'Boa Frequência', min: 80 },
+  atencao: { color: 'warning', label: 'Atenção', min: 60 },
   critico: { color: 'error', label: 'Crítico', min: 0 },
 };
 
@@ -138,6 +138,8 @@ const Frequencias = () => {
     total: 0,
     presentes: 0,
     faltas: 0,
+    faltasSemJustificativa: 0,
+    faltasJustificadas: 0,
     percentual: 100,
   });
 
@@ -319,11 +321,25 @@ const Frequencias = () => {
 
   const calcularStats = () => {
     const total = alunos.length;
-    const presentes = Object.values(presencas).filter(p => p === 'presente').length;
-    const faltas = Object.values(presencas).filter(p => p === 'falta' || p === 'falta-justificada').length;
-    const percentual = total > 0 ? ((presentes / total) * 100).toFixed(1) : 100;
+    
+    // Contar apenas os alunos ATUAIS da turma (evitar IDs antigos no objeto presencas)
+    const alunosIds = alunos.map(a => a._id);
+    const presentes = alunosIds.filter(id => presencas[id] === 'presente').length;
+    const faltasSemJustificativa = alunosIds.filter(id => presencas[id] === 'falta').length;
+    const faltasJustificadas = alunosIds.filter(id => presencas[id] === 'falta-justificada').length;
+    const faltas = faltasSemJustificativa + faltasJustificadas;
+    
+    // Calcular percentual: começa em 100% e diminui com as faltas
+    // Faltas justificadas também contam como faltas no percentual
+    let percentual = 100;
+    if (total > 0) {
+      percentual = ((presentes / total) * 100);
+      // Garantir que nunca ultrapasse 100%
+      percentual = Math.min(percentual, 100);
+      percentual = percentual.toFixed(1);
+    }
 
-    setStats({ total, presentes, faltas, percentual });
+    setStats({ total, presentes, faltas, faltasSemJustificativa, faltasJustificadas, percentual });
   };
 
   const handleVisualizarFrequenciaAluno = async (aluno) => {
@@ -552,11 +568,19 @@ const Frequencias = () => {
       
       const freq = frequencias[alunoJustificar];
       if (freq) {
-        await frequenciaService.justificarFalta(freq._id, {
+        // Salvar a justificativa no backend
+        const response = await frequenciaService.justificarFalta(freq._id, {
           descricao: justificativa
         });
+        
+        // Atualizar o objeto de frequências com a versão atualizada do backend
+        setFrequencias(prev => ({
+          ...prev,
+          [alunoJustificar]: response.frequencia
+        }));
       }
       
+      // Atualizar apenas o estado local do aluno justificado
       setPresencas(prev => ({
         ...prev,
         [alunoJustificar]: 'falta-justificada'
@@ -567,10 +591,8 @@ const Frequencias = () => {
       setJustificativa('');
       setAlunoJustificar(null);
       
-      // Recarregar frequências para atualizar justificativas
-      if (alunos && alunos.length > 0) {
-        await loadFrequencia(alunos);
-      }
+      // NÃO recarregar todas as frequências para não perder as alterações locais
+      // Os dados já foram atualizados no estado local
     } catch (error) {
       console.error('Erro ao justificar falta:', error);
       toast.error('Erro ao salvar justificativa');
@@ -972,7 +994,7 @@ const Frequencias = () => {
                   }} 
                   align="center"
                 >
-                  {estatisticas.totalAlunos}
+                  {alunos.length}
                 </Typography>
                 <Typography variant="body1" align="center">Total de Alunos</Typography>
               </CardContent>
@@ -1005,12 +1027,20 @@ const Frequencias = () => {
                     WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
                   }}
                 >
-                  {stats.presentes}
+                  {stats.total > 0 ? ((stats.presentes / stats.total) * 100).toFixed(1) : 0}%
                 </Typography>
-                <Typography variant="body1" align="center">Presentes Hoje</Typography>
+                <Typography variant="body1" align="center" sx={{ mt: 1 }}>Presentes Hoje</Typography>
                 <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
-                <Typography variant="caption" align="center" display="block">
-                  Acum: {estatisticas.acumulado.presentes} ({estatisticas.acumulado.percentualPresenca}%)
+                <Typography 
+                  variant="h5" 
+                  align="center" 
+                  sx={{ 
+                    fontWeight: 600,
+                    textShadow: '0 0 1px rgba(255,255,255,0.6)',
+                    WebkitTextStroke: '1px rgba(255,255,255,0.4)'
+                  }}
+                >
+                  {stats.presentes} alunos
                 </Typography>
               </CardContent>
             </Card>
@@ -1042,12 +1072,20 @@ const Frequencias = () => {
                     WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
                   }}
                 >
-                  {Object.values(presencas).filter(p => p === 'falta').length}
+                  {stats.total > 0 ? ((stats.faltasSemJustificativa / stats.total) * 100).toFixed(1) : 0}%
                 </Typography>
-                <Typography variant="body1" align="center">Faltas Hoje</Typography>
+                <Typography variant="body1" align="center" sx={{ mt: 1 }}>Faltas Hoje</Typography>
                 <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
-                <Typography variant="caption" align="center" display="block">
-                  Acum: {estatisticas.acumulado.faltas}
+                <Typography 
+                  variant="h5" 
+                  align="center" 
+                  sx={{ 
+                    fontWeight: 600,
+                    textShadow: '0 0 1px rgba(255,255,255,0.6)',
+                    WebkitTextStroke: '1px rgba(255,255,255,0.4)'
+                  }}
+                >
+                  {stats.faltasSemJustificativa} alunos
                 </Typography>
               </CardContent>
             </Card>
@@ -1079,24 +1117,20 @@ const Frequencias = () => {
                     WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
                   }}
                 >
-                  {Object.values(presencas).filter(p => p === 'falta-justificada').length}
+                  {stats.faltasJustificadas}
                 </Typography>
                 <Typography variant="body1" align="center">Justificadas Hoje</Typography>
-                <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
-                <Typography variant="caption" align="center" display="block">
-                  Acum: {estatisticas.acumulado.justificadas}
-                </Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          {/* Card 5 - Percentual do Dia (Dinâmico) */}
+          {/* Card 5 - Frequência Acumulada (Dinâmico) */}
           <Grid item xs={12} sm={6} md={2.4}>
             <Card 
               sx={{ 
                 bgcolor: 
-                  parseFloat(stats.percentual) >= 85 ? 'success.main' :
-                  parseFloat(stats.percentual) >= 75 ? 'warning.main' :
+                  parseFloat(estatisticas.percentualGeral) >= 80 ? 'success.main' :
+                  parseFloat(estatisticas.percentualGeral) >= 60 ? 'warning.main' :
                   'error.main',
                 color: 'white',
                 transition: 'all 0.3s',
@@ -1116,15 +1150,20 @@ const Frequencias = () => {
                     WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
                   }}
                 >
-                  {stats.percentual}%
+                  {estatisticas.percentualGeral}%
                 </Typography>
-                <Typography variant="body1" align="center">Frequência do Dia</Typography>
+                <Typography variant="body1" align="center" sx={{ mt: 1 }}>Frequência Acumulada</Typography>
                 <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
-                <Typography variant="caption" align="center" display="block">
-                  Acum: {estatisticas.percentualGeral}% 
-                  {estatisticas.classificacao === 'adequado' ? ' ✅' : 
-                   estatisticas.classificacao === 'atencao' ? ' ⚠️' : 
-                   ' 🚨'}
+                <Typography 
+                  variant="h5" 
+                  align="center" 
+                  sx={{ 
+                    fontWeight: 600,
+                    textShadow: '0 0 1px rgba(255,255,255,0.6)',
+                    WebkitTextStroke: '1px rgba(255,255,255,0.4)'
+                  }}
+                >
+                  Hoje: {stats.percentual}%
                 </Typography>
               </CardContent>
             </Card>
@@ -1636,8 +1675,8 @@ const Frequencias = () => {
                 <Box sx={{ mt: 2, textAlign: 'center' }}>
                   <Typography variant="h5" 
                     sx={{ 
-                      color: frequenciaAcumuladaAluno.resumoGeral.percentualPresenca >= 85 ? 'success.main' :
-                             frequenciaAcumuladaAluno.resumoGeral.percentualPresenca >= 75 ? 'warning.main' :
+                      color: frequenciaAcumuladaAluno.resumoGeral.percentualPresenca >= 80 ? 'success.main' :
+                             frequenciaAcumuladaAluno.resumoGeral.percentualPresenca >= 60 ? 'warning.main' :
                              'error.main'
                     }}
                   >
@@ -1677,8 +1716,8 @@ const Frequencias = () => {
                             <TableCell align="center">
                               <Typography
                                 sx={{
-                                  color: disc.percentualPresenca >= 85 ? 'success.main' :
-                                         disc.percentualPresenca >= 75 ? 'warning.main' :
+                                  color: disc.percentualPresenca >= 80 ? 'success.main' :
+                                         disc.percentualPresenca >= 60 ? 'warning.main' :
                                          'error.main',
                                   fontWeight: 600
                                 }}
@@ -1724,8 +1763,8 @@ const Frequencias = () => {
                               <Typography
                                 variant="body2"
                                 sx={{
-                                  color: dia.percentualPresenca >= 85 ? 'success.main' :
-                                         dia.percentualPresenca >= 75 ? 'warning.main' :
+                                  color: dia.percentualPresenca >= 80 ? 'success.main' :
+                                         dia.percentualPresenca >= 60 ? 'warning.main' :
                                          'error.main'
                                 }}
                               >

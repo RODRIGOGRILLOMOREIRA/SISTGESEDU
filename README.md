@@ -41,6 +41,42 @@ npm start          # Abre automaticamente em http://localhost:3000
 
 ### 🔧 Melhorias e Novas Funcionalidades (Março 2026)
 
+#### 📊 Dashboard de Frequência com Análise Gráfica (06/03/2026) 🆕✨
+- ✅ **Gráfico de Comparação por Turma** - Barras coloridas com média de frequência de cada turma
+  - 🎨 10 cores distintas para diferenciar turmas
+  - 📊 Percentuais exibidos no topo de cada barra
+  - 🔄 Exibição condicional: múltiplas turmas sem filtro / turma única com filtro ativo
+  - 🌈 Cores baseadas em desempenho quando filtrado (verde ≥80%, amarelo 60-79%, vermelho <60%)
+- ✅ **Gráfico de Predição de Risco** - Scatter plot com análise de alunos críticos
+  - 📍 Cada ponto representa um aluno com sua frequência
+  - 📏 Linhas de referência em 80% (adequado) e 60% (atenção)
+  - 🎯 Identificação visual de alunos em situação crítica
+- ✅ **Expansão Fullscreen** - Ícones para ampliar gráficos em tela cheia
+  - 🖼️ Modal com animação suave (Slide)
+  - 📱 Fontes maiores para melhor visualização
+  - ❌ Botão de fechar no topo
+- ✅ **Adaptação de Tema Dark/Light** - Todos os gráficos se adaptam ao tema ativo
+  - 🌙 Modo escuro: textos brancos, grades sutis
+  - ☀️ Modo claro: textos pretos, contraste otimizado
+  - 🎨 Cores de fundo e bordas dinâmicas
+- ✅ **Plugin Customizado** - Valores percentuais exibidos automaticamente acima das barras
+- ✅ **Integração com Backend** - Dados de turma incluídos via `$lookup` no MongoDB
+  - 🔗 Agregação otimizada: Frequencia → Aluno → Turma
+  - 💾 Dados completos retornados (turma._id e turma.nome)
+
+#### 🎨 Botões de Filtro Modernizados (06/03/2026) 🆕
+- ✅ **Design Premium** - Botões independentes com gradientes vibrantes
+  - 🔵 **TODOS**: Azul com gradiente (#1976d2 → #1565c0)
+  - 🟢 **ADEQUADO**: Verde com gradiente (#2e7d32 → #1b5e20) + badge "≥80%"
+  - 🟡 **ATENÇÃO**: Laranja com gradiente (#ed6c02 → #e65100) + badge "60-79%"
+  - 🔴 **CRÍTICO**: Vermelho com gradiente (#d32f2f → #c62828) + badge "<60%"
+- ✅ **Animações Suaves** - Transições de 0.3s com elevação no hover
+- ✅ **Ícones do Material-UI** - CheckCircleOutlined e WarningAmberOutlined
+- ✅ **Contadores Dinâmicos** - Chips com número de alunos em cada categoria
+- ✅ **Bordas Arredondadas** - Border-radius de 3 para look moderno
+- ✅ **Sombras Dinâmicas** - BoxShadow 2→4→6 baseado no estado
+- ✅ **Responsivo** - FlexWrap para adaptar a qualquer tela
+
 #### 🎯 Sistema de Frequência Simplificado (MARÇO 2026) 🆕
 - ✅ **Frequência Geral Diária** - Sistema reformulado para registro simples de presença por dia (não mais por disciplina)
 - ✅ **1 Registro por Aluno por Dia** - Simplificação do modelo de dados para facilitar controle

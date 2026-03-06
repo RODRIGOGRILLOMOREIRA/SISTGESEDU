@@ -428,13 +428,34 @@ exports.getDashboardFrequencia = async (req, res) => {
           from: 'alunos', // Nome da collection no MongoDB
           localField: '_id',
           foreignField: '_id',
-          as: 'alunoData'
+          as: 'alunoData',
+          // Adicionar pipeline para filtrar no lookup
+          pipeline: [
+            {
+              $match: { ativo: true } // FILTRAR APENAS ALUNOS ATIVOS NO LOOKUP
+            }
+          ]
         }
       },
       {
         $unwind: {
           path: '$alunoData',
-          preserveNullAndEmptyArrays: true
+          preserveNullAndEmptyArrays: false // Excluir alunos que não existem ou estão inativos
+        }
+      },
+      // Lookup para buscar dados da turma
+      {
+        $lookup: {
+          from: 'turmas',
+          localField: 'alunoData.turma',
+          foreignField: '_id',
+          as: 'turmaData'
+        }
+      },
+      {
+        $unwind: {
+          path: '$turmaData',
+          preserveNullAndEmptyArrays: true // Permitir alunos sem turma
         }
       },
       {
@@ -443,7 +464,11 @@ exports.getDashboardFrequencia = async (req, res) => {
           aluno: {
             _id: '$_id',
             nome: '$alunoData.nome',
-            matricula: '$alunoData.matricula'
+            matricula: '$alunoData.matricula',
+            turma: {
+              _id: '$turmaData._id',
+              nome: '$turmaData.nome'
+            }
           },
           total: '$totalAulas',
           presentes: '$presencas',
@@ -456,8 +481,21 @@ exports.getDashboardFrequencia = async (req, res) => {
     
     console.log(`📋 Backend - Alunos agregados: ${todosAlunos.length} alunos encontrados`);
     console.log('🔍 DEBUG - Filtro usado na agregação:', JSON.stringify(filter, null, 2));
-    if (todosAlunos.length > 0) {
-      console.log('📊 Amostra:', todosAlunos.slice(0, 3).map(a => ({
+    
+    // VALIDAÇÃO EXTRA: Filtrar alunos que não têm dados válidos
+    const alunosValidos = todosAlunos.filter(a => {
+      // Verificar se o aluno tem dados completos
+      if (!a.aluno || !a.aluno._id || !a.aluno.nome) {
+        console.log('⚠️ Aluno sem dados completos removido:', a);
+        return false;
+      }
+      return true;
+    });
+    
+    console.log(`✅ Backend - Alunos válidos após filtragem: ${alunosValidos.length} de ${todosAlunos.length}`);
+    
+    if (alunosValidos.length > 0) {
+      console.log('📊 Lista completa de alunos retornados:', alunosValidos.map(a => ({
         nome: a.aluno?.nome || 'SEM NOME',
         _id: a.aluno?._id,
         matricula: a.aluno?.matricula,
@@ -466,19 +504,19 @@ exports.getDashboardFrequencia = async (req, res) => {
         percentual: a.percentualPresenca
       })));
     } else {
-      console.log('⚠️ NENHUM ALUNO RETORNADO - Verificando se há registros sem filtros...');
+      console.log('⚠️ NENHUM ALUNO VÁLIDO RETORNADO - Verificando se há registros sem filtros...');
       const totalSemFiltro = await Frequencia.countDocuments({ ativo: true });
       console.log(`📊 Total de registros sem filtro: ${totalSemFiltro}`);
     }
     
-    // Classificar alunos por status de frequência
-    const alunosClassificados = todosAlunos.map(aluno => {
+    // Classificar alunos por status de frequência (usar alunosValidos)
+    const alunosClassificados = alunosValidos.map(aluno => {
       const percentual = aluno.percentualPresenca;
       let classificacao = '';
       
-      if (percentual >= 85) {
+      if (percentual >= 80) {
         classificacao = 'adequado';
-      } else if (percentual >= 75) {
+      } else if (percentual >= 60) {
         classificacao = 'atencao';
       } else {
         classificacao = 'critico';
@@ -985,8 +1023,8 @@ exports.getEstatisticasTurma = async (req, res) => {
       : 0;
     
     let classificacao = 'adequado';
-    if (percentualPresenca < 75) classificacao = 'critico';
-    else if (percentualPresenca < 85) classificacao = 'atencao';
+    if (percentualPresenca < 60) classificacao = 'critico';
+    else if (percentualPresenca < 80) classificacao = 'atencao';
     
     res.json({
       turmaId,
