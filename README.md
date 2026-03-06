@@ -8,7 +8,7 @@ Sistema completo de gestão escolar desenvolvido com TypeScript, React e Node.js
 - **Node.js** com Express
 - **TypeScript** para type-safety
 - **Prisma ORM** para gerenciamento do banco de dados
-- **PostgreSQL** como banco de dados
+- **Mongo DB** como banco de dados
 - **Zod** para validação de dados
 
 ### Frontend
