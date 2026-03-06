@@ -33,6 +33,7 @@ import {
   ListItem,
   ListItemText,
   Divider,
+  Badge,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -546,7 +547,8 @@ const Frequencias = () => {
     try {
       if (!justificativa.trim()) {
         toast.error('Digite a justificativa');
-        return;      }
+        return;
+      }
       
       const freq = frequencias[alunoJustificar];
       if (freq) {
@@ -560,13 +562,18 @@ const Frequencias = () => {
         [alunoJustificar]: 'falta-justificada'
       }));
       
-      toast.success('Falta justificada!');
+      toast.success('Justificativa salva com sucesso!');
       setDialogJustificativa(false);
       setJustificativa('');
       setAlunoJustificar(null);
-      loadFrequencia();
+      
+      // Recarregar frequências para atualizar justificativas
+      if (alunos && alunos.length > 0) {
+        await loadFrequencia(alunos);
+      }
     } catch (error) {
-      toast.error('Erro ao justificar falta');
+      console.error('Erro ao justificar falta:', error);
+      toast.error('Erro ao salvar justificativa');
     }
   };
 
@@ -1248,17 +1255,35 @@ const Frequencias = () => {
                             size="small"
                           />
                           {(status === 'falta' || status === 'falta-justificada') && (
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => {
-                                setAlunoJustificar(aluno._id);
-                                setDialogJustificativa(true);
-                              }}
-                              title="Justificar falta"
-                            >
-                              <EventNote />
-                            </IconButton>
+                            <Tooltip title={
+                              frequencias[aluno._id]?.justificativa?.descricao 
+                                ? 'Ver/Editar justificativa salva' 
+                                : 'Adicionar justificativa'
+                            }>
+                              <Badge 
+                                color="success" 
+                                variant="dot" 
+                                invisible={!frequencias[aluno._id]?.justificativa?.descricao}
+                              >
+                                <IconButton
+                                  size="small"
+                                  color={frequencias[aluno._id]?.justificativa?.descricao ? "success" : "primary"}
+                                  onClick={() => {
+                                    setAlunoJustificar(aluno._id);
+                                    // Carregar justificativa existente se houver
+                                    const freq = frequencias[aluno._id];
+                                    if (freq?.justificativa?.descricao) {
+                                      setJustificativa(freq.justificativa.descricao);
+                                    } else {
+                                      setJustificativa('');
+                                    }
+                                    setDialogJustificativa(true);
+                                  }}
+                                >
+                                  <EventNote />
+                                </IconButton>
+                              </Badge>
+                            </Tooltip>
                           )}
                           <Tooltip title="Ver histórico de frequência">
                             <IconButton
@@ -1289,12 +1314,23 @@ const Frequencias = () => {
       {/* Dialog de Justificativa */}
       <Dialog 
         open={dialogJustificativa} 
-        onClose={() => setDialogJustificativa(false)}
+        onClose={() => {
+          setDialogJustificativa(false);
+          setJustificativa('');
+        }}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Justificar Falta</DialogTitle>
+        <DialogTitle>
+          {frequencias[alunoJustificar]?.justificativa?.descricao ? 'Ver/Editar Justificativa' : 'Justificar Falta'}
+        </DialogTitle>
         <DialogContent>
+          {frequencias[alunoJustificar]?.justificativa?.dataJustificativa && (
+            <Alert severity="info" sx={{ mt: 2, mb: 2 }}>
+              <strong>Justificativa registrada em:</strong>{' '}
+              {new Date(frequencias[alunoJustificar].justificativa.dataJustificativa).toLocaleString('pt-BR')}
+            </Alert>
+          )}
           <TextField
             fullWidth
             multiline
@@ -1304,10 +1340,14 @@ const Frequencias = () => {
             onChange={(e) => setJustificativa(e.target.value)}
             sx={{ mt: 2 }}
             placeholder="Digite o motivo da falta..."
+            helperText="Esta justificativa ficará salva e poderá ser consultada posteriormente"
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogJustificativa(false)}>
+          <Button onClick={() => {
+            setDialogJustificativa(false);
+            setJustificativa('');
+          }}>
             Cancelar
           </Button>
           <Button 
