@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Typography,
@@ -24,12 +24,14 @@ import {
   Zoom,
   IconButton,
   Tooltip,
-  ToggleButtonGroup,
-  ToggleButton,
-  Badge,
   Divider,
   Button,
+  Dialog,
+  AppBar,
+  Toolbar,
+  Slide,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   AssessmentOutlined,
   SchoolOutlined,
@@ -41,7 +43,12 @@ import {
   EventBusyOutlined,
   Refresh as RefreshIcon,
   FilterList as FilterListIcon,
+  PictureAsPdf as PdfIcon,
+  Fullscreen as FullscreenIcon,
+  FullscreenExit as FullscreenExitIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
+import html2pdf from 'html2pdf.js';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -54,7 +61,7 @@ import {
   PointElement,
   LineElement,
 } from 'chart.js';
-import { Bar, Pie, Line } from 'react-chartjs-2';
+import { Bar, Pie, Line, Scatter } from 'react-chartjs-2';
 import { dashboardService, turmaService, disciplinaService, alunoService, frequenciaService } from '../services';
 import { toast } from 'react-toastify';
 import PageHeader from '../components/PageHeader';
@@ -72,7 +79,17 @@ ChartJS.register(
   LineElement
 );
 
+// Componente de transição para o Dialog
+const Transition = React.forwardRef(function Transition(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
+
 const Dashboard = () => {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
+  const frequenciaRef = useRef(null);
+  const [exportando, setExportando] = useState(false);
+  
   const [turmas, setTurmas] = useState([]);
   const [disciplinas, setDisciplinas] = useState([]);
   const [alunos, setAlunos] = useState([]);
@@ -106,6 +123,16 @@ const Dashboard = () => {
   const [frequenciaFiltros, setFrequenciaFiltros] = useState(['todos']);
   const [habilidadesFiltro, setHabilidadesFiltro] = useState('todos'); // todos, nao-desenvolvido, em-desenvolvimento, desenvolvido, plenamente-desenvolvido
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [graficoExpandido, setGraficoExpandido] = useState(null); // null, 'comparacao', 'predicao'
+
+  // Funções para controle de expansão dos gráficos
+  const handleExpandirGrafico = (tipoGrafico) => {
+    setGraficoExpandido(tipoGrafico);
+  };
+
+  const handleFecharGrafico = () => {
+    setGraficoExpandido(null);
+  };
 
   /**
    * Formata uma data no formato 'YYYY-MM-DD' para 'DD/MM/YYYY'
@@ -179,6 +206,9 @@ const Dashboard = () => {
       if (filters.dataInicio) params.dataInicio = filters.dataInicio;
       if (filters.dataFim) params.dataFim = filters.dataFim;
       if (filters.pontoCorte) params.pontoCorte = filters.pontoCorte;
+      
+      // Adicionar timestamp para evitar cache
+      params._t = Date.now();
 
       console.log('🔍 Dashboard: Carregando dados com filtros:', params);
 
@@ -197,8 +227,35 @@ const Dashboard = () => {
       console.log('📋 Alunos classificados:', dashFreq?.todosAlunos);
       console.log('🔍 Contadores:', dashFreq?.contadores);
 
+      // FILTRAR APENAS ALUNOS COM DADOS VÁLIDOS (segunda camada de segurança)
+      let alunosValidos = [];
+      if (dashFreq?.todosAlunos && Array.isArray(dashFreq.todosAlunos)) {
+        alunosValidos = dashFreq.todosAlunos.filter(item => {
+          // Verificar se o aluno existe e tem dados completos
+          const temDadosCompletos = item?.aluno && 
+                                     item.aluno._id && 
+                                     item.aluno.nome && 
+                                     item.aluno.matricula;
+          
+          if (!temDadosCompletos) {
+            console.warn('⚠️ Aluno com dados incompletos removido da listagem:', item);
+            return false;
+          }
+          
+          return true;
+        });
+        
+        console.log(`✅ Frontend - Alunos válidos: ${alunosValidos.length} de ${dashFreq.todosAlunos.length}`);
+        if (alunosValidos.length !== dashFreq.todosAlunos.length) {
+          console.warn(`⚠️ ${dashFreq.todosAlunos.length - alunosValidos.length} aluno(s) foram removidos por dados incompletos`);
+        }
+      }
+
       // Garantir que sempre temos uma estrutura mínima, mesmo que vazia
-      const dashFreqFormatado = dashFreq || {
+      const dashFreqFormatado = dashFreq ? {
+        ...dashFreq,
+        todosAlunos: alunosValidos, // Usar lista filtrada
+      } : {
         totalRegistros: 0,
         presentes: 0,
         faltas: 0,
@@ -233,6 +290,48 @@ const Dashboard = () => {
         contadores: { total: 0, adequado: 0, atencao: 0, critico: 0 },
         frequenciaPorDiaSemana: []
       });
+    }
+  };
+
+  // Função para exportar Dashboard de Frequência em PDF
+  const exportarFrequenciaPDF = async () => {
+    if (!frequenciaRef.current) {
+      toast.error('Erro ao exportar: conteúdo não encontrado');
+      return;
+    }
+
+    try {
+      setExportando(true);
+      toast.info('Gerando PDF... Aguarde alguns segundos', { autoClose: 2000 });
+
+      // Configurações do PDF
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `Dashboard_Frequencia_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait'
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      // Gerar PDF
+      await html2pdf().set(opt).from(frequenciaRef.current).save();
+      
+      toast.success('✅ PDF exportado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      toast.error('Erro ao exportar PDF: ' + error.message);
+    } finally {
+      setExportando(false);
     }
   };
 
@@ -340,6 +439,100 @@ const Dashboard = () => {
       }],
     };
   })() : null;
+
+  // Opções de gráficos com cores adaptáveis ao tema
+  const chartOptionsBar = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: isDarkMode ? '#ffffff' : '#000000'
+        }
+      },
+      title: {
+        color: isDarkMode ? '#ffffff' : '#000000'
+      }
+    },
+    scales: {
+      y: {
+        ticks: {
+          color: isDarkMode ? '#ffffff' : '#000000'
+        },
+        grid: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+        },
+        border: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'
+        }
+      },
+      x: {
+        ticks: {
+          color: isDarkMode ? '#ffffff' : '#000000'
+        },
+        grid: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+        },
+        border: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'
+        }
+      }
+    }
+  };
+
+  const chartOptionsLine = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: isDarkMode ? '#ffffff' : '#000000'
+        }
+      },
+      title: {
+        color: isDarkMode ? '#ffffff' : '#000000'
+      }
+    },
+    scales: {
+      y: {
+        ticks: {
+          color: isDarkMode ? '#ffffff' : '#000000'
+        },
+        grid: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+        },
+        border: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'
+        }
+      },
+      x: {
+        ticks: {
+          color: isDarkMode ? '#ffffff' : '#000000'
+        },
+        grid: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+        },
+        border: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'
+        }
+      }
+    }
+  };
+
+  const chartOptionsPie = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: isDarkMode ? '#ffffff' : '#000000'
+        }
+      },
+      title: {
+        color: isDarkMode ? '#ffffff' : '#000000'
+      }
+    }
+  };
 
   return (
     <Container maxWidth="xl">
@@ -796,7 +989,7 @@ const Dashboard = () => {
                 Desempenho por Disciplina
               </Typography>
               <Box sx={{ height: 300 }}>
-              <Bar data={chartDataDesempenho} options={{ maintainAspectRatio: false }} />
+              <Bar data={chartDataDesempenho} options={chartOptionsBar} />
             </Box>
           </Paper>
           </Fade>
@@ -820,7 +1013,7 @@ const Dashboard = () => {
               </Typography>
             <Box sx={{ height: 300, display: 'flex', justifyContent: 'center' }}>
               {chartDataAprovacao && (
-                <Pie data={chartDataAprovacao} options={{ maintainAspectRatio: false }} />
+                <Pie data={chartDataAprovacao} options={chartOptionsPie} />
               )}
             </Box>
           </Paper>
@@ -844,7 +1037,7 @@ const Dashboard = () => {
                 Evolução Trimestral
               </Typography>
             <Box sx={{ height: 300 }}>
-              <Line data={chartDataEvolucao} options={{ maintainAspectRatio: false }} />
+              <Line data={chartDataEvolucao} options={chartOptionsLine} />
             </Box>
           </Paper>
           </Fade>
@@ -1068,12 +1261,15 @@ const Dashboard = () => {
                 <Line 
                   data={chartDataEvolucaoHabilidades} 
                   options={{ 
-                    maintainAspectRatio: false,
+                    ...chartOptionsLine,
                     scales: {
+                      ...chartOptionsLine.scales,
                       y: {
+                        ...chartOptionsLine.scales.y,
                         beginAtZero: true,
                         max: 100,
                         ticks: {
+                          ...chartOptionsLine.scales.y.ticks,
                           callback: function(value) {
                             return value + '%';
                           }
@@ -1114,9 +1310,11 @@ const Dashboard = () => {
                 <Pie 
                   data={chartDataDistribuicaoHabilidades} 
                   options={{ 
-                    maintainAspectRatio: false,
+                    ...chartOptionsPie,
                     plugins: {
+                      ...chartOptionsPie.plugins,
                       legend: {
+                        ...chartOptionsPie.plugins.legend,
                         position: 'bottom'
                       },
                       tooltip: {
@@ -1232,6 +1430,7 @@ const Dashboard = () => {
         <Grid item xs={12}>
           <Fade in={true} timeout={1400}>
             <Paper 
+              ref={frequenciaRef}
               sx={{ 
                 p: 3,
                 borderRadius: 3,
@@ -1248,20 +1447,42 @@ const Dashboard = () => {
                       📅 Dashboard de Frequência - Dados Acumulados
                     </Typography>
                     
-                    {/* Badge de Contexto */}
-                    <Chip
-                      icon={<AssessmentOutlined />}
-                      label={
-                        filters.disciplina 
-                          ? `Disciplina: ${disciplinas.find(d => d._id === filters.disciplina)?.nome || 'Selecionada'}` 
-                          : filters.aluno
-                          ? `Aluno: ${alunos.find(a => a._id === filters.aluno)?.nome || 'Selecionado'}`
-                          : 'Visão Geral - Todas as Disciplinas'
-                      }
-                      color={filters.disciplina || filters.aluno ? 'primary' : 'default'}
-                      variant={filters.disciplina || filters.aluno ? 'filled' : 'outlined'}
-                      sx={{ fontWeight: 600 }}
-                    />
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {/* Botão Exportar PDF */}
+                      <Tooltip title="Exportar Dashboard em PDF (com cores)">
+                        <Button
+                          variant="contained"
+                          color="error"
+                          size="small"
+                          startIcon={<PdfIcon />}
+                          onClick={exportarFrequenciaPDF}
+                          disabled={exportando || !dashboardFrequencia.todosAlunos || dashboardFrequencia.todosAlunos.length === 0}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            boxShadow: 2,
+                            '&:hover': { boxShadow: 4 }
+                          }}
+                        >
+                          {exportando ? 'Gerando PDF...' : 'Exportar PDF'}
+                        </Button>
+                      </Tooltip>
+                      
+                      {/* Badge de Contexto */}
+                      <Chip
+                        icon={<AssessmentOutlined />}
+                        label={
+                          filters.disciplina 
+                            ? `Disciplina: ${disciplinas.find(d => d._id === filters.disciplina)?.nome || 'Selecionada'}` 
+                            : filters.aluno
+                            ? `Aluno: ${alunos.find(a => a._id === filters.aluno)?.nome || 'Selecionado'}`
+                            : 'Visão Geral - Todas as Disciplinas'
+                        }
+                        color={filters.disciplina || filters.aluno ? 'primary' : 'default'}
+                        variant={filters.disciplina || filters.aluno ? 'filled' : 'outlined'}
+                        sx={{ fontWeight: 600 }}
+                      />
+                    </Box>
                   </Box>
 
                   {/* Banner Informativo de Dados Acumulados */}
@@ -1353,13 +1574,22 @@ const Dashboard = () => {
                             WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
                           }}
                         >
-                          {dashboardFrequencia.presentes}
+                          {dashboardFrequencia.percentualPresenca || 0}%
                         </Typography>
                         <Typography variant="body1" align="center" sx={{ mt: 1 }}>
                           Presentes
                         </Typography>
-                        <Typography variant="caption" align="center" display="block" sx={{ opacity: 0.9 }}>
-                          ({dashboardFrequencia.percentualPresenca || 0}%)
+                        <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                        <Typography 
+                          variant="h5" 
+                          align="center" 
+                          sx={{ 
+                            fontWeight: 600,
+                            textShadow: '0 0 1px rgba(255,255,255,0.6)',
+                            WebkitTextStroke: '1px rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {dashboardFrequencia.presentes} alunos
                         </Typography>
                       </CardContent>
                     </Card>
@@ -1386,13 +1616,22 @@ const Dashboard = () => {
                             WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
                           }}
                         >
-                          {dashboardFrequencia.faltas}
+                          {dashboardFrequencia.percentualFaltas || 0}%
                         </Typography>
                         <Typography variant="body1" align="center" sx={{ mt: 1 }}>
                           Faltas
                         </Typography>
-                        <Typography variant="caption" align="center" display="block" sx={{ opacity: 0.9 }}>
-                          ({dashboardFrequencia.percentualFaltas || 0}%)
+                        <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                        <Typography 
+                          variant="h5" 
+                          align="center" 
+                          sx={{ 
+                            fontWeight: 600,
+                            textShadow: '0 0 1px rgba(255,255,255,0.6)',
+                            WebkitTextStroke: '1px rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {dashboardFrequencia.faltas} alunos
                         </Typography>
                       </CardContent>
                     </Card>
@@ -1429,133 +1668,699 @@ const Dashboard = () => {
                   </Grid>
                 </Grid>
 
+                {/* Gráficos de Análise */}
+                {dashboardFrequencia.todosAlunos && dashboardFrequencia.todosAlunos.length > 0 && (() => {
+                  // Processar dados para gráfico de comparação por turma
+                  const turmasMap = {};
+                  dashboardFrequencia.todosAlunos.forEach(aluno => {
+                    const turmaId = aluno.aluno?.turma?._id || 'sem-turma';
+                    const turmaNome = aluno.aluno?.turma?.nome || 'Sem Turma';
+                    
+                    if (!turmasMap[turmaId]) {
+                      turmasMap[turmaId] = {
+                        nome: turmaNome,
+                        alunos: [],
+                        somaFrequencia: 0,
+                        adequado: 0,
+                        atencao: 0,
+                        critico: 0
+                      };
+                    }
+                    
+                    turmasMap[turmaId].alunos.push(aluno);
+                    turmasMap[turmaId].somaFrequencia += parseFloat(aluno.percentualPresenca) || 0;
+                    
+                    // Contar por classificação
+                    if (aluno.classificacao === 'adequado') turmasMap[turmaId].adequado++;
+                    else if (aluno.classificacao === 'atencao') turmasMap[turmaId].atencao++;
+                    else if (aluno.classificacao === 'critico') turmasMap[turmaId].critico++;
+                  });
+
+                  let turmasArray = Object.values(turmasMap).map(turma => ({
+                    ...turma,
+                    media: (turma.somaFrequencia / turma.alunos.length).toFixed(1),
+                    total: turma.alunos.length
+                  })).sort((a, b) => b.media - a.media); // Ordenar por média decrescente
+
+                  // Se houver filtro de turma específica, mostrar apenas aquela turma
+                  if (filters.turma) {
+                    const turmaFiltrada = turmasArray.find(t => 
+                      t.alunos.some(a => a.aluno?.turma?._id === filters.turma)
+                    );
+                    if (turmaFiltrada) {
+                      turmasArray = [turmaFiltrada];
+                    }
+                  }
+
+                  // Paleta de cores distintas para cada turma
+                  const coresTurmas = [
+                    { bg: 'rgba(25, 118, 210, 0.7)', border: 'rgb(25, 118, 210)' },      // Azul
+                    { bg: 'rgba(156, 39, 176, 0.7)', border: 'rgb(156, 39, 176)' },      // Roxo
+                    { bg: 'rgba(0, 150, 136, 0.7)', border: 'rgb(0, 150, 136)' },        // Teal
+                    { bg: 'rgba(255, 87, 34, 0.7)', border: 'rgb(255, 87, 34)' },        // Laranja Escuro
+                    { bg: 'rgba(233, 30, 99, 0.7)', border: 'rgb(233, 30, 99)' },        // Rosa
+                    { bg: 'rgba(103, 58, 183, 0.7)', border: 'rgb(103, 58, 183)' },      // Roxo Profundo
+                    { bg: 'rgba(0, 188, 212, 0.7)', border: 'rgb(0, 188, 212)' },        // Ciano
+                    { bg: 'rgba(255, 193, 7, 0.7)', border: 'rgb(255, 193, 7)' },        // Âmbar
+                    { bg: 'rgba(121, 85, 72, 0.7)', border: 'rgb(121, 85, 72)' },        // Marrom
+                    { bg: 'rgba(96, 125, 139, 0.7)', border: 'rgb(96, 125, 139)' },      // Cinza Azulado
+                  ];
+
+                  // Dados para gráfico de comparação
+                  const dadosComparacao = {
+                    labels: turmasArray.map(t => t.nome),
+                    datasets: [{
+                      label: 'Frequência Média (%)',
+                      data: turmasArray.map(t => parseFloat(t.media)),
+                      // Se há filtro, usar cor baseada no desempenho; senão, usar cores distintas
+                      backgroundColor: filters.turma 
+                        ? turmasArray.map(t => 
+                            t.media >= 80 ? 'rgba(76, 175, 80, 0.7)' : 
+                            t.media >= 60 ? 'rgba(255, 152, 0, 0.7)' : 
+                            'rgba(244, 67, 54, 0.7)'
+                          )
+                        : turmasArray.map((t, idx) => coresTurmas[idx % coresTurmas.length].bg),
+                      borderColor: filters.turma
+                        ? turmasArray.map(t => 
+                            t.media >= 80 ? 'rgb(76, 175, 80)' : 
+                            t.media >= 60 ? 'rgb(255, 152, 0)' : 
+                            'rgb(244, 67, 54)'
+                          )
+                        : turmasArray.map((t, idx) => coresTurmas[idx % coresTurmas.length].border),
+                      borderWidth: 2,
+                    }]
+                  };
+
+                  const opcoesComparacao = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        display: false,
+                        labels: {
+                          color: isDarkMode ? '#ffffff' : '#000000'
+                        }
+                      },
+                      title: {
+                        display: true,
+                        text: filters.turma 
+                          ? `📊 Frequência da Turma ${turmasArray[0]?.nome || ''}`
+                          : '📊 Comparação de Frequência por Turma',
+                        font: { size: 16, weight: 'bold' },
+                        color: isDarkMode ? '#ffffff' : '#000000'
+                      },
+                      tooltip: {
+                        callbacks: {
+                          label: function(context) {
+                            const turma = turmasArray[context.dataIndex];
+                            return [
+                              `Frequência Média: ${context.parsed.y}%`,
+                              `Total de Alunos: ${turma.total}`,
+                              `Adequado: ${turma.adequado} | Atenção: ${turma.atencao} | Crítico: ${turma.critico}`
+                            ];
+                          }
+                        }
+                      }
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                          display: true,
+                          text: 'Frequência Média (%)',
+                          color: isDarkMode ? '#ffffff' : '#000000'
+                        },
+                        ticks: {
+                          color: isDarkMode ? '#ffffff' : '#000000'
+                        },
+                        grid: {
+                          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                        },
+                        border: {
+                          color: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'
+                        }
+                      },
+                      x: {
+                        title: {
+                          display: true,
+                          text: filters.turma ? 'Turma' : 'Turmas',
+                          color: isDarkMode ? '#ffffff' : '#000000'
+                        },
+                        ticks: {
+                          color: isDarkMode ? '#ffffff' : '#000000'
+                        },
+                        grid: {
+                          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                        },
+                        border: {
+                          color: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'
+                        }
+                      }
+                    }
+                  };
+
+                  // Plugin customizado para exibir valores no topo das barras
+                  const pluginValoresNoTopo = {
+                    id: 'valoresNoTopo',
+                    afterDatasetsDraw(chart) {
+                      const { ctx, data, scales: { x, y } } = chart;
+                      ctx.save();
+                      
+                      data.datasets.forEach((dataset, datasetIndex) => {
+                        chart.getDatasetMeta(datasetIndex).data.forEach((bar, index) => {
+                          const value = dataset.data[index];
+                          
+                          // Configurar o texto
+                          ctx.fillStyle = isDarkMode ? '#ffffff' : '#000000';
+                          ctx.font = 'bold 14px Arial';
+                          ctx.textAlign = 'center';
+                          ctx.textBaseline = 'bottom';
+                          
+                          // Posição do texto (acima da barra)
+                          const xPos = bar.x;
+                          const yPos = bar.y - 5;
+                          
+                          // Desenhar o texto
+                          ctx.fillText(`${value}%`, xPos, yPos);
+                        });
+                      });
+                      
+                      ctx.restore();
+                    }
+                  };
+
+                  // Dados para gráfico de predição (scatter)
+                  const alunosAdequado = [];
+                  const alunosAtencao = [];
+                  const alunosCritico = [];
+
+                  dashboardFrequencia.todosAlunos.forEach(aluno => {
+                    const ponto = {
+                      x: aluno.total || 0,
+                      y: parseFloat(aluno.percentualPresenca) || 0,
+                      nome: aluno.aluno?.nome || 'Sem nome',
+                      turma: aluno.aluno?.turma?.nome || 'Sem turma'
+                    };
+
+                    if (aluno.classificacao === 'adequado') {
+                      alunosAdequado.push(ponto);
+                    } else if (aluno.classificacao === 'atencao') {
+                      alunosAtencao.push(ponto);
+                    } else {
+                      alunosCritico.push(ponto);
+                    }
+                  });
+
+                  const dadosPredicao = {
+                    datasets: [
+                      {
+                        label: 'Adequado (≥80%)',
+                        data: alunosAdequado,
+                        backgroundColor: 'rgba(76, 175, 80, 0.6)',
+                        borderColor: 'rgb(76, 175, 80)',
+                        borderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                      },
+                      {
+                        label: 'Atenção (60-79%)',
+                        data: alunosAtencao,
+                        backgroundColor: 'rgba(255, 152, 0, 0.6)',
+                        borderColor: 'rgb(255, 152, 0)',
+                        borderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                      },
+                      {
+                        label: 'Crítico (<60%)',
+                        data: alunosCritico,
+                        backgroundColor: 'rgba(244, 67, 54, 0.6)',
+                        borderColor: 'rgb(244, 67, 54)',
+                        borderWidth: 2,
+                        pointRadius: 8,
+                        pointHoverRadius: 10,
+                      }
+                    ]
+                  };
+
+                  const opcoesPredicao = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                          color: isDarkMode ? '#ffffff' : '#000000'
+                        }
+                      },
+                      title: {
+                        display: true,
+                        text: '🎯 Análise de Risco e Predição',
+                        font: { size: 16, weight: 'bold' },
+                        color: isDarkMode ? '#ffffff' : '#000000'
+                      },
+                      tooltip: {
+                        callbacks: {
+                          label: function(context) {
+                            const ponto = context.raw;
+                            return [
+                              `Aluno: ${ponto.nome}`,
+                              `Turma: ${ponto.turma}`,
+                              `Total de Aulas: ${ponto.x}`,
+                              `Frequência: ${ponto.y}%`
+                            ];
+                          }
+                        }
+                      }
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                          display: true,
+                          text: 'Frequência (%)',
+                          color: isDarkMode ? '#ffffff' : '#000000'
+                        },
+                        ticks: {
+                          color: isDarkMode ? '#ffffff' : '#000000'
+                        },
+                        grid: {
+                          color: function(context) {
+                            // Linhas de referência coloridas
+                            if (context.tick.value === 80) return 'rgba(76, 175, 80, 0.4)';
+                            if (context.tick.value === 60) return 'rgba(255, 152, 0, 0.4)';
+                            return isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                          },
+                          lineWidth: function(context) {
+                            return (context.tick.value === 80 || context.tick.value === 60) ? 2 : 1;
+                          }
+                        },
+                        border: {
+                          color: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'
+                        }
+                      },
+                      x: {
+                        title: {
+                          display: true,
+                          text: 'Total de Aulas Registradas',
+                          color: isDarkMode ? '#ffffff' : '#000000'
+                        },
+                        ticks: {
+                          color: isDarkMode ? '#ffffff' : '#000000'
+                        },
+                        grid: {
+                          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                        },
+                        border: {
+                          color: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'
+                        }
+                      }
+                    }
+                  };
+
+                  // Identificar alertas
+                  const alertas = [];
+                  const alunosCriticos = dashboardFrequencia.todosAlunos.filter(a => a.classificacao === 'critico');
+                  const turmasBaixaMedia = turmasArray.filter(t => parseFloat(t.media) < 75);
+                  const alunosRisco = dashboardFrequencia.todosAlunos.filter(a => 
+                    parseFloat(a.percentualPresenca) >= 60 && parseFloat(a.percentualPresenca) < 70
+                  );
+
+                  if (alunosCriticos.length > 0) {
+                    alertas.push(`🚨 ${alunosCriticos.length} aluno(s) em situação crítica (<60%)`);
+                  }
+                  if (turmasBaixaMedia.length > 0) {
+                    alertas.push(`⚠️ ${turmasBaixaMedia.length} turma(s) com média abaixo de 75%: ${turmasBaixaMedia.map(t => t.nome).join(', ')}`);
+                  }
+                  if (alunosRisco.length > 0) {
+                    alertas.push(`📉 ${alunosRisco.length} aluno(s) próximo(s) da zona crítica (60-70%)`);
+                  }
+
+                  return (
+                    <>
+                      {/* Grid dos Gráficos */}
+                      <Grid container spacing={3} sx={{ my: 3 }}>
+                        <Grid item xs={12} md={6}>
+                          <Paper elevation={3} sx={{ p: 2, height: 400, position: 'relative' }}>
+                            <IconButton
+                              onClick={() => handleExpandirGrafico('comparacao')}
+                              sx={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                zIndex: 10,
+                                bgcolor: 'rgba(0,0,0,0.05)',
+                                '&:hover': { bgcolor: 'rgba(0,0,0,0.1)' }
+                              }}
+                              title="Expandir gráfico"
+                            >
+                              <FullscreenIcon />
+                            </IconButton>
+                            <Bar 
+                              data={dadosComparacao} 
+                              options={opcoesComparacao}
+                              plugins={[pluginValoresNoTopo]}
+                            />
+                          </Paper>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Paper elevation={3} sx={{ p: 2, height: 400, position: 'relative' }}>
+                            <IconButton
+                              onClick={() => handleExpandirGrafico('predicao')}
+                              sx={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                zIndex: 10,
+                                bgcolor: 'rgba(0,0,0,0.05)',
+                                '&:hover': { bgcolor: 'rgba(0,0,0,0.1)' }
+                              }}
+                              title="Expandir gráfico"
+                            >
+                              <FullscreenIcon />
+                            </IconButton>
+                            <Scatter data={dadosPredicao} options={opcoesPredicao} />
+                          </Paper>
+                        </Grid>
+                      </Grid>
+
+                      {/* Dialog de Visualização Expandida */}
+                      <Dialog
+                        fullScreen
+                        open={graficoExpandido !== null}
+                        onClose={handleFecharGrafico}
+                        TransitionComponent={Transition}
+                      >
+                        <AppBar sx={{ position: 'relative', bgcolor: 'primary.main' }}>
+                          <Toolbar>
+                            <IconButton
+                              edge="start"
+                              color="inherit"
+                              onClick={handleFecharGrafico}
+                              aria-label="fechar"
+                            >
+                              <CloseIcon />
+                            </IconButton>
+                            <Typography sx={{ ml: 2, flex: 1 }} variant="h6" component="div">
+                              {graficoExpandido === 'comparacao' 
+                                ? '📊 Comparação de Frequência por Turma' 
+                                : '🎯 Análise de Risco e Predição'}
+                            </Typography>
+                            <IconButton
+                              color="inherit"
+                              onClick={handleFecharGrafico}
+                              aria-label="retornar ao modo normal"
+                            >
+                              <FullscreenExitIcon />
+                            </IconButton>
+                          </Toolbar>
+                        </AppBar>
+                        <Box sx={{ p: 4, height: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center' }}>
+                          {graficoExpandido === 'comparacao' && (
+                            <Box sx={{ width: '100%', height: '80vh' }}>
+                              <Bar 
+                                data={dadosComparacao} 
+                                options={{
+                                  ...opcoesComparacao,
+                                  maintainAspectRatio: true,
+                                  plugins: {
+                                    ...opcoesComparacao.plugins,
+                                    title: {
+                                      ...opcoesComparacao.plugins.title,
+                                      font: { size: 20, weight: 'bold' }
+                                    }
+                                  }
+                                }}
+                                plugins={[pluginValoresNoTopo]}
+                              />
+                            </Box>
+                          )}
+                          {graficoExpandido === 'predicao' && (
+                            <Box sx={{ width: '100%', height: '80vh' }}>
+                              <Scatter 
+                                data={dadosPredicao} 
+                                options={{
+                                  ...opcoesPredicao,
+                                  maintainAspectRatio: true,
+                                  plugins: {
+                                    ...opcoesPredicao.plugins,
+                                    title: {
+                                      ...opcoesPredicao.plugins.title,
+                                      font: { size: 20, weight: 'bold' }
+                                    }
+                                  }
+                                }} 
+                              />
+                            </Box>
+                          )}
+                        </Box>
+                      </Dialog>
+
+                      {/* Alertas Automáticos */}
+                      {alertas.length > 0 && (
+                        <Alert severity="warning" icon={<WarningAmberOutlined />} sx={{ mb: 3 }}>
+                          <Typography variant="subtitle2" fontWeight="700" gutterBottom>
+                            🚨 ALERTAS AUTOMÁTICOS
+                          </Typography>
+                          {alertas.map((alerta, idx) => (
+                            <Typography key={idx} variant="body2" sx={{ mt: 0.5 }}>
+                              • {alerta}
+                            </Typography>
+                          ))}
+                        </Alert>
+                      )}
+                    </>
+                  );
+                })()}
+
                 {/* Filtros de Frequência */}
-                <Box sx={{ my: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <FilterListIcon color="primary" />
-                    <Typography variant="body1" fontWeight="600">
-                      Filtrar por Status:
+                <Box sx={{ my: 4 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <FilterListIcon color="primary" sx={{ fontSize: 28 }} />
+                    <Typography variant="h6" fontWeight="700" color="primary">
+                      Filtrar por Status
                     </Typography>
                   </Box>
-                  <ToggleButtonGroup
-                    value={frequenciaFiltros}
-                    onChange={(event, newFiltros) => {
-                      if (newFiltros.length === 0) return; // Não permitir desmarcar todos
-                      
-                      // Se selecionou "todos", desmarcar outros
-                      if (newFiltros.includes('todos') && !frequenciaFiltros.includes('todos')) {
-                        setFrequenciaFiltros(['todos']);
-                      }
-                      // Se tinha "todos" e selecionou outro, remover "todos"
-                      else if (frequenciaFiltros.includes('todos') && newFiltros.length > 1) {
-                        setFrequenciaFiltros(newFiltros.filter(f => f !== 'todos'));
-                      }
-                      // Seleção normal
-                      else {
-                        setFrequenciaFiltros(newFiltros);
-                      }
-                    }}
-                    aria-label="filtros de frequência"
-                    size="small"
-                    sx={{
-                      flexWrap: 'wrap',
-                      '& .MuiToggleButton-root': {
-                        px: 2,
-                        py: 1,
-                        border: '2px solid',
-                        fontWeight: 600,
-                        textTransform: 'none',
-                      }
-                    }}
-                  >
-                    <ToggleButton 
-                      value="todos" 
-                      sx={{ 
+                  
+                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                    {/* Botão TODOS */}
+                    <Button
+                      variant={frequenciaFiltros.includes('todos') ? 'contained' : 'outlined'}
+                      onClick={() => setFrequenciaFiltros(['todos'])}
+                      startIcon={<CheckCircleOutlined />}
+                      sx={{
+                        px: 3,
+                        py: 1.5,
+                        borderRadius: 3,
+                        borderWidth: 2,
                         borderColor: 'primary.main',
-                        '&.Mui-selected': { 
-                          bgcolor: 'primary.main', 
-                          color: 'white',
-                          '&:hover': { bgcolor: 'primary.dark' }
+                        fontWeight: 700,
+                        fontSize: '0.95rem',
+                        textTransform: 'none',
+                        boxShadow: frequenciaFiltros.includes('todos') ? 4 : 2,
+                        transition: 'all 0.3s ease',
+                        background: frequenciaFiltros.includes('todos') 
+                          ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'
+                          : 'transparent',
+                        '&:hover': {
+                          borderWidth: 2,
+                          transform: 'translateY(-2px)',
+                          boxShadow: 6,
+                          borderColor: 'primary.dark',
+                          background: frequenciaFiltros.includes('todos')
+                            ? 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)'
+                            : 'rgba(25, 118, 210, 0.08)',
                         }
                       }}
                     >
-                      <Badge 
-                        badgeContent={dashboardFrequencia.contadores?.total || 0} 
-                        color="primary"
-                        sx={{ '& .MuiBadge-badge': { bgcolor: 'white', color: 'primary.main' } }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
-                          🔵 TODOS
-                        </Box>
-                      </Badge>
-                    </ToggleButton>
-                    
-                    <ToggleButton 
-                      value="adequado"
-                      sx={{ 
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body1" fontWeight="700">
+                          TODOS
+                        </Typography>
+                        <Chip 
+                          label={dashboardFrequencia.contadores?.total || 0}
+                          size="small"
+                          sx={{ 
+                            height: 24,
+                            fontWeight: 700,
+                            bgcolor: frequenciaFiltros.includes('todos') ? 'rgba(255,255,255,0.3)' : 'primary.main',
+                            color: frequenciaFiltros.includes('todos') ? 'white' : 'white'
+                          }}
+                        />
+                      </Box>
+                    </Button>
+
+                    {/* Botão ADEQUADO */}
+                    <Button
+                      variant={frequenciaFiltros.includes('adequado') ? 'contained' : 'outlined'}
+                      onClick={() => {
+                        const newFiltros = frequenciaFiltros.includes('adequado')
+                          ? frequenciaFiltros.filter(f => f !== 'adequado')
+                          : [...frequenciaFiltros.filter(f => f !== 'todos'), 'adequado'];
+                        setFrequenciaFiltros(newFiltros.length === 0 ? ['todos'] : newFiltros);
+                      }}
+                      startIcon={<CheckCircleOutlined />}
+                      sx={{
+                        px: 3,
+                        py: 1.5,
+                        borderRadius: 3,
+                        borderWidth: 2,
                         borderColor: 'success.main',
-                        '&.Mui-selected': { 
-                          bgcolor: 'success.main', 
-                          color: 'white',
-                          '&:hover': { bgcolor: 'success.dark' }
+                        fontWeight: 700,
+                        fontSize: '0.95rem',
+                        textTransform: 'none',
+                        boxShadow: frequenciaFiltros.includes('adequado') ? 4 : 2,
+                        transition: 'all 0.3s ease',
+                        background: frequenciaFiltros.includes('adequado')
+                          ? 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)'
+                          : 'transparent',
+                        color: frequenciaFiltros.includes('adequado') ? 'white' : 'success.main',
+                        '&:hover': {
+                          borderWidth: 2,
+                          transform: 'translateY(-2px)',
+                          boxShadow: 6,
+                          borderColor: 'success.dark',
+                          background: frequenciaFiltros.includes('adequado')
+                            ? 'linear-gradient(135deg, #1b5e20 0%, #0d3d10 100%)'
+                            : 'rgba(46, 125, 50, 0.08)',
                         }
                       }}
                     >
-                      <Badge 
-                        badgeContent={dashboardFrequencia.contadores?.adequado || 0} 
-                        color="success"
-                        sx={{ '& .MuiBadge-badge': { bgcolor: 'white', color: 'success.main' } }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
-                          ✅ ADEQUADO (&ge;85%)
-                        </Box>
-                      </Badge>
-                    </ToggleButton>
-                    
-                    <ToggleButton 
-                      value="atencao"
-                      sx={{ 
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body1" fontWeight="700">
+                          ADEQUADO
+                        </Typography>
+                        <Typography variant="caption" fontWeight="600" sx={{ opacity: 0.9 }}>
+                          ≥80%
+                        </Typography>
+                        <Chip 
+                          label={dashboardFrequencia.contadores?.adequado || 0}
+                          size="small"
+                          sx={{ 
+                            height: 24,
+                            fontWeight: 700,
+                            bgcolor: frequenciaFiltros.includes('adequado') ? 'rgba(255,255,255,0.3)' : 'success.main',
+                            color: 'white'
+                          }}
+                        />
+                      </Box>
+                    </Button>
+
+                    {/* Botão ATENÇÃO */}
+                    <Button
+                      variant={frequenciaFiltros.includes('atencao') ? 'contained' : 'outlined'}
+                      onClick={() => {
+                        const newFiltros = frequenciaFiltros.includes('atencao')
+                          ? frequenciaFiltros.filter(f => f !== 'atencao')
+                          : [...frequenciaFiltros.filter(f => f !== 'todos'), 'atencao'];
+                        setFrequenciaFiltros(newFiltros.length === 0 ? ['todos'] : newFiltros);
+                      }}
+                      startIcon={<WarningAmberOutlined />}
+                      sx={{
+                        px: 3,
+                        py: 1.5,
+                        borderRadius: 3,
+                        borderWidth: 2,
                         borderColor: 'warning.main',
-                        '&.Mui-selected': { 
-                          bgcolor: 'warning.main', 
-                          color: 'white',
-                          '&:hover': { bgcolor: 'warning.dark' }
+                        fontWeight: 700,
+                        fontSize: '0.95rem',
+                        textTransform: 'none',
+                        boxShadow: frequenciaFiltros.includes('atencao') ? 4 : 2,
+                        transition: 'all 0.3s ease',
+                        background: frequenciaFiltros.includes('atencao')
+                          ? 'linear-gradient(135deg, #ed6c02 0%, #e65100 100%)'
+                          : 'transparent',
+                        color: frequenciaFiltros.includes('atencao') ? 'white' : 'warning.main',
+                        '&:hover': {
+                          borderWidth: 2,
+                          transform: 'translateY(-2px)',
+                          boxShadow: 6,
+                          borderColor: 'warning.dark',
+                          background: frequenciaFiltros.includes('atencao')
+                            ? 'linear-gradient(135deg, #e65100 0%, #bf360c 100%)'
+                            : 'rgba(237, 108, 2, 0.08)',
                         }
                       }}
                     >
-                      <Badge 
-                        badgeContent={dashboardFrequencia.contadores?.atencao || 0} 
-                        color="warning"
-                        sx={{ '& .MuiBadge-badge': { bgcolor: 'white', color: 'warning.main' } }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
-                          ⚠️ ATENÇÃO (75-84%)
-                        </Box>
-                      </Badge>
-                    </ToggleButton>
-                    
-                    <ToggleButton 
-                      value="critico"
-                      sx={{ 
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body1" fontWeight="700">
+                          ATENÇÃO
+                        </Typography>
+                        <Typography variant="caption" fontWeight="600" sx={{ opacity: 0.9 }}>
+                          60-79%
+                        </Typography>
+                        <Chip 
+                          label={dashboardFrequencia.contadores?.atencao || 0}
+                          size="small"
+                          sx={{ 
+                            height: 24,
+                            fontWeight: 700,
+                            bgcolor: frequenciaFiltros.includes('atencao') ? 'rgba(255,255,255,0.3)' : 'warning.main',
+                            color: 'white'
+                          }}
+                        />
+                      </Box>
+                    </Button>
+
+                    {/* Botão CRÍTICO */}
+                    <Button
+                      variant={frequenciaFiltros.includes('critico') ? 'contained' : 'outlined'}
+                      onClick={() => {
+                        const newFiltros = frequenciaFiltros.includes('critico')
+                          ? frequenciaFiltros.filter(f => f !== 'critico')
+                          : [...frequenciaFiltros.filter(f => f !== 'todos'), 'critico'];
+                        setFrequenciaFiltros(newFiltros.length === 0 ? ['todos'] : newFiltros);
+                      }}
+                      startIcon={<WarningAmberOutlined />}
+                      sx={{
+                        px: 3,
+                        py: 1.5,
+                        borderRadius: 3,
+                        borderWidth: 2,
                         borderColor: 'error.main',
-                        '&.Mui-selected': { 
-                          bgcolor: 'error.main', 
-                          color: 'white',
-                          '&:hover': { bgcolor: 'error.dark' }
+                        fontWeight: 700,
+                        fontSize: '0.95rem',
+                        textTransform: 'none',
+                        boxShadow: frequenciaFiltros.includes('critico') ? 4 : 2,
+                        transition: 'all 0.3s ease',
+                        background: frequenciaFiltros.includes('critico')
+                          ? 'linear-gradient(135deg, #d32f2f 0%, #c62828 100%)'
+                          : 'transparent',
+                        color: frequenciaFiltros.includes('critico') ? 'white' : 'error.main',
+                        '&:hover': {
+                          borderWidth: 2,
+                          transform: 'translateY(-2px)',
+                          boxShadow: 6,
+                          borderColor: 'error.dark',
+                          background: frequenciaFiltros.includes('critico')
+                            ? 'linear-gradient(135deg, #c62828 0%, #b71c1c 100%)'
+                            : 'rgba(211, 47, 47, 0.08)',
                         }
                       }}
                     >
-                      <Badge 
-                        badgeContent={dashboardFrequencia.contadores?.critico || 0} 
-                        color="error"
-                        sx={{ '& .MuiBadge-badge': { bgcolor: 'white', color: 'error.main' } }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
-                          🚨 CRÍTICO (&lt;75%)
-                        </Box>
-                      </Badge>
-                    </ToggleButton>
-                  </ToggleButtonGroup>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body1" fontWeight="700">
+                          CRÍTICO
+                        </Typography>
+                        <Typography variant="caption" fontWeight="600" sx={{ opacity: 0.9 }}>
+                          &lt;60%
+                        </Typography>
+                        <Chip 
+                          label={dashboardFrequencia.contadores?.critico || 0}
+                          size="small"
+                          sx={{ 
+                            height: 24,
+                            fontWeight: 700,
+                            bgcolor: frequenciaFiltros.includes('critico') ? 'rgba(255,255,255,0.3)' : 'error.main',
+                            color: 'white'
+                          }}
+                        />
+                      </Box>
+                    </Button>
+                  </Box>
                 </Box>
 
                 {/* Tabela de Alunos Filtrados */}
@@ -1635,22 +2440,47 @@ const Dashboard = () => {
                                       <Chip 
                                         label={aluno.presentes} 
                                         color="success" 
-                                        size="small"
+                                        size="medium"
                                         variant="outlined"
+                                        sx={{
+                                          fontWeight: 700,
+                                          fontSize: '1rem',
+                                          '& .MuiChip-label': {
+                                            color: '#000000'
+                                          }
+                                        }}
                                       />
                                     </TableCell>
                                     <TableCell align="center">
                                       <Chip 
                                         label={aluno.faltas} 
                                         color="error" 
-                                        size="small"
+                                        size="medium"
                                         variant="outlined"
+                                        sx={{
+                                          fontWeight: 700,
+                                          fontSize: '1rem',
+                                          '& .MuiChip-label': {
+                                            color: '#000000'
+                                          }
+                                        }}
                                       />
                                     </TableCell>
                                     <TableCell align="center">
-                                      <Typography variant="body2" fontWeight="700" color={statusColor + '.main'}>
-                                        {percentual}%
-                                      </Typography>
+                                      <Chip 
+                                        label={`${percentual}%`}
+                                        color={statusColor}
+                                        size="medium"
+                                        variant="outlined"
+                                        sx={{
+                                          fontWeight: 700,
+                                          fontSize: '1rem',
+                                          bgcolor: 'transparent',
+                                          '& .MuiChip-label': {
+                                            color: '#000000'
+                                          }
+                                        }}
+                                      />
                                     </TableCell>
                                     <TableCell align="center">
                                       <Chip 
