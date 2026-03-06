@@ -38,7 +38,6 @@ import {
   Person as PersonIcon,
   School as SchoolIcon,
   Phone as PhoneIcon,
-  Email as EmailIcon,
   CalendarToday as CalendarIcon,
   Badge as BadgeIcon,
   Search as SearchIcon,
@@ -82,6 +81,7 @@ const Alunos = () => {
   });
   const [editId, setEditId] = useState(null);
   const [importData, setImportData] = useState([]);
+  const [importValidation, setImportValidation] = useState([]);
   const [turmaSelecionadaTemplate, setTurmaSelecionadaTemplate] = useState('');
 
   // Sincronizar com o contexto
@@ -142,6 +142,208 @@ const Alunos = () => {
     }
   };
 
+  // Função para converter data serial do Excel para formato ISO
+  const converterDataExcel = (valor) => {
+    if (!valor) return null;
+    
+    // Limpar o valor
+    const valorLimpo = typeof valor === 'string' ? valor.trim() : valor;
+    
+    // Se já é uma string no formato correto (AAAA-MM-DD)
+    if (typeof valorLimpo === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valorLimpo)) {
+      return valorLimpo;
+    }
+    
+    // Tentar converter string em formato padrão brasileiro (DD/MM/AAAA ou DD/MM/AA)
+    if (typeof valorLimpo === 'string') {
+      // Formato DD/MM/AAAA
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(valorLimpo)) {
+        const [dia, mes, ano] = valorLimpo.split('/');
+        return `${ano}-${mes}-${dia}`;
+      }
+      
+      // Formato DD/MM/AA (ano com 2 dígitos)
+      if (/^\d{2}\/\d{2}\/\d{2}$/.test(valorLimpo)) {
+        const [dia, mes, anoAbr] = valorLimpo.split('/');
+        const anoCompleto = parseInt(anoAbr) > 50 ? `19${anoAbr}` : `20${anoAbr}`;
+        return `${anoCompleto}-${mes}-${dia}`;
+      }
+      
+      // Formato DD-MM-AAAA (com traço)
+      if (/^\d{2}-\d{2}-\d{4}$/.test(valorLimpo)) {
+        const [dia, mes, ano] = valorLimpo.split('-');
+        return `${ano}-${mes}-${dia}`;
+      }
+    }
+    
+    // Se é número serial do Excel (dias desde 1900-01-01)
+    if (typeof valorLimpo === 'number') {
+      const dateOffset = (valorLimpo - 25569) * 86400 * 1000; // Ajuste para época Unix
+      const date = new Date(dateOffset);
+      const ano = date.getFullYear();
+      const mes = String(date.getMonth() + 1).padStart(2, '0');
+      const dia = String(date.getDate()).padStart(2, '0');
+      return `${ano}-${mes}-${dia}`;
+    }
+    
+    return null;
+  };
+
+  // Função para normalizar strings (remover acentos, trim, lowercase)
+  const normalizarString = (str) => {
+    if (!str) return '';
+    return str
+      .toString()
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  };
+
+  // Função para validar email
+  const validarEmail = (email) => {
+    if (!email) return true; // Email é opcional
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  };
+
+  // Função para validar e formatar dados de importação
+  const validarEFormatarDadosImportacao = (dados) => {
+    const matriculasExistentes = new Set(localAlunos.map(a => a.matricula.toUpperCase()));
+    const matriculasNaPlanilha = new Set();
+    const resultados = [];
+
+    // Criar mapa normalizado de turmas para busca eficiente
+    const turmaMap = new Map();
+    localTurmas.forEach(turma => {
+      const nomeNormalizado = normalizarString(turma.nome);
+      turmaMap.set(nomeNormalizado, turma);
+    });
+
+    dados.forEach((row, index) => {
+      const erros = [];
+      const avisos = [];
+      const linha = index + 2; // +2 porque começa em 1 e tem cabeçalho
+
+      // Limpar e validar campos
+      const nome = row.nome?.toString().trim() || '';
+      const matricula = row.matricula?.toString().trim().toUpperCase() || '';
+      const dataNascimentoOriginal = row.dataNascimento;
+      const turmaTexto = row.turma?.toString().trim() || '';
+      const responsavel_nome = row.responsavel_nome?.toString().trim() || '';
+      const responsavel_telefone = row.responsavel_telefone?.toString().trim() || '';
+      
+      // Email: converter para lowercase e garantir que strings vazias sejam vazias (não null/undefined)
+      let responsavel_email = '';
+      if (row.responsavel_email && row.responsavel_email.toString().trim().length > 0) {
+        responsavel_email = row.responsavel_email.toString().trim().toLowerCase();
+      }
+
+      // Validação: Nome obrigatório
+      if (!nome) {
+        erros.push('Nome é obrigatório');
+      } else if (nome.length < 3) {
+        erros.push('Nome deve ter pelo menos 3 caracteres');
+      }
+
+      // Validação: Matrícula obrigatória
+      if (!matricula) {
+        erros.push('Matrícula é obrigatória');
+      } else {
+        // Aviso se já existe (mas não impede importação - será atualizado)
+        if (matriculasExistentes.has(matricula)) {
+          avisos.push(`Matrícula ${matricula} já existe - será atualizado`);
+        }
+        if (matriculasNaPlanilha.has(matricula)) {
+          erros.push(`Matrícula ${matricula} duplicada na planilha`);
+        }
+        matriculasNaPlanilha.add(matricula);
+      }
+
+      // Validação: Data de nascimento
+      const dataNascimento = converterDataExcel(dataNascimentoOriginal);
+      if (dataNascimento) {
+        const dataNasc = new Date(dataNascimento);
+        const hoje = new Date();
+        const idade = hoje.getFullYear() - dataNasc.getFullYear();
+        
+        if (isNaN(dataNasc.getTime())) {
+          erros.push(`Data de nascimento inválida: "${dataNascimentoOriginal}"`);
+          console.error('Data inválida:', {original: dataNascimentoOriginal, convertida: dataNascimento});
+        } else if (idade < 3 || idade > 99) {
+          avisos.push(`Idade incomum: ${idade} anos`);
+        }
+      } else if (dataNascimentoOriginal) {
+        erros.push(`Formato de data inválido: "${dataNascimentoOriginal}" (use DD/MM/AAAA ou AAAA-MM-DD)`);
+        console.error('Formato de data não reconhecido:', dataNascimentoOriginal);
+      }
+
+      // Validação: Turma
+      let turmaId = null;
+      let turmaNome = null;
+      if (turmaTexto) {
+        const turmaNormalizada = normalizarString(turmaTexto);
+        const turmaEncontrada = turmaMap.get(turmaNormalizada);
+        
+        if (turmaEncontrada) {
+          turmaId = turmaEncontrada._id;
+          turmaNome = turmaEncontrada.nome;
+        } else {
+          // Tentar busca parcial (mais tolerante)
+          const turmasPossiveis = localTurmas.filter(t => 
+            normalizarString(t.nome).includes(turmaNormalizada) ||
+            turmaNormalizada.includes(normalizarString(t.nome))
+          );
+          
+          if (turmasPossiveis.length === 1) {
+            turmaId = turmasPossiveis[0]._id;
+            turmaNome = turmasPossiveis[0].nome;
+            avisos.push(`Turma interpretada como "${turmaNome}"`);
+          } else if (turmasPossiveis.length > 1) {
+            erros.push(`Turma "${turmaTexto}" ambígua. Opções: ${turmasPossiveis.map(t => t.nome).join(', ')}`);
+          } else {
+            erros.push(`Turma "${turmaTexto}" não encontrada`);
+          }
+        }
+      } else {
+        avisos.push('Sem turma atribuída');
+      }
+
+      // Validação: Email do responsável
+      if (responsavel_email && !validarEmail(responsavel_email)) {
+        erros.push('Email do responsável inválido');
+      }
+
+      // Validação: Telefone do responsável (básica)
+      if (responsavel_telefone && responsavel_telefone.length < 8) {
+        avisos.push('Telefone parece incompleto');
+      }
+
+      // Criar objeto validado
+      resultados.push({
+        linha,
+        valido: erros.length === 0,
+        erros,
+        avisos,
+        dados: {
+          nome,
+          matricula,
+          dataNascimento,
+          turma: turmaId,
+          turmaNome,
+          responsavel: {
+            nome: responsavel_nome,
+            telefone: responsavel_telefone,
+            email: responsavel_email,
+          },
+        },
+        original: row,
+      });
+    });
+
+    return resultados;
+  };
+
   const handleOpen = (aluno = null) => {
     if (aluno) {
       setFormData({
@@ -190,6 +392,7 @@ const Alunos = () => {
     });
     setEditId(null);
     setImportData([]);
+    setImportValidation([]);
     setTabValue(0);
   };
 
@@ -225,6 +428,11 @@ const Alunos = () => {
     const file = event.target.files[0];
     if (!file) return;
 
+    // Verificar se há turmas cadastradas antes de processar
+    if (localTurmas.length === 0) {
+      toast.warning('Atenção: Nenhuma turma cadastrada. Os alunos serão importados sem turma.');
+    }
+
     const fileName = file.name.toLowerCase();
     const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
 
@@ -236,43 +444,98 @@ const Alunos = () => {
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
           const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
           
-          const validData = jsonData.filter(row => 
-            row.nome && row.matricula
-          );
-          setImportData(validData);
-          if (validData.length > 0) {
-            toast.success(`${validData.length} alunos encontrados no arquivo Excel`);
+          // Configuração para processar datas corretamente
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet, {
+            raw: false, // Não retornar valores brutos
+            dateNF: 'yyyy-mm-dd', // Formato de data
+            defval: '', // Valor padrão para células vazias
+          });
+          
+          if (jsonData.length === 0) {
+            toast.error('Arquivo Excel está vazio ou sem dados válidos');
+            return;
+          }
+
+          // Validar e formatar dados
+          const validacao = validarEFormatarDadosImportacao(jsonData);
+          setImportValidation(validacao);
+          
+          const validos = validacao.filter(v => v.valido);
+          const invalidos = validacao.filter(v => !v.valido);
+          
+          if (validos.length > 0) {
+            setImportData(validos.map(v => v.dados));
+            toast.success(`✅ ${validos.length} aluno(s) validado(s) com sucesso!`, { autoClose: 3000 });
+            
+            if (invalidos.length > 0) {
+              toast.warning(`⚠️ ${invalidos.length} aluno(s) com erros que precisam ser corrigidos`, { autoClose: 5000 });
+            }
+            
+            // Contar avisos
+            const totalAvisos = validacao.reduce((sum, v) => sum + v.avisos.length, 0);
+            if (totalAvisos > 0) {
+              toast.info(`ℹ️ ${totalAvisos} aviso(s) encontrado(s)`, { autoClose: 3000 });
+            }
           } else {
-            toast.error('Nenhum aluno válido encontrado no arquivo');
+            setImportData([]);
+            toast.error(`❌ Nenhum aluno válido encontrado. ${invalidos.length} erro(s) detectado(s).`);
           }
         } catch (error) {
+          console.error('Erro ao ler Excel:', error);
           toast.error('Erro ao ler arquivo Excel: ' + error.message);
+          setImportData([]);
+          setImportValidation([]);
         }
       };
       reader.readAsArrayBuffer(file);
     } else {
-      // Processar arquivo CSV
+      // Processar arquivo CSV com encoding UTF-8
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
+        encoding: 'UTF-8',
         complete: (results) => {
-          const validData = results.data.filter(row => 
-            row.nome && row.matricula
-          );
-          setImportData(validData);
-          if (validData.length > 0) {
-            toast.success(`${validData.length} alunos encontrados no arquivo CSV`);
+          if (results.data.length === 0) {
+            toast.error('Arquivo CSV está vazio');
+            return;
+          }
+
+          // Validar e formatar dados
+          const validacao = validarEFormatarDadosImportacao(results.data);
+          setImportValidation(validacao);
+          
+          const validos = validacao.filter(v => v.valido);
+          const invalidos = validacao.filter(v => !v.valido);
+          
+          if (validos.length > 0) {
+            setImportData(validos.map(v => v.dados));
+            toast.success(`✅ ${validos.length} aluno(s) validado(s) com sucesso!`, { autoClose: 3000 });
+            
+            if (invalidos.length > 0) {
+              toast.warning(`⚠️ ${invalidos.length} aluno(s) com erros que precisam ser corrigidos`, { autoClose: 5000 });
+            }
+            
+            const totalAvisos = validacao.reduce((sum, v) => sum + v.avisos.length, 0);
+            if (totalAvisos > 0) {
+              toast.info(`ℹ️ ${totalAvisos} aviso(s) encontrado(s)`, { autoClose: 3000 });
+            }
           } else {
-            toast.error('Nenhum aluno válido encontrado no arquivo');
+            setImportData([]);
+            toast.error(`❌ Nenhum aluno válido encontrado. ${invalidos.length} erro(s) detectado(s).`);
           }
         },
         error: (error) => {
+          console.error('Erro ao ler CSV:', error);
           toast.error('Erro ao ler arquivo CSV: ' + error.message);
+          setImportData([]);
+          setImportValidation([]);
         }
       });
     }
+    
+    // Limpar input para permitir re-upload do mesmo arquivo
+    event.target.value = '';
   };
 
   const handleImport = async () => {
@@ -281,63 +544,78 @@ const Alunos = () => {
       return;
     }
 
-    // Verificar se há turmas cadastradas
-    if (localTurmas.length === 0) {
-      toast.error('Por favor, cadastre turmas antes de importar alunos!');
-      return;
-    }
-
     try {
-      let successCount = 0;
-      let errorCount = 0;
-      let semTurmaCount = 0;
+      // Adicionar loading toast
+      const loadingToast = toast.info(`Importando ${importData.length} aluno(s)...`, {
+        autoClose: false,
+      });
 
-      for (const row of importData) {
-        try {
-          // Buscar turma pelo nome se fornecido
-          let turmaId = null;
-          if (row.turma && localTurmas.length > 0) {
-            const turmaEncontrada = localTurmas.find(t => 
-              t.nome.toLowerCase() === row.turma.toLowerCase()
-            );
-            if (turmaEncontrada) {
-              turmaId = turmaEncontrada._id;
-            } else {
-              console.warn(`Turma "${row.turma}" não encontrada para aluno ${row.nome}`);
-              semTurmaCount++;
-            }
-          }
+      // Usar o novo endpoint de importação em lote
+      const resultado = await alunoService.importar(importData);
 
-          await alunoService.create({
-            nome: row.nome,
-            matricula: row.matricula,
-            dataNascimento: row.dataNascimento || null,
-            turma: turmaId,
-            responsavel: {
-              nome: row.responsavel_nome || '',
-              telefone: row.responsavel_telefone || '',
-              email: row.responsavel_email || '',
-            },
-          });
-          successCount++;
-        } catch (error) {
-          errorCount++;
-          console.error('Erro ao importar aluno:', row.nome, error);
+      // Fechar loading toast
+      toast.dismiss(loadingToast);
+
+      // Extrair estatísticas
+      const { resultados, estatisticas } = resultado;
+      
+      console.log('✅ Resultado da importação:', resultado);
+
+      // Mensagem de sucesso
+      if (estatisticas.criados > 0 || estatisticas.atualizados > 0) {
+        let mensagem = '';
+        if (estatisticas.criados > 0) {
+          mensagem += `✅ ${estatisticas.criados} aluno(s) criado(s)`;
         }
+        if (estatisticas.atualizados > 0) {
+          if (mensagem) mensagem += ' • ';
+          mensagem += `🔄 ${estatisticas.atualizados} aluno(s) atualizado(s)`;
+        }
+        toast.success(mensagem, { autoClose: 5000 });
       }
 
-      toast.success(`${successCount} alunos importados com sucesso!`);
-      if (errorCount > 0) {
-        toast.warning(`${errorCount} alunos com erro`);
-      }
-      if (semTurmaCount > 0) {
-        toast.info(`${semTurmaCount} alunos importados sem turma (turma não encontrada)`);
+      // Mensagem de erro (se houver)
+      if (estatisticas.erros > 0) {
+        // Mostrar até 5 erros detalhados
+        const errosExibir = resultados.erros.slice(0, 5);
+        const mensagemErro = errosExibir
+          .map(e => `• ${e.nome} (${e.matricula}): ${e.erro}`)
+          .join('\n');
+        
+        const mensagemCompleta = estatisticas.erros > 5 
+          ? `${mensagemErro}\n... e mais ${estatisticas.erros - 5} erro(s)`
+          : mensagemErro;
+
+        toast.error(
+          <div>
+            <strong>❌ {estatisticas.erros} aluno(s) com erro:</strong>
+            <pre style={{ fontSize: '0.85em', marginTop: '8px', whiteSpace: 'pre-wrap' }}>
+              {mensagemCompleta}
+            </pre>
+          </div>,
+          { autoClose: 10000 }
+        );
+
+        // Log completo no console para debug
+        console.error('Erros detalhados da importação:', resultados.erros);
       }
       
-      handleClose();
-      await syncData();
+      // Se houve algum sucesso, fechar modal e atualizar dados
+      if (estatisticas.criados > 0 || estatisticas.atualizados > 0) {
+        handleClose();
+        await syncData();
+      }
     } catch (error) {
-      toast.error('Erro ao importar alunos');
+      console.error('Erro na importação:', error);
+      
+      let errorMsg = 'Erro ao importar alunos';
+      if (error.response?.data?.message) {
+        errorMsg = error.response.data.message;
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
+      toast.error(errorMsg, { autoClose: 8000 });
     }
   };
 
@@ -815,6 +1093,17 @@ const Alunos = () => {
                     value={formData.dataNascimento}
                     onChange={(e) => setFormData({ ...formData, dataNascimento: e.target.value })}
                     InputLabelProps={{ shrink: true }}
+                    sx={{
+                      '& input[type="date"]': {
+                        fontSize: '1.1rem',
+                        padding: '14px',
+                        cursor: 'pointer'
+                      },
+                      '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                        fontSize: '1.4rem',
+                        cursor: 'pointer'
+                      }
+                    }}
                   />
                 </Grid>
               </Grid>
@@ -994,18 +1283,117 @@ const Alunos = () => {
                 </Button>
               </Box>
 
-              {importData.length > 0 && (
+              {/* Preview dos dados com validação */}
+              {importValidation.length > 0 && (
                 <>
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    {importData.length} alunos prontos para importar:
+                  <Typography variant="subtitle2" sx={{ mb: 1, mt: 2 }}>
+                    Preview da Importação ({importValidation.length} registro(s)):
                   </Typography>
-                  <Paper variant="outlined" sx={{ maxHeight: 300, overflow: 'auto' }}>
+                  
+                  {/* Resumo da validação */}
+                  <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+                    <Chip 
+                      label={`${importValidation.filter(v => v.valido).length} Válidos`}
+                      color="success"
+                      size="small"
+                      icon={<SchoolIcon />}
+                    />
+                    <Chip 
+                      label={`${importValidation.filter(v => !v.valido).length} Com Erro`}
+                      color="error"
+                      size="small"
+                      icon={<BadgeIcon />}
+                    />
+                    {importValidation.some(v => v.avisos.length > 0) && (
+                      <Chip 
+                        label={`${importValidation.filter(v => v.avisos.length > 0).length} Com Aviso`}
+                        color="warning"
+                        size="small"
+                      />
+                    )}
+                  </Box>
+
+                  <Paper variant="outlined" sx={{ maxHeight: 400, overflow: 'auto' }}>
                     <List dense>
-                      {importData.map((row, index) => (
-                        <ListItem key={index}>
+                      {importValidation.map((item, index) => (
+                        <ListItem 
+                          key={index}
+                          sx={{ 
+                            bgcolor: !item.valido 
+                              ? 'rgba(211, 47, 47, 0.08)' 
+                              : item.avisos.length > 0 
+                                ? 'rgba(237, 108, 2, 0.08)'
+                                : 'rgba(46, 125, 50, 0.08)',
+                            borderLeft: 4,
+                            borderColor: !item.valido 
+                              ? 'error.main' 
+                              : item.avisos.length > 0 
+                                ? 'warning.main'
+                                : 'success.main',
+                            mb: 0.5,
+                          }}
+                        >
                           <ListItemText
-                            primary={`${row.nome} - ${row.matricula}`}
-                            secondary={`Turma: ${row.turma || 'Não definida'} | Responsável: ${row.responsavel_nome || '-'}`}
+                            primary={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="body2" fontWeight="bold">
+                                  {item.dados.nome || '(sem nome)'}
+                                </Typography>
+                                <Chip 
+                                  label={item.dados.matricula || '(sem matrícula)'} 
+                                  size="small" 
+                                  variant="outlined"
+                                />
+                                {!item.valido && (
+                                  <Chip label="ERRO" size="small" color="error" />
+                                )}
+                                {item.valido && item.avisos.length > 0 && (
+                                  <Chip label="AVISO" size="small" color="warning" />
+                                )}
+                              </Box>
+                            }
+                            secondary={
+                              <Box sx={{ mt: 0.5 }}>
+                                <Typography variant="caption" display="block" color="text.secondary">
+                                  Turma: {item.dados.turmaNome || '(sem turma)'} | 
+                                  Responsável: {item.dados.responsavel.nome || '(não informado)'}
+                                  {item.dados.dataNascimento && ` | Nascimento: ${formatarDataLocal(item.dados.dataNascimento)}`}
+                                </Typography>
+                                
+                                {/* Mostrar erros */}
+                                {item.erros.length > 0 && (
+                                  <Box sx={{ mt: 0.5 }}>
+                                    {item.erros.map((erro, i) => (
+                                      <Typography 
+                                        key={i} 
+                                        variant="caption" 
+                                        display="block" 
+                                        color="error.main"
+                                        sx={{ fontWeight: 'bold' }}
+                                      >
+                                        ❌ {erro}
+                                      </Typography>
+                                    ))}
+                                  </Box>
+                                )}
+                                
+                                {/* Mostrar avisos */}
+                                {item.avisos.length > 0 && (
+                                  <Box sx={{ mt: 0.5 }}>
+                                    {item.avisos.map((aviso, i) => (
+                                      <Typography 
+                                        key={i} 
+                                        variant="caption" 
+                                        display="block" 
+                                        color="warning.main"
+                                      >
+                                        ⚠️ {aviso}
+                                      </Typography>
+                                    ))}
+                                  </Box>
+                                )}
+                              </Box>
+                            }
                           />
                         </ListItem>
                       ))}
@@ -1027,8 +1415,9 @@ const Alunos = () => {
               onClick={handleImport} 
               variant="contained"
               disabled={importData.length === 0}
+              color={importValidation.some(v => !v.valido) ? 'warning' : 'primary'}
             >
-              Importar {importData.length} Alunos
+              Importar {importData.length} Aluno(s) Válido(s)
             </Button>
           )}
         </DialogActions>

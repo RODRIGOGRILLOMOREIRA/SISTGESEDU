@@ -1,20 +1,59 @@
 # 🎓 Sistema de Gestão Escolar Completo
 
 **Copyright © 2026 RODRIGO GRILLO MOREIRA**  
-**Licenciado sob Apache License 2.0**
+**Licenciado sob MIT License**
 
 Sistema completo para gestão de notas, habilidades, frequências e análise de desempenho escolar desenvolvido com React, Node.js e MongoDB Atlas.
+
+## 🚀 Início Rápido
+
+### Executar o Sistema Completo (Back End + Front End)
+
+**Opção 1 - Script Automatizado (Recomendado):**
+```powershell
+.\iniciar-sistema.ps1
+```
+
+**Opção 2 - Manual:**
+
+1️⃣ **Iniciar o Back End (Terminal 1):**
+```powershell
+cd server
+npm install        # Primeira vez apenas
+npm run dev        # Inicia na porta 5000
+```
+
+2️⃣ **Iniciar o Front End (Terminal 2):**
+```powershell
+cd client
+npm install        # Primeira vez apenas
+npm start          # Abre automaticamente em http://localhost:3000
+```
+
+📖 **[Guia Completo de Inicialização](COMO_INICIAR.md)**
 
 ## ✨ Status do Projeto: 100% FUNCIONAL + NOVAS FUNCIONALIDADES
 
 **🎉 Sistema Completo Implementado, Otimizado e com Controle de Frequência!**
 
-**📅 Última Atualização: 01 de março de 2026**  
+**📅 Última Atualização: 06 de março de 2026**  
 **✅ Revisão Completa Realizada - Todos os problemas críticos corrigidos**
 
 ### 🔧 Melhorias e Novas Funcionalidades (Março 2026)
 
-#### 📅 Sistema de Frequência Aprimorado
+#### 🎯 Sistema de Frequência Simplificado (MARÇO 2026) 🆕
+- ✅ **Frequência Geral Diária** - Sistema reformulado para registro simples de presença por dia (não mais por disciplina)
+- ✅ **1 Registro por Aluno por Dia** - Simplificação do modelo de dados para facilitar controle
+- ✅ **Dashboard Funcionando 100%** - Listagem completa de alunos com estatísticas acumuladas
+- ✅ **Agregação MongoDB Otimizada** - Uso de `$lookup` para junção eficiente Frequencia-Aluno
+- ✅ **Conversão Automática de ObjectId** - Filtros de turma, disciplina e aluno totalmente funcionais
+- ✅ **Migração de Banco Simplificada** - Script automático para mudar índice único de (aluno+disciplina+data) para (aluno+data)
+- ✅ **Campos Opcionais** - Disciplina e professor agora opcionais no modelo
+- ✅ **Cálculo Automático** - Mês (1-12) e trimestre (1-4) calculados automaticamente pela data
+- ✅ **Salvamento 100% Funcional** - 19 alunos salvos com sucesso em testes de produção
+- ✅ **Visualização Completa** - Cards + tabela de alunos com percentuais e classificação (Adequado/Atenção/Crítico)
+
+#### 📅 Sistema de Frequência Aprimorado (INÍCIO DE MARÇO 2026)
 - ✅ **Dashboard com Filtros Multi-Select** - 4 botões de filtro (Todos, Adequado, Atenção, Crítico) com seleção múltipla
 - ✅ **Sincronização Completa** - Dashboard sincronizado em tempo real com registros de frequência
 - ✅ **Cards Clicáveis** - 5 cards interativos na página de Frequências:
@@ -25,8 +64,8 @@ Sistema completo para gestão de notas, habilidades, frequências e análise de 
   - 📊 **Percentual Geral** (cor dinâmica)
 - ✅ **Sistema de Filtro Visual** - Clique nos cards para filtrar lista de alunos
 - ✅ **Botão de Reset** - Resetar registros do dia com confirmação
-- ✅ **Salvamento Multi-Disciplinar** - Salva automaticamente em TODAS as disciplinas
-- ✅ **Workflow Simplificado** - Campo disciplina não é mais obrigatório
+- ✅ **Salvamento Simplificado** - Campo disciplina não é mais obrigatório
+- ✅ **Workflow Simplificado** - Registro de presença geral do dia por turma
 - ✅ **Estatísticas Acumulativas** - Dados diários + acumulados em tempo real
 
 #### 🛠️ Correções Anteriores (Início de Março)

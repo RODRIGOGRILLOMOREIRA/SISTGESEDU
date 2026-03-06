@@ -6,7 +6,8 @@ const {
   createAluno,
   updateAluno,
   deleteAluno,
-  gerarTemplatePorTurma
+  gerarTemplatePorTurma,
+  importarAlunos
 } = require('../controllers/alunoController');
 const { auth, isAdmin } = require('../middleware/auth');
 
@@ -15,6 +16,9 @@ router.use(auth);
 router.route('/')
   .get(getAlunos)
   .post(isAdmin, createAluno);
+
+// Importar múltiplos alunos em lote
+router.post('/importar', isAdmin, importarAlunos);
 
 // Gerar template de alunos por turma
 router.get('/template/:turmaId', gerarTemplatePorTurma);

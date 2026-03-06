@@ -834,6 +834,17 @@ const Avaliacoes = () => {
                     })
                   }
                   InputLabelProps={{ shrink: true }}
+                  sx={{
+                    '& input[type="date"]': {
+                      fontSize: '1.1rem',
+                      padding: '14px',
+                      cursor: 'pointer'
+                    },
+                    '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                      fontSize: '1.4rem',
+                      cursor: 'pointer'
+                    }
+                  }}
                 />
               </Grid>
             </Grid>
@@ -896,6 +907,17 @@ const Avaliacoes = () => {
                     })
                   }
                   InputLabelProps={{ shrink: true }}
+                  sx={{
+                    '& input[type="date"]': {
+                      fontSize: '1.1rem',
+                      padding: '14px',
+                      cursor: 'pointer'
+                    },
+                    '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                      fontSize: '1.4rem',
+                      cursor: 'pointer'
+                    }
+                  }}
                 />
               </Grid>
             </Grid>
@@ -969,6 +991,17 @@ const Avaliacoes = () => {
                     })
                   }
                   InputLabelProps={{ shrink: true }}
+                  sx={{
+                    '& input[type="date"]': {
+                      fontSize: '1.1rem',
+                      padding: '14px',
+                      cursor: 'pointer'
+                    },
+                    '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                      fontSize: '1.4rem',
+                      cursor: 'pointer'
+                    }
+                  }}
                 />
               </Grid>
             </Grid>

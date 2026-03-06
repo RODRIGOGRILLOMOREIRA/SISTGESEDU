@@ -28,6 +28,7 @@ import {
   ToggleButton,
   Badge,
   Divider,
+  Button,
 } from '@mui/material';
 import {
   AssessmentOutlined,
@@ -79,7 +80,7 @@ const Dashboard = () => {
     turma: '',
     aluno: '',
     disciplina: '',
-    ano: new Date().getFullYear(),
+    ano: '', // Vazio por padrão para mostrar todos os dados
     trimestre: '',
     dataInicio: '',
     dataFim: '',
@@ -91,10 +92,30 @@ const Dashboard = () => {
   const [evolucaoTrimestral, setEvolucaoTrimestral] = useState([]);
   const [evolucaoHabilidades, setEvolucaoHabilidades] = useState(null);
   const [distribuicaoHabilidades, setDistribuicaoHabilidades] = useState(null);
-  const [dashboardFrequencia, setDashboardFrequencia] = useState(null);
+  const [dashboardFrequencia, setDashboardFrequencia] = useState({
+    totalRegistros: 0,
+    presentes: 0,
+    faltas: 0,
+    faltasJustificadas: 0,
+    percentualPresenca: 0,
+    percentualFaltas: 0,
+    todosAlunos: [],
+    contadores: { total: 0, adequado: 0, atencao: 0, critico: 0 },
+    frequenciaPorDiaSemana: []
+  });
   const [frequenciaFiltros, setFrequenciaFiltros] = useState(['todos']);
   const [habilidadesFiltro, setHabilidadesFiltro] = useState('todos'); // todos, nao-desenvolvido, em-desenvolvimento, desenvolvido, plenamente-desenvolvido
   const [autoRefresh, setAutoRefresh] = useState(true);
+
+  /**
+   * Formata uma data no formato 'YYYY-MM-DD' para 'DD/MM/YYYY'
+   * sem problemas de timezone (não cria objeto Date)
+   */
+  const formatarDataBR = (dataString) => {
+    if (!dataString) return '';
+    const [ano, mes, dia] = dataString.split('-');
+    return `${dia}/${mes}/${ano}`;
+  };
 
   useEffect(() => {
     loadInitialData();
@@ -159,6 +180,8 @@ const Dashboard = () => {
       if (filters.dataFim) params.dataFim = filters.dataFim;
       if (filters.pontoCorte) params.pontoCorte = filters.pontoCorte;
 
+      console.log('🔍 Dashboard: Carregando dados com filtros:', params);
+
       const [stats, desempenho, evolucao, evolHab, distHab, dashFreq] = await Promise.all([
         dashboardService.getEstatisticas(params),
         dashboardService.getDesempenhoDisciplina(params),
@@ -168,14 +191,48 @@ const Dashboard = () => {
         frequenciaService.getDashboard(params),
       ]);
 
+      console.log('✅ Dashboard Frequência recebido:', dashFreq);
+      console.log('📊 Total de registros:', dashFreq?.totalRegistros);
+      console.log('👥 Total de alunos:', dashFreq?.todosAlunos?.length);
+      console.log('📋 Alunos classificados:', dashFreq?.todosAlunos);
+      console.log('🔍 Contadores:', dashFreq?.contadores);
+
+      // Garantir que sempre temos uma estrutura mínima, mesmo que vazia
+      const dashFreqFormatado = dashFreq || {
+        totalRegistros: 0,
+        presentes: 0,
+        faltas: 0,
+        faltasJustificadas: 0,
+        percentualPresenca: 0,
+        percentualFaltas: 0,
+        todosAlunos: [],
+        contadores: { total: 0, adequado: 0, atencao: 0, critico: 0 },
+        frequenciaPorDiaSemana: []
+      };
+
+      console.log('💾 Setando dashboardFrequencia:', dashFreqFormatado);
+      console.log('📋 Array todosAlunos tem', dashFreqFormatado.todosAlunos?.length || 0, 'itens');
+
       setEstatisticas(stats);
       setDesempenhoDisciplina(desempenho);
       setEvolucaoTrimestral(evolucao);
       setEvolucaoHabilidades(evolHab);
       setDistribuicaoHabilidades(distHab);
-      setDashboardFrequencia(dashFreq);
+      setDashboardFrequencia(dashFreqFormatado);
     } catch (error) {
-      console.error('Erro ao carregar dashboard:', error);
+      console.error('❌ Erro ao carregar dashboard:', error);
+      // Setar estrutura vazia em caso de erro
+      setDashboardFrequencia({
+        totalRegistros: 0,
+        presentes: 0,
+        faltas: 0,
+        faltasJustificadas: 0,
+        percentualPresenca: 0,
+        percentualFaltas: 0,
+        todosAlunos: [],
+        contadores: { total: 0, adequado: 0, atencao: 0, critico: 0 },
+        frequenciaPorDiaSemana: []
+      });
     }
   };
 
@@ -359,9 +416,11 @@ const Dashboard = () => {
                 label="Ano"
                 onChange={(e) => setFilters({ ...filters, ano: e.target.value })}
               >
+                <MenuItem value="">Todos os Anos</MenuItem>
                 <MenuItem value={2024}>2024</MenuItem>
                 <MenuItem value={2025}>2025</MenuItem>
                 <MenuItem value={2026}>2026</MenuItem>
+                <MenuItem value={2027}>2027</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -385,25 +444,45 @@ const Dashboard = () => {
           <Grid item xs={12} sm={6} md={2.4}>
             <TextField
               fullWidth
-              size="small"
               type="date"
               label="Data Início"
               value={filters.dataInicio}
               onChange={(e) => setFilters({ ...filters, dataInicio: e.target.value })}
               InputLabelProps={{ shrink: true }}
+              sx={{
+                '& input[type="date"]': {
+                  fontSize: '1rem',
+                  padding: '12px',
+                  cursor: 'pointer'
+                },
+                '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                  fontSize: '1.3rem',
+                  cursor: 'pointer'
+                }
+              }}
             />
           </Grid>
 
           <Grid item xs={12} sm={6} md={2.4}>
             <TextField
               fullWidth
-              size="small"
               type="date"
               label="Data Fim"
               value={filters.dataFim}
               onChange={(e) => setFilters({ ...filters, dataFim: e.target.value })}
               InputLabelProps={{ shrink: true }}
               inputProps={{ min: filters.dataInicio }}
+              sx={{
+                '& input[type="date"]': {
+                  fontSize: '1rem',
+                  padding: '12px',
+                  cursor: 'pointer'
+                },
+                '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                  fontSize: '1.3rem',
+                  cursor: 'pointer'
+                }
+              }}
             />
           </Grid>
           
@@ -422,6 +501,129 @@ const Dashboard = () => {
             </FormControl>
           </Grid>
         </Grid>
+        
+        {/* Filtros Rápidos de Período */}
+        <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+            <Typography variant="body2" fontWeight="600" color="text.secondary">
+              ⚡ Períodos Rápidos:
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  const hoje = new Date();
+                  const seteDias = new Date();
+                  seteDias.setDate(hoje.getDate() - 7);
+                  setFilters({
+                    ...filters,
+                    dataInicio: seteDias.toISOString().split('T')[0],
+                    dataFim: hoje.toISOString().split('T')[0],
+                    ano: '',
+                    trimestre: ''
+                  });
+                }}
+              >
+                📅 Últimos 7 dias
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  const hoje = new Date();
+                  const trintaDias = new Date();
+                  trintaDias.setDate(hoje.getDate() - 30);
+                  setFilters({
+                    ...filters,
+                    dataInicio: trintaDias.toISOString().split('T')[0],
+                    dataFim: hoje.toISOString().split('T')[0],
+                    ano: '',
+                    trimestre: ''
+                  });
+                }}
+              >
+                📅 Últimos 30 dias
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  const hoje = new Date();
+                  const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+                  setFilters({
+                    ...filters,
+                    dataInicio: primeiroDia.toISOString().split('T')[0],
+                    dataFim: hoje.toISOString().split('T')[0],
+                    ano: '',
+                    trimestre: ''
+                  });
+                }}
+              >
+                📅 Mês Atual
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  const ano = 2026;
+                  setFilters({
+                    ...filters,
+                    ano: ano,
+                    trimestre: 1,
+                    dataInicio: `${ano}-01-01`,
+                    dataFim: `${ano}-03-31`
+                  });
+                }}
+              >
+                📅 1º Trimestre 2026
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  const ano = 2026;
+                  setFilters({
+                    ...filters,
+                    ano: ano,
+                    dataInicio: `${ano}-01-01`,
+                    dataFim: `${ano}-12-31`,
+                    trimestre: ''
+                  });
+                }}
+              >
+                📅 Ano Completo 2026
+              </Button>
+              <Button
+                size="small"
+                variant="contained"
+                color="secondary"
+                onClick={() => {
+                  setFilters({
+                    ...filters,
+                    dataInicio: '',
+                    dataFim: '',
+                    ano: '',
+                    trimestre: ''
+                  });
+                }}
+              >
+                🔄 Limpar Filtros
+              </Button>
+            </Box>
+          </Box>
+          {(filters.dataInicio || filters.dataFim || filters.ano || filters.trimestre) && (
+            <Alert severity="info" icon={<FilterListIcon />} sx={{ py: 0.5 }}>
+              <Typography variant="caption">
+                Filtro ativo: 
+                {filters.dataInicio && filters.dataFim && ` ${formatarDataBR(filters.dataInicio)} até ${formatarDataBR(filters.dataFim)}`}
+                {filters.ano && ` Ano ${filters.ano}`}
+                {filters.trimestre && ` | ${filters.trimestre}º Trimestre`}
+                {!filters.dataInicio && !filters.dataFim && !filters.ano && ` Todos os períodos`}
+              </Typography>
+            </Alert>
+          )}
+        </Box>
       </Paper>
 
       {/* Cards de Estatísticas */}
@@ -1026,26 +1228,24 @@ const Dashboard = () => {
           </Grid>
         )}
 
-        {/* Seção de Frequências em Tempo Real */}
-        {dashboardFrequencia && (
-          <>
-            <Grid item xs={12}>
-              <Fade in={true} timeout={1400}>
-                <Paper 
-                  sx={{ 
-                    p: 3,
-                    borderRadius: 3,
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
-                      transform: 'translateY(-2px)',
-                    }
-                  }}
+        {/* Seção de Frequências em Tempo Real - Sempre renderiza, mesmo sem dados */}
+        <Grid item xs={12}>
+          <Fade in={true} timeout={1400}>
+            <Paper 
+              sx={{ 
+                p: 3,
+                borderRadius: 3,
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+                  transform: 'translateY(-2px)',
+                }
+              }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
                     <Typography variant="h6" fontWeight="600">
-                      📅 Dashboard de Frequência em Tempo Real
+                      📅 Dashboard de Frequência - Dados Acumulados
                     </Typography>
                     
                     {/* Badge de Contexto */}
@@ -1063,6 +1263,41 @@ const Dashboard = () => {
                       sx={{ fontWeight: 600 }}
                     />
                   </Box>
+
+                  {/* Banner Informativo de Dados Acumulados */}
+                  <Alert 
+                    severity="info" 
+                    icon={<AssessmentOutlined />}
+                    sx={{ 
+                      mb: 3,
+                      bgcolor: 'info.lighter',
+                      '& .MuiAlert-message': { width: '100%' }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight="600" gutterBottom>
+                          📊 Estatísticas Acumuladas
+                        </Typography>
+                        <Typography variant="body2">
+                          Os dados abaixo representam frequências acumuladas
+                          {filters.turma && ` da turma ${turmas.find(t => t._id === filters.turma)?.nome}`}
+                          {filters.ano && ` do ano ${filters.ano}`}
+                          {filters.trimestre && ` no ${filters.trimestre}º trimestre`}
+                          {filters.dataInicio && filters.dataFim && ` no período de ${formatarDataBR(filters.dataInicio)} a ${formatarDataBR(filters.dataFim)}`}
+                          {!filters.dataInicio && !filters.dataFim && !filters.trimestre && !filters.ano && ` (todos os períodos)`}
+                        </Typography>
+                      </Box>
+                      {filters.turma && (
+                        <Chip 
+                          label={`Turma: ${turmas.find(t => t._id === filters.turma)?.nome}`}
+                          color="primary"
+                          size="small"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      )}
+                    </Box>
+                  </Alert>
                 
                 {/* Cards de Estatísticas de Frequência */}
                 <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -1441,14 +1676,39 @@ const Dashboard = () => {
                 
                 {(!dashboardFrequencia.todosAlunos || dashboardFrequencia.todosAlunos.length === 0) && (
                   <Alert severity="info" sx={{ mt: 3 }}>
-                    📊 Nenhum registro de frequência encontrado para o período selecionado.
+                    {filters.turma ? (
+                      <Box>
+                        <Typography variant="body1" fontWeight="600" gutterBottom>
+                          📊 Nenhum registro de frequência encontrado
+                        </Typography>
+                        <Typography variant="body2">
+                          Não há frequências registradas para o período selecionado.
+                          {filters.dataInicio && filters.dataFim && (
+                            <> Período: {formatarDataBR(filters.dataInicio)} a {formatarDataBR(filters.dataFim)}</>
+                          )}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 1 }}>
+                          💡 Dica: Vá em <strong>Frequências</strong> para registrar presença dos alunos.
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Box>
+                        <Typography variant="body1" fontWeight="600" gutterBottom>
+                          🎯 Selecione uma TURMA nos filtros acima
+                        </Typography>
+                        <Typography variant="body2">
+                          Para visualizar a frequência acumulada dos alunos, selecione uma turma no filtro acima.
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 1 }}>
+                          💡 Você também pode filtrar por período (Data Início/Fim) para ver estatísticas específicas.
+                        </Typography>
+                      </Box>
+                    )}
                   </Alert>
                 )}
               </Paper>
               </Fade>
             </Grid>
-          </>
-        )}
       </Grid>
     </Container>
   );
