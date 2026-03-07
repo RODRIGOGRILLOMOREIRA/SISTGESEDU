@@ -101,7 +101,7 @@ const Dashboard = () => {
     trimestre: '',
     dataInicio: '',
     dataFim: '',
-    pontoCorte: 6.0,
+    pontoCorte: '', // P.C. 01, P.C. 02, P.C. 03 ou E.A.C
   });
 
   const [estatisticas, setEstatisticas] = useState(null);
@@ -548,11 +548,30 @@ const Dashboard = () => {
           {/* LINHA 1: Turma, Aluno, Disciplina */}
           <Grid item xs={12} sm={4} md={4}>
             <FormControl fullWidth size="small">
-              <InputLabel>Turma</InputLabel>
+              <InputLabel sx={{
+                color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+              }}>Turma</InputLabel>
               <Select
                 value={filters.turma}
                 label="Turma"
                 onChange={(e) => setFilters({ ...filters, turma: e.target.value, aluno: '' })}
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '& .MuiSelect-select': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                }}
               >
                 <MenuItem value="">Todas</MenuItem>
                 {turmas.map((t) => (
@@ -566,11 +585,30 @@ const Dashboard = () => {
 
           <Grid item xs={12} sm={4} md={4}>
             <FormControl fullWidth size="small" disabled={!filters.turma}>
-              <InputLabel>Aluno</InputLabel>
+              <InputLabel sx={{
+                color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+              }}>Aluno</InputLabel>
               <Select
                 value={filters.aluno}
                 label="Aluno"
                 onChange={(e) => setFilters({ ...filters, aluno: e.target.value })}
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '& .MuiSelect-select': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                }}
               >
                 <MenuItem value="">Todos</MenuItem>
                 {alunos.map((a) => (
@@ -584,11 +622,30 @@ const Dashboard = () => {
 
           <Grid item xs={12} sm={4} md={4}>
             <FormControl fullWidth size="small">
-              <InputLabel>Disciplina</InputLabel>
+              <InputLabel sx={{
+                color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+              }}>Disciplina</InputLabel>
               <Select
                 value={filters.disciplina}
                 label="Disciplina"
                 onChange={(e) => setFilters({ ...filters, disciplina: e.target.value })}
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '& .MuiSelect-select': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                }}
               >
                 <MenuItem value="">Todas</MenuItem>
                 {disciplinas.map((d) => (
@@ -603,11 +660,30 @@ const Dashboard = () => {
           {/* LINHA 2: Ano, Trimestre, Data Início, Data Fim, Ponto de Corte */}
           <Grid item xs={12} sm={6} md={2.4}>
             <FormControl fullWidth size="small">
-              <InputLabel>Ano</InputLabel>
+              <InputLabel sx={{
+                color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+              }}>Ano</InputLabel>
               <Select
                 value={filters.ano}
                 label="Ano"
                 onChange={(e) => setFilters({ ...filters, ano: e.target.value })}
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '& .MuiSelect-select': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                }}
               >
                 <MenuItem value="">Todos os Anos</MenuItem>
                 <MenuItem value={2024}>2024</MenuItem>
@@ -620,11 +696,30 @@ const Dashboard = () => {
           
           <Grid item xs={12} sm={6} md={2.4}>
             <FormControl fullWidth size="small">
-              <InputLabel>Trimestre</InputLabel>
+              <InputLabel sx={{
+                color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+              }}>Trimestre</InputLabel>
               <Select
                 value={filters.trimestre}
                 label="Trimestre"
                 onChange={(e) => setFilters({ ...filters, trimestre: e.target.value })}
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '& .MuiSelect-select': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                }}
               >
                 <MenuItem value="">Todos</MenuItem>
                 <MenuItem value={1}>1º Trimestre</MenuItem>
@@ -641,8 +736,25 @@ const Dashboard = () => {
               label="Data Início"
               value={filters.dataInicio}
               onChange={(e) => setFilters({ ...filters, dataInicio: e.target.value })}
-              InputLabelProps={{ shrink: true }}
+              InputLabelProps={{ 
+                shrink: true,
+                sx: {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                }
+              }}
               sx={{
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                },
+                '& .Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                },
+                '& .MuiInputBase-input': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
                 '& input[type="date"]': {
                   fontSize: '1rem',
                   padding: '12px',
@@ -650,7 +762,8 @@ const Dashboard = () => {
                 },
                 '& input[type="date"]::-webkit-calendar-picker-indicator': {
                   fontSize: '1.3rem',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  filter: !isDarkMode ? 'invert(1)' : undefined,
                 }
               }}
             />
@@ -663,9 +776,26 @@ const Dashboard = () => {
               label="Data Fim"
               value={filters.dataFim}
               onChange={(e) => setFilters({ ...filters, dataFim: e.target.value })}
-              InputLabelProps={{ shrink: true }}
+              InputLabelProps={{ 
+                shrink: true,
+                sx: {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                }
+              }}
               inputProps={{ min: filters.dataInicio }}
               sx={{
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                },
+                '& .Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                },
+                '& .MuiInputBase-input': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
                 '& input[type="date"]': {
                   fontSize: '1rem',
                   padding: '12px',
@@ -673,7 +803,8 @@ const Dashboard = () => {
                 },
                 '& input[type="date"]::-webkit-calendar-picker-indicator': {
                   fontSize: '1.3rem',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  filter: !isDarkMode ? 'invert(1)' : undefined,
                 }
               }}
             />
@@ -681,15 +812,36 @@ const Dashboard = () => {
           
           <Grid item xs={12} sm={6} md={2.4}>
             <FormControl fullWidth size="small">
-              <InputLabel>Ponto de Corte</InputLabel>
+              <InputLabel sx={{
+                color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+              }}>Ponto de Corte</InputLabel>
               <Select
                 value={filters.pontoCorte}
                 label="Ponto de Corte"
                 onChange={(e) => setFilters({ ...filters, pontoCorte: e.target.value })}
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                  '& .MuiSelect-select': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                }}
               >
-                <MenuItem value={5.0}>5.0</MenuItem>
-                <MenuItem value={6.0}>6.0</MenuItem>
-                <MenuItem value={7.0}>7.0</MenuItem>
+                <MenuItem value="">Todos</MenuItem>
+                <MenuItem value="pc1">P.C. 01</MenuItem>
+                <MenuItem value="pc2">P.C. 02</MenuItem>
+                <MenuItem value="pc3">P.C. 03</MenuItem>
+                <MenuItem value="eac">E.A.C</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -697,14 +849,11 @@ const Dashboard = () => {
         
         {/* Filtros Rápidos de Período */}
         <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
-            <Typography variant="body2" fontWeight="600" color="text.secondary">
-              ⚡ Períodos Rápidos:
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <Button
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+            <Button
                 size="small"
-                variant="outlined"
+                variant="contained"
+                color="secondary"
                 onClick={() => {
                   const hoje = new Date();
                   const seteDias = new Date();
@@ -717,12 +866,16 @@ const Dashboard = () => {
                     trimestre: ''
                   });
                 }}
+                sx={{
+                  color: '#003366 !important'
+                }}
               >
                 📅 Últimos 7 dias
               </Button>
               <Button
                 size="small"
-                variant="outlined"
+                variant="contained"
+                color="secondary"
                 onClick={() => {
                   const hoje = new Date();
                   const trintaDias = new Date();
@@ -735,12 +888,16 @@ const Dashboard = () => {
                     trimestre: ''
                   });
                 }}
+                sx={{
+                  color: '#003366 !important'
+                }}
               >
                 📅 Últimos 30 dias
               </Button>
               <Button
                 size="small"
-                variant="outlined"
+                variant="contained"
+                color="secondary"
                 onClick={() => {
                   const hoje = new Date();
                   const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
@@ -752,12 +909,16 @@ const Dashboard = () => {
                     trimestre: ''
                   });
                 }}
+                sx={{
+                  color: '#003366 !important'
+                }}
               >
                 📅 Mês Atual
               </Button>
               <Button
                 size="small"
-                variant="outlined"
+                variant="contained"
+                color="secondary"
                 onClick={() => {
                   const ano = 2026;
                   setFilters({
@@ -768,12 +929,16 @@ const Dashboard = () => {
                     dataFim: `${ano}-03-31`
                   });
                 }}
+                sx={{
+                  color: '#003366 !important'
+                }}
               >
                 📅 1º Trimestre 2026
               </Button>
               <Button
                 size="small"
-                variant="outlined"
+                variant="contained"
+                color="secondary"
                 onClick={() => {
                   const ano = 2026;
                   setFilters({
@@ -783,6 +948,9 @@ const Dashboard = () => {
                     dataFim: `${ano}-12-31`,
                     trimestre: ''
                   });
+                }}
+                sx={{
+                  color: '#003366 !important'
                 }}
               >
                 📅 Ano Completo 2026
@@ -800,10 +968,12 @@ const Dashboard = () => {
                     trimestre: ''
                   });
                 }}
+                sx={{
+                  color: '#003366 !important'
+                }}
               >
                 🔄 Limpar Filtros
               </Button>
-            </Box>
           </Box>
           {(filters.dataInicio || filters.dataFim || filters.ano || filters.trimestre) && (
             <Alert severity="info" icon={<FilterListIcon />} sx={{ py: 0.5 }}>
@@ -985,7 +1155,17 @@ const Dashboard = () => {
                 }
               }}
             >
-              <Typography variant="h6" gutterBottom fontWeight="600">
+              <Typography 
+                variant="h6" 
+                gutterBottom 
+                fontWeight="600"
+                sx={{
+                  color: '#00CED1',
+                  borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
+                  paddingBottom: 1,
+                  marginBottom: 2
+                }}
+              >
                 Desempenho por Disciplina
               </Typography>
               <Box sx={{ height: 300 }}>
@@ -1008,7 +1188,17 @@ const Dashboard = () => {
                 }
               }}
             >
-              <Typography variant="h6" gutterBottom fontWeight="600">
+              <Typography 
+                variant="h6" 
+                gutterBottom 
+                fontWeight="600"
+                sx={{
+                  color: '#00CED1',
+                  borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
+                  paddingBottom: 1,
+                  marginBottom: 2
+                }}
+              >
                 Aprovação x Reprovação
               </Typography>
             <Box sx={{ height: 300, display: 'flex', justifyContent: 'center' }}>
@@ -1033,7 +1223,17 @@ const Dashboard = () => {
                 }
               }}
             >
-              <Typography variant="h6" gutterBottom fontWeight="600">
+              <Typography 
+                variant="h6" 
+                gutterBottom 
+                fontWeight="600"
+                sx={{
+                  color: '#00CED1',
+                  borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
+                  paddingBottom: 1,
+                  marginBottom: 2
+                }}
+              >
                 Evolução Trimestral
               </Typography>
             <Box sx={{ height: 300 }}>
@@ -1253,7 +1453,17 @@ const Dashboard = () => {
                 }
               }}
             >
-              <Typography variant="h6" gutterBottom fontWeight="600">
+              <Typography 
+                variant="h6" 
+                gutterBottom 
+                fontWeight="600"
+                sx={{
+                  color: '#00CED1',
+                  borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
+                  paddingBottom: 1,
+                  marginBottom: 2
+                }}
+              >
                 📚 Evolução de Habilidades por Trimestre
               </Typography>
             <Box sx={{ height: 300 }}>
@@ -1302,7 +1512,17 @@ const Dashboard = () => {
                 }
               }}
             >
-              <Typography variant="h6" gutterBottom fontWeight="600">
+              <Typography 
+                variant="h6" 
+                gutterBottom 
+                fontWeight="600"
+                sx={{
+                  color: '#00CED1',
+                  borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
+                  paddingBottom: 1,
+                  marginBottom: 2
+                }}
+              >
                 🎯 Distribuição de Níveis de Habilidades
               </Typography>
             <Box sx={{ height: 300, display: 'flex', justifyContent: 'center' }}>
@@ -1356,7 +1576,17 @@ const Dashboard = () => {
                   }
                 }}
               >
-                <Typography variant="h6" gutterBottom fontWeight="600">
+                <Typography 
+                  variant="h6" 
+                  gutterBottom 
+                  fontWeight="600"
+                  sx={{
+                    color: '#00CED1',
+                    borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
+                    paddingBottom: 1,
+                    marginBottom: 2
+                  }}
+                >
                   📊 Estatísticas de Habilidades
                 </Typography>
               <Grid container spacing={2}>
@@ -1443,7 +1673,15 @@ const Dashboard = () => {
               }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
-                    <Typography variant="h6" fontWeight="600">
+                    <Typography 
+                      variant="h6" 
+                      fontWeight="600"
+                      sx={{
+                        color: '#00CED1',
+                        borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
+                        paddingBottom: 1
+                      }}
+                    >
                       📅 Dashboard de Frequência - Dados Acumulados
                     </Typography>
                     
@@ -2427,7 +2665,12 @@ const Dashboard = () => {
                                       <Typography variant="body2" fontWeight="600">
                                         {aluno.aluno.nome}
                                       </Typography>
-                                      <Typography variant="caption" color="text.secondary">
+                                      <Typography 
+                                        variant="caption" 
+                                        sx={{
+                                          color: theme.palette.mode === 'light' ? '#003366' : 'text.secondary'
+                                        }}
+                                      >
                                         Mat: {aluno.aluno.matricula}
                                       </Typography>
                                     </TableCell>
