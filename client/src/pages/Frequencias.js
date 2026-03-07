@@ -54,6 +54,7 @@ import { toast } from 'react-toastify';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import PageHeader from '../components/PageHeader';
+import ModalHistoricoFrequencia from '../components/ModalHistoricoFrequencia';
 
 // Ícone para o cabeçalho da página
 const FrequenciasIcon = EventNote;
@@ -157,6 +158,16 @@ const Frequencias = () => {
       loadDadosTurma();
     }
   }, [filtros.turma, filtros.data]);
+  
+  // Debug: Logar mudanças no estado do modal
+  useEffect(() => {
+    console.log('🔍 [DEBUG] Estado do modal mudou:', {
+      openModalFrequenciaIndividual,
+      alunoSelecionado,
+      temDados: !!frequenciaAcumuladaAluno,
+      dadosCompletos: frequenciaAcumuladaAluno
+    });
+  }, [openModalFrequenciaIndividual, alunoSelecionado, frequenciaAcumuladaAluno]);
   
   // Novo useEffect para carregar estatísticas quando mudar o período
   useEffect(() => {
@@ -347,9 +358,14 @@ const Frequencias = () => {
   };
 
   const handleVisualizarFrequenciaAluno = async (aluno) => {
+    console.log('🔍 [DEBUG] handleVisualizarFrequenciaAluno INICIADO');
+    console.log('🔍 [DEBUG] Aluno:', aluno);
+    console.log('🔍 [DEBUG] Filtros:', filtros);
+    
     try {
       setLoading(true);
       setAlunoSelecionado(aluno);
+      console.log('✅ [DEBUG] Aluno selecionado set');
       
       const params = {
         turma: filtros.turma
@@ -361,14 +377,29 @@ const Frequencias = () => {
         params.dataFim = filtros.dataFim;
       }
       
+      console.log('🔍 [DEBUG] Params para API:', params);
+      console.log('🔍 [DEBUG] Chamando API...');
+      
       const data = await frequenciaService.getFrequenciaAcumuladaAluno(aluno._id, params);
+      
+      console.log('✅ [DEBUG] Resposta da API recebida:', data);
+      console.log('🔍 [DEBUG] Estrutura periodo:', data?.periodo);
+      console.log('🔍 [DEBUG] Resumo geral:', data?.resumoGeral);
+      
       setFrequenciaAcumuladaAluno(data);
+      console.log('✅ [DEBUG] frequenciaAcumuladaAluno set');
+      
       setOpenModalFrequenciaIndividual(true);
+      console.log('✅ [DEBUG] Modal aberto (openModalFrequenciaIndividual = true)');
+      
     } catch (error) {
-      console.error('Erro ao carregar frequência do aluno:', error);
-      toast.error('Erro ao carregar frequência do aluno');
+      console.error('❌ [DEBUG] ERRO CAPTURADO:', error);
+      console.error('❌ [DEBUG] Error message:', error.message);
+      console.error('❌ [DEBUG] Error stack:', error.stack);
+      toast.error('Erro ao carregar frequência do aluno: ' + error.message);
     } finally {
       setLoading(false);
+      console.log('🏁 [DEBUG] handleVisualizarFrequenciaAluno FINALIZADO');
     }
   };
 
@@ -1672,206 +1703,17 @@ const Frequencias = () => {
       </Dialog>
 
       {/* Modal de Frequência Individual do Aluno */}
-      <Dialog 
-        open={openModalFrequenciaIndividual} 
-        onClose={() => setOpenModalFrequenciaIndividual(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Assessment color="primary" />
-              <Typography variant="h6">Histórico de Frequência</Typography>
-            </Box>
-            {alunoSelecionado && (
-              <Chip 
-                label={`Mat: ${alunoSelecionado.matricula}`}
-                color="primary"
-                size="small"
-              />
-            )}
-          </Box>
-          {alunoSelecionado && (
-            <Typography variant="subtitle2" color="text.secondary">
-              {alunoSelecionado.nome}
-            </Typography>
-          )}
-        </DialogTitle>
-        <DialogContent>
-          {frequenciaAcumuladaAluno ? (
-            <Box>
-              {/* Resumo Geral */}
-              <Paper sx={{ p: 2, mb: 3, bgcolor: 'background.default' }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  📊 Resumo Geral {frequenciaAcumuladaAluno.periodo.inicio && frequenciaAcumuladaAluno.periodo.fim && 
-                    `(${formatarDataLocal(frequenciaAcumuladaAluno.periodo.inicio)} - ${formatarDataLocal(frequenciaAcumuladaAluno.periodo.fim)})`
-                  }
-                </Typography>
-                <Grid container spacing={2} sx={{ mt: 1 }}>
-                  <Grid item xs={3}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h4" color="primary.main">
-                        {frequenciaAcumuladaAluno.resumoGeral.total}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Total de Registros
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={3}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h4" color="success.main">
-                        {frequenciaAcumuladaAluno.resumoGeral.presentes}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Presenças
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={3}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h4" color="error.main">
-                        {frequenciaAcumuladaAluno.resumoGeral.faltas}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Faltas
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={3}>
-                    <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h4" color="warning.main">
-                        {frequenciaAcumuladaAluno.resumoGeral.justificadas}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Justificadas
-                      </Typography>
-                    </Box>
-                  </Grid>
-                </Grid>
-                <Box sx={{ mt: 2, textAlign: 'center' }}>
-                  <Typography variant="h5" 
-                    sx={{ 
-                      color: frequenciaAcumuladaAluno.resumoGeral.percentualPresenca >= 80 ? 'success.main' :
-                             frequenciaAcumuladaAluno.resumoGeral.percentualPresenca >= 60 ? 'warning.main' :
-                             'error.main'
-                    }}
-                  >
-                    {frequenciaAcumuladaAluno.resumoGeral.percentualPresenca}% de Presença
-                  </Typography>
-                </Box>
-              </Paper>
-
-              {/* Frequência por Disciplina */}
-              {frequenciaAcumuladaAluno.porDisciplina && frequenciaAcumuladaAluno.porDisciplina.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    📚 Por Disciplina
-                  </Typography>
-                  <TableContainer component={Paper}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Disciplina</TableCell>
-                          <TableCell align="center">Total</TableCell>
-                          <TableCell align="center">Presentes</TableCell>
-                          <TableCell align="center">Faltas</TableCell>
-                          <TableCell align="center">Percentual</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {frequenciaAcumuladaAluno.porDisciplina.map((disc, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{disc.disciplina.nome}</TableCell>
-                            <TableCell align="center">{disc.total}</TableCell>
-                            <TableCell align="center">
-                              <Chip label={disc.presentes} color="success" size="small" />
-                            </TableCell>
-                            <TableCell align="center">
-                              <Chip label={disc.faltas + disc.justificadas} color="error" size="small" />
-                            </TableCell>
-                            <TableCell align="center">
-                              <Typography
-                                sx={{
-                                  color: disc.percentualPresenca >= 80 ? 'success.main' :
-                                         disc.percentualPresenca >= 60 ? 'warning.main' :
-                                         'error.main',
-                                  fontWeight: 600
-                                }}
-                              >
-                                {disc.percentualPresenca}%
-                              </Typography>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
-              )}
-
-              {/* Histórico Diário */}
-              {frequenciaAcumuladaAluno.historicoDiario && frequenciaAcumuladaAluno.historicoDiario.length > 0 && (
-                <Box>
-                  <Typography variant="subtitle2" gutterBottom>
-                    📅 Histórico Diário (Últimos registros)
-                  </Typography>
-                  <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
-                    <Table size="small" stickyHeader>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Data</TableCell>
-                          <TableCell align="center">Presentes</TableCell>
-                          <TableCell align="center">Faltas</TableCell>
-                          <TableCell align="center">Percentual</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {frequenciaAcumuladaAluno.historicoDiario.map((dia, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{formatarDataLocal(dia._id.toISOString().split('T')[0])}</TableCell>
-                            <TableCell align="center">
-                              <Chip label={dia.presentes} color="success" size="small" />
-                            </TableCell>
-                            <TableCell align="center">
-                              <Chip label={dia.faltas + dia.justificadas} color="error" size="small" />
-                            </TableCell>
-                            <TableCell align="center">
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  color: dia.percentualPresenca >= 80 ? 'success.main' :
-                                         dia.percentualPresenca >= 60 ? 'warning.main' :
-                                         'error.main'
-                                }}
-                              >
-                                {dia.percentualPresenca}%
-                              </Typography>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
-              )}
-            </Box>
-          ) : (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <LinearProgress />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                Carregando dados...
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenModalFrequenciaIndividual(false)}>
-            Fechar
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ModalHistoricoFrequencia
+        open={openModalFrequenciaIndividual}
+        onClose={() => {
+          console.log('🔍 [DEBUG] Modal onClose chamado');
+          setOpenModalFrequenciaIndividual(false);
+          setFrequenciaAcumuladaAluno(null);
+          setAlunoSelecionado(null);
+        }}
+        aluno={alunoSelecionado}
+        frequenciaData={frequenciaAcumuladaAluno}
+      />
     </Container>
   );
 };

@@ -1203,6 +1203,12 @@ exports.getFrequenciaAcumuladaAluno = async (req, res) => {
     // Agrupar por disciplina
     const porDisciplina = {};
     frequencias.forEach(freq => {
+      // Verificar se a disciplina está populada
+      if (!freq.disciplina || !freq.disciplina._id) {
+        console.log('⚠️ Frequência sem disciplina válida:', freq._id);
+        return; // Pular esta frequência
+      }
+      
       const disciplinaId = freq.disciplina._id.toString();
       if (!porDisciplina[disciplinaId]) {
         porDisciplina[disciplinaId] = {
@@ -1247,7 +1253,11 @@ exports.getFrequenciaAcumuladaAluno = async (req, res) => {
         nome: aluno.nome,
         matricula: aluno.matricula
       },
-      periodo: dataInicio && dataFim ? { inicio: dataInicio, fim: dataFim } : 'Todos os registros',
+      periodo: {
+        inicio: dataInicio || null,
+        fim: dataFim || null,
+        descricao: dataInicio && dataFim ? `${dataInicio} a ${dataFim}` : 'Todos os registros'
+      },
       resumoGeral: {
         total,
         presentes,
@@ -1257,13 +1267,18 @@ exports.getFrequenciaAcumuladaAluno = async (req, res) => {
       },
       porDisciplina: estatisticasPorDisciplina,
       historicoDiario: historicoDiario.map(h => ({
+        _id: h._id,
         data: h._id,
-        ...h,
-        percentualPresenca: ((h.presentes / h.total) * 100).toFixed(2)
+        presentes: h.presentes || 0,
+        faltas: h.faltas || 0,
+        justificadas: h.justificadas || 0,
+        total: h.total || 0,
+        percentualPresenca: h.total > 0 ? ((h.presentes / h.total) * 100).toFixed(2) : '0'
       })),
       frequencias: frequencias.slice(0, 50) // Últimas 50 frequências detalhadas
     });
   } catch (error) {
+    console.error('Erro em getFrequenciaAcumuladaAluno:', error);
     res.status(500).json({ message: 'Erro ao buscar frequência acumulada do aluno', error: error.message });
   }
 };
