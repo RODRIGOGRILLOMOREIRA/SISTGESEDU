@@ -34,6 +34,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import {
   AssessmentOutlined,
+  Assessment,
   SchoolOutlined,
   CheckCircleOutlined,
   TrendingUpOutlined,
@@ -49,6 +50,7 @@ import {
   Close as CloseIcon,
 } from '@mui/icons-material';
 import html2pdf from 'html2pdf.js';
+import html2canvas from 'html2canvas';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -65,6 +67,7 @@ import { Bar, Pie, Line, Scatter } from 'react-chartjs-2';
 import { dashboardService, turmaService, disciplinaService, alunoService, frequenciaService } from '../services';
 import { toast } from 'react-toastify';
 import PageHeader from '../components/PageHeader';
+import ModalHistoricoFrequencia from '../components/ModalHistoricoFrequencia';
 import { Dashboard as DashboardIcon } from '@mui/icons-material';
 
 ChartJS.register(
@@ -88,6 +91,10 @@ const Dashboard = () => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const frequenciaRef = useRef(null);
+  
+  // Refs para os containers dos gráficos (usados na exportação)
+  const containerGraficoComparacaoRef = useRef(null);
+  const containerGraficoPredicaoRef = useRef(null);
   const [exportando, setExportando] = useState(false);
   
   const [turmas, setTurmas] = useState([]);
@@ -124,6 +131,12 @@ const Dashboard = () => {
   const [habilidadesFiltro, setHabilidadesFiltro] = useState('todos'); // todos, nao-desenvolvido, em-desenvolvimento, desenvolvido, plenamente-desenvolvido
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [graficoExpandido, setGraficoExpandido] = useState(null); // null, 'comparacao', 'predicao'
+  
+  // Estados para modal de histórico de frequência
+  const [openModalHistorico, setOpenModalHistorico] = useState(false);
+  const [alunoHistoricoSelecionado, setAlunoHistoricoSelecionado] = useState(null);
+  const [frequenciaHistorico, setFrequenciaHistorico] = useState(null);
+  const [loadingHistorico, setLoadingHistorico] = useState(false);
 
   // Funções para controle de expansão dos gráficos
   const handleExpandirGrafico = (tipoGrafico) => {
@@ -293,21 +306,257 @@ const Dashboard = () => {
     }
   };
 
-  // Função para exportar Dashboard de Frequência em PDF
+  /**
+   * Handler para visualizar histórico de frequência de um aluno
+   * Abre modal com detalhes completos e opção de exportação
+   */
+  const handleVisualizarHistorico = async (aluno) => {
+    try {
+      setLoadingHistorico(true);
+      setAlunoHistoricoSelecionado({
+        _id: aluno.aluno._id,
+        nome: aluno.aluno.nome,
+        matricula: aluno.aluno.matricula
+      });
+      
+      // Preparar parâmetros baseados nos filtros atuais
+      const params = {
+        turma: filters.turma
+      };
+      
+      // Se houver filtro de período, aplica
+      if (filters.dataInicio && filters.dataFim) {
+        params.dataInicio = filters.dataInicio;
+        params.dataFim = filters.dataFim;
+      }
+      
+      console.log('📊 Dashboard: Buscando histórico do aluno', aluno.aluno.nome);
+      console.log('🔍 Params:', params);
+      
+      // Buscar dados da API
+      const data = await frequenciaService.getFrequenciaAcumuladaAluno(
+        aluno.aluno._id, 
+        params
+      );
+      
+      console.log('✅ Dados de histórico recebidos:', data);
+      
+      setFrequenciaHistorico(data);
+      setOpenModalHistorico(true);
+      
+    } catch (error) {
+      console.error('Erro ao carregar histórico:', error);
+      toast.error('Erro ao carregar histórico de frequência: ' + error.message);
+    } finally {
+      setLoadingHistorico(false);
+    }
+  };
+
+  // Função para exportar Dashboard de Frequência em PDF com múltiplas páginas
   const exportarFrequenciaPDF = async () => {
-    if (!frequenciaRef.current) {
-      toast.error('Erro ao exportar: conteúdo não encontrado');
+    // Validar se os containers estão disponíveis
+    if (!containerGraficoComparacaoRef.current || !containerGraficoPredicaoRef.current) {
+      toast.error('Erro: Gráficos não disponíveis. Selecione uma turma e aguarde o carregamento.');
+      return;
+    }
+
+    // Validar se há dados para exportar
+    if (!dashboardFrequencia.todosAlunos || dashboardFrequencia.todosAlunos.length === 0) {
+      toast.error('Erro: Nenhum dado disponível para exportação. Selecione uma turma com dados.');
       return;
     }
 
     try {
       setExportando(true);
-      toast.info('Gerando PDF... Aguarde alguns segundos', { autoClose: 2000 });
+      toast.info('📸 Capturando gráficos... Aguarde', { autoClose: 2000 });
 
-      // Configurações do PDF
-      const opt = {
-        margin: [10, 10, 10, 10],
-        filename: `Dashboard_Frequencia_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`,
+      // 1. AGUARDAR RENDERIZAÇÃO COMPLETA
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 2. CAPTURAR GRÁFICOS COM HTML2CANVAS
+      const canvasComparacao = await html2canvas(containerGraficoComparacaoRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 1200
+      });
+
+      const canvasPredicao = await html2canvas(containerGraficoPredicaoRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 1200
+      });
+
+      // 3. CONVERTER CANVAS PARA BASE64
+      const imagemComparacao = canvasComparacao.toDataURL('image/jpeg', 0.98);
+      const imagemPredicao = canvasPredicao.toDataURL('image/jpeg', 0.98);
+
+      // Verificar se as imagens foram geradas
+      if (!imagemComparacao || !imagemPredicao) {
+        toast.error('Erro: Falha ao capturar os gráficos.');
+        return;
+      }
+
+      toast.info('📄 Gerando PDF... Aguarde', { autoClose: 2000 });
+
+      // 4. CRIAR CONTAINER TEMPORÁRIO - PÁGINA 1 (GRÁFICOS)
+      const containerGraficos = document.createElement('div');
+      containerGraficos.style.width = '1400px';
+      containerGraficos.style.backgroundColor = '#ffffff';
+      containerGraficos.style.padding = '40px';
+      containerGraficos.style.position = 'absolute';
+      containerGraficos.style.left = '0';
+      containerGraficos.style.top = '0';
+      containerGraficos.style.visibility = 'hidden';
+      
+      const turmaInfo = filters.turma ? turmas.find(t => t._id === filters.turma) : null;
+      const periodoInfo = filters.dataInicio && filters.dataFim 
+        ? ` | Período: ${formatarDataBR(filters.dataInicio)} a ${formatarDataBR(filters.dataFim)}` 
+        : '';
+      
+      containerGraficos.innerHTML = `
+        <div style="margin-bottom: 30px; text-align: center; border-bottom: 3px solid #1976d2; padding-bottom: 15px;">
+          <h1 style="color: #1976d2; font-weight: 700; margin: 0;">📊 Dashboard de Frequência - Análise Gráfica</h1>
+          <h3 style="color: #666; margin: 10px 0;">Sistema de Gestão Escolar - SistGesEdu</h3>
+          <p style="color: #999; margin: 5px 0;">Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+          ${turmaInfo ? `<p style="color: #666; font-weight: 600; margin: 5px 0;">Turma: ${turmaInfo.nome}${periodoInfo}</p>` : ''}
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
+          <div style="background-color: #0D47A1; color: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <h1 style="font-weight: 700; margin-bottom: 10px;">${dashboardFrequencia.totalRegistros}</h1>
+            <h4 style="margin: 0;">Total de Registros</h4>
+          </div>
+          <div style="background-color: #2E7D32; color: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <h1 style="font-weight: 700; margin-bottom: 10px;">${dashboardFrequencia.percentualPresenca || 0}%</h1>
+            <h4 style="margin: 0;">Presentes</h4>
+            <p style="margin-top: 10px; font-weight: 600;">${dashboardFrequencia.presentes} alunos</p>
+          </div>
+          <div style="background-color: #C62828; color: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <h1 style="font-weight: 700; margin-bottom: 10px;">${dashboardFrequencia.percentualFaltas || 0}%</h1>
+            <h4 style="margin: 0;">Faltas</h4>
+            <p style="margin-top: 10px; font-weight: 600;">${dashboardFrequencia.faltas} alunos</p>
+          </div>
+          <div style="background-color: #F57C00; color: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <h1 style="font-weight: 700; margin-bottom: 10px;">${dashboardFrequencia.faltasJustificadas}</h1>
+            <h4 style="margin: 0;">Justificadas</h4>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 30px;">
+          <h3 style="color: #1976d2; margin-bottom: 15px;">📊 Comparação de Frequência</h3>
+          <img src="${imagemComparacao}" style="width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px;" />
+        </div>
+        
+        <div>
+          <h3 style="color: #1976d2; margin-bottom: 15px;">🎯 Análise de Risco e Predição</h3>
+          <img src="${imagemPredicao}" style="width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px;" />
+        </div>
+      `;
+      
+      document.body.appendChild(containerGraficos);
+
+      // 5. CRIAR CONTAINER TEMPORÁRIO - PÁGINA 2 (TABELA)
+      const containerTabela = document.createElement('div');
+      containerTabela.style.width = '800px';
+      containerTabela.style.backgroundColor = '#ffffff';
+      containerTabela.style.padding = '40px';
+      containerTabela.style.position = 'absolute';
+      containerTabela.style.left = '0';
+      containerTabela.style.top = '0';
+      containerTabela.style.visibility = 'hidden';
+      
+      // Gerar linhas da tabela
+      const linhasTabela = dashboardFrequencia.todosAlunos.map(aluno => {
+        const percentual = aluno.percentualPresenca;
+        let statusLabel = 'Adequado', statusIcon = '✅', statusBg = '#e8f5e9';
+        
+        if (aluno.classificacao === 'critico') {
+          statusLabel = 'Crítico'; statusIcon = '🚨'; statusBg = '#ffebee';
+        } else if (aluno.classificacao === 'atencao') {
+          statusLabel = 'Atenção'; statusIcon = '⚠️'; statusBg = '#fff3e0';
+        }
+        
+        return `
+          <tr style="background-color: ${statusBg};">
+            <td style="border: 1px solid #ddd; padding: 12px; font-size: 11px; font-weight: 600;">${aluno.aluno.nome}</td>
+            <td style="border: 1px solid #ddd; padding: 12px; font-size: 10px;">${aluno.aluno.matricula}</td>
+            <td style="border: 1px solid #ddd; padding: 12px; font-size: 11px; font-weight: 600; text-align: center;">${aluno.total}</td>
+            <td style="border: 1px solid #ddd; padding: 12px; font-size: 11px; font-weight: 700; color: #2e7d32; text-align: center;">${aluno.presentes}</td>
+            <td style="border: 1px solid #ddd; padding: 12px; font-size: 11px; font-weight: 700; color: #c62828; text-align: center;">${aluno.faltas}</td>
+            <td style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700; text-align: center;">${percentual}%</td>
+            <td style="border: 1px solid #ddd; padding: 12px; font-size: 11px; font-weight: 600; text-align: center;">${statusIcon} ${statusLabel}</td>
+          </tr>
+        `;
+      }).join('');
+      
+      containerTabela.innerHTML = `
+        <div style="margin-bottom: 30px; text-align: center; border-bottom: 3px solid #1976d2; padding-bottom: 15px;">
+          <h1 style="color: #1976d2; font-weight: 700; margin: 0;">📋 Relatório Detalhado de Alunos</h1>
+          <h3 style="color: #666; margin: 10px 0;">Sistema de Gestão Escolar - SistGesEdu</h3>
+          <p style="color: #999; margin: 5px 0;">Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+          ${turmaInfo ? `<p style="color: #666; font-weight: 600; margin: 5px 0;">Turma: ${turmaInfo.nome}${periodoInfo}</p>` : ''}
+        </div>
+        
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+          <thead>
+            <tr style="background-color: #1976d2; color: white;">
+              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700;">Aluno</th>
+              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700;">Matrícula</th>
+              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700; text-align: center;">Total Aulas</th>
+              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700; text-align: center;">Presentes</th>
+              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700; text-align: center;">Faltas</th>
+              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700; text-align: center;">Frequência</th>
+              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700; text-align: center;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${linhasTabela}
+          </tbody>
+        </table>
+        
+        <div style="padding: 15px; background-color: #f5f5f5; border-radius: 8px;">
+          <p style="font-weight: 600; margin-bottom: 10px;">📊 Resumo:</p>
+          <p style="margin: 5px 0;">• Total de alunos: ${dashboardFrequencia.todosAlunos?.length || 0}</p>
+          <p style="margin: 5px 0;">• Total de registros: ${dashboardFrequencia.totalRegistros}</p>
+          <p style="margin: 5px 0;">• Presentes: ${dashboardFrequencia.presentes} (${dashboardFrequencia.percentualPresenca}%)</p>
+          <p style="margin: 5px 0;">• Faltas: ${dashboardFrequencia.faltas} (${dashboardFrequencia.percentualFaltas}%)</p>
+          <p style="margin: 5px 0;">• Faltas Justificadas: ${dashboardFrequencia.faltasJustificadas}</p>
+        </div>
+      `;
+      
+      document.body.appendChild(containerTabela);
+
+      // 6. AGUARDAR PARA GARANTIR RENDERIZAÇÃO
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // 7. CONFIGURAÇÕES DE EXPORTAÇÃO
+      const dataAtual = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+      const nomeArquivo = `Dashboard_Frequencia_${dataAtual}.pdf`;
+
+      const optGraficos = {
+        margin: [20, 20, 20, 20],
+        filename: nomeArquivo,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'landscape'
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      const optTabela = {
+        margin: [20, 20, 20, 20],
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { 
           scale: 2,
@@ -323,10 +572,54 @@ const Dashboard = () => {
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
-      // Gerar PDF
-      await html2pdf().set(opt).from(frequenciaRef.current).save();
+      // 8. GERAR PDFS
+      const pdfGraficos = await html2pdf()
+        .set(optGraficos)
+        .from(containerGraficos)
+        .toPdf()
+        .get('pdf');
+
+      const pdfTabela = await html2pdf()
+        .set(optTabela)
+        .from(containerTabela)
+        .toPdf()
+        .get('pdf');
+
+      // 9. COMBINAR PDFS
+      const totalPagesGraficos = pdfGraficos.internal.getNumberOfPages();
+      
+      for (let i = 1; i <= pdfTabela.internal.getNumberOfPages(); i++) {
+        pdfGraficos.addPage('a4', 'portrait');
+        const pageData = pdfTabela.internal.pages[i];
+        pdfGraficos.internal.pages[totalPagesGraficos + i] = pageData;
+      }
+
+      // 10. ADICIONAR NUMERAÇÃO
+      const totalPages = pdfGraficos.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdfGraficos.setPage(i);
+        pdfGraficos.setFontSize(10);
+        pdfGraficos.setTextColor(100);
+        
+        const pageInfo = pdfGraficos.internal.getCurrentPageInfo();
+        const isLandscape = pageInfo.pageContext.width > pageInfo.pageContext.height;
+        
+        if (isLandscape) {
+          pdfGraficos.text(`Página ${i} de ${totalPages}`, 277, 200, { align: 'right' });
+        } else {
+          pdfGraficos.text(`Página ${i} de ${totalPages}`, 190, 287, { align: 'right' });
+        }
+      }
+
+      // 11. SALVAR PDF
+      pdfGraficos.save(nomeArquivo);
+
+      // 12. LIMPAR CONTAINERS TEMPORÁRIOS
+      document.body.removeChild(containerGraficos);
+      document.body.removeChild(containerTabela);
       
       toast.success('✅ PDF exportado com sucesso!');
+      
     } catch (error) {
       console.error('Erro ao exportar PDF:', error);
       toast.error('Erro ao exportar PDF: ' + error.message);
@@ -1687,7 +1980,7 @@ const Dashboard = () => {
                     
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                       {/* Botão Exportar PDF */}
-                      <Tooltip title="Exportar Dashboard em PDF (com cores)">
+                      <Tooltip title="Exportar Dashboard em PDF - Gráficos e Tabela em páginas separadas (A4 com margens 20mm)">
                         <Button
                           variant="contained"
                           color="error"
@@ -2004,7 +2297,7 @@ const Dashboard = () => {
                         text: filters.turma 
                           ? `📊 Frequência da Turma ${turmasArray[0]?.nome || ''}`
                           : '📊 Comparação de Frequência por Turma',
-                        font: { size: 16, weight: 'bold' },
+                        font: { size: 24, weight: 'bold' },
                         color: isDarkMode ? '#ffffff' : '#000000'
                       },
                       tooltip: {
@@ -2027,10 +2320,12 @@ const Dashboard = () => {
                         title: {
                           display: true,
                           text: 'Frequência Média (%)',
-                          color: isDarkMode ? '#ffffff' : '#000000'
+                          color: isDarkMode ? '#ffffff' : '#000000',
+                          font: { size: 18, weight: 'bold' }
                         },
                         ticks: {
-                          color: isDarkMode ? '#ffffff' : '#000000'
+                          color: isDarkMode ? '#ffffff' : '#000000',
+                          font: { size: 18 }
                         },
                         grid: {
                           color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
@@ -2043,10 +2338,12 @@ const Dashboard = () => {
                         title: {
                           display: true,
                           text: filters.turma ? 'Turma' : 'Turmas',
-                          color: isDarkMode ? '#ffffff' : '#000000'
+                          color: isDarkMode ? '#ffffff' : '#000000',
+                          font: { size: 18, weight: 'bold' }
                         },
                         ticks: {
-                          color: isDarkMode ? '#ffffff' : '#000000'
+                          color: isDarkMode ? '#ffffff' : '#000000',
+                          font: { size: 18 }
                         },
                         grid: {
                           color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
@@ -2071,7 +2368,7 @@ const Dashboard = () => {
                           
                           // Configurar o texto
                           ctx.fillStyle = isDarkMode ? '#ffffff' : '#000000';
-                          ctx.font = 'bold 14px Arial';
+                          ctx.font = 'bold 21px Arial';
                           ctx.textAlign = 'center';
                           ctx.textBaseline = 'bottom';
                           
@@ -2156,7 +2453,7 @@ const Dashboard = () => {
                       title: {
                         display: true,
                         text: '🎯 Análise de Risco e Predição',
-                        font: { size: 16, weight: 'bold' },
+                        font: { size: 24, weight: 'bold' },
                         color: isDarkMode ? '#ffffff' : '#000000'
                       },
                       tooltip: {
@@ -2180,10 +2477,12 @@ const Dashboard = () => {
                         title: {
                           display: true,
                           text: 'Frequência (%)',
-                          color: isDarkMode ? '#ffffff' : '#000000'
+                          color: isDarkMode ? '#ffffff' : '#000000',
+                          font: { size: 18, weight: 'bold' }
                         },
                         ticks: {
-                          color: isDarkMode ? '#ffffff' : '#000000'
+                          color: isDarkMode ? '#ffffff' : '#000000',
+                          font: { size: 18 }
                         },
                         grid: {
                           color: function(context) {
@@ -2204,10 +2503,12 @@ const Dashboard = () => {
                         title: {
                           display: true,
                           text: 'Total de Aulas Registradas',
-                          color: isDarkMode ? '#ffffff' : '#000000'
+                          color: isDarkMode ? '#ffffff' : '#000000',
+                          font: { size: 18, weight: 'bold' }
                         },
                         ticks: {
-                          color: isDarkMode ? '#ffffff' : '#000000'
+                          color: isDarkMode ? '#ffffff' : '#000000',
+                          font: { size: 18 }
                         },
                         grid: {
                           color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
@@ -2241,8 +2542,12 @@ const Dashboard = () => {
                     <>
                       {/* Grid dos Gráficos */}
                       <Grid container spacing={3} sx={{ my: 3 }}>
-                        <Grid item xs={12} md={6}>
-                          <Paper elevation={3} sx={{ p: 2, height: 400, position: 'relative' }}>
+                        <Grid item xs={12}>
+                          <Paper 
+                            ref={containerGraficoComparacaoRef}
+                            elevation={3} 
+                            sx={{ p: 2, height: 500, position: 'relative' }}
+                          >
                             <IconButton
                               onClick={() => handleExpandirGrafico('comparacao')}
                               sx={{
@@ -2264,8 +2569,12 @@ const Dashboard = () => {
                             />
                           </Paper>
                         </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Paper elevation={3} sx={{ p: 2, height: 400, position: 'relative' }}>
+                        <Grid item xs={12}>
+                          <Paper 
+                            ref={containerGraficoPredicaoRef}
+                            elevation={3} 
+                            sx={{ p: 2, height: 500, position: 'relative' }}
+                          >
                             <IconButton
                               onClick={() => handleExpandirGrafico('predicao')}
                               sx={{
@@ -2370,6 +2679,272 @@ const Dashboard = () => {
                           ))}
                         </Alert>
                       )}
+
+                      {/* Seção de Rankings - TOP 3 */}
+                      {dashboardFrequencia.todosAlunos && dashboardFrequencia.todosAlunos.length > 0 && (() => {
+                        // Processar rankings
+                        const alunosComDados = dashboardFrequencia.todosAlunos.filter(a => 
+                          a.aluno && a.aluno.nome && a.total > 0
+                        );
+
+                        // TOP 3 MELHORES FREQUÊNCIAS (ordenar por percentual decrescente)
+                        const top3Melhores = [...alunosComDados]
+                          .sort((a, b) => parseFloat(b.percentualPresenca) - parseFloat(a.percentualPresenca))
+                          .slice(0, 3);
+
+                        // TOP 3 CONSISTENTES (frequência >= 75% e maior número de presenças)
+                        const top3Consistentes = [...alunosComDados]
+                          .filter(a => parseFloat(a.percentualPresenca) >= 75)
+                          .sort((a, b) => b.presentes - a.presentes)
+                          .slice(0, 3);
+
+                        // TOP 3 PIORES FREQUÊNCIAS (ordenar por percentual crescente)
+                        const top3Piores = [...alunosComDados]
+                          .sort((a, b) => parseFloat(a.percentualPresenca) - parseFloat(b.percentualPresenca))
+                          .slice(0, 3);
+
+                        // Criar dados para gráfico TOP 3 Melhores
+                        const dadosMelhores = {
+                          labels: top3Melhores.map(a => a.aluno.nome.length > 20 ? a.aluno.nome.substring(0, 20) + '...' : a.aluno.nome),
+                          datasets: [{
+                            label: 'Frequência (%)',
+                            data: top3Melhores.map(a => parseFloat(a.percentualPresenca)),
+                            backgroundColor: 'rgba(76, 175, 80, 0.8)',
+                            borderColor: 'rgb(76, 175, 80)',
+                            borderWidth: 2,
+                          }]
+                        };
+
+                        // Criar dados para gráfico TOP 3 Consistentes
+                        const dadosConsistentes = {
+                          labels: top3Consistentes.map(a => a.aluno.nome.length > 20 ? a.aluno.nome.substring(0, 20) + '...' : a.aluno.nome),
+                          datasets: [{
+                            label: 'Presenças Totais',
+                            data: top3Consistentes.map(a => a.presentes),
+                            backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                            borderColor: 'rgb(255, 193, 7)',
+                            borderWidth: 2,
+                          }]
+                        };
+
+                        // Criar dados para gráfico TOP 3 Piores
+                        const dadosPiores = {
+                          labels: top3Piores.map(a => a.aluno.nome.length > 20 ? a.aluno.nome.substring(0, 20) + '...' : a.aluno.nome),
+                          datasets: [{
+                            label: 'Frequência (%)',
+                            data: top3Piores.map(a => parseFloat(a.percentualPresenca)),
+                            backgroundColor: 'rgba(244, 67, 54, 0.8)',
+                            borderColor: 'rgb(244, 67, 54)',
+                            borderWidth: 2,
+                          }]
+                        };
+
+                        // Opções comuns para gráficos horizontais
+                        const opcoesHorizontal = (titulo, sufixo = '%') => ({
+                          indexAxis: 'y',
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              display: false
+                            },
+                            title: {
+                              display: true,
+                              text: titulo,
+                              font: { size: 16, weight: 'bold' },
+                              color: isDarkMode ? '#ffffff' : '#000000',
+                              padding: { bottom: 15 }
+                            },
+                            tooltip: {
+                              callbacks: {
+                                label: function(context) {
+                                  const aluno = sufixo === '%' 
+                                    ? (titulo.includes('Melhores') ? top3Melhores : top3Piores)[context.dataIndex]
+                                    : top3Consistentes[context.dataIndex];
+                                  return [
+                                    `${context.label}`,
+                                    sufixo === '%' 
+                                      ? `Frequência: ${context.parsed.x}%`
+                                      : `Presenças: ${context.parsed.x} de ${aluno.total}`,
+                                    sufixo === '%' 
+                                      ? `Total de Aulas: ${aluno.total}`
+                                      : `Frequência: ${aluno.percentualPresenca}%`,
+                                    `Matrícula: ${aluno.aluno.matricula}`
+                                  ];
+                                }
+                              }
+                            }
+                          },
+                          scales: {
+                            x: {
+                              beginAtZero: true,
+                              max: sufixo === '%' ? 100 : undefined,
+                              title: {
+                                display: true,
+                                text: sufixo === '%' ? 'Frequência (%)' : 'Número de Presenças',
+                                color: isDarkMode ? '#ffffff' : '#000000',
+                                font: { size: 14, weight: 'bold' }
+                              },
+                              ticks: {
+                                color: isDarkMode ? '#ffffff' : '#000000',
+                                font: { size: 13 }
+                              },
+                              grid: {
+                                color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                              }
+                            },
+                            y: {
+                              ticks: {
+                                color: isDarkMode ? '#ffffff' : '#000000',
+                                font: { size: 13, weight: '600' }
+                              },
+                              grid: {
+                                display: false
+                              }
+                            }
+                          }
+                        });
+
+                        return (
+                          <>
+                            {/* Título da Seção de Rankings */}
+                            <Box sx={{ mt: 4, mb: 2 }}>
+                              <Typography 
+                                variant="h6" 
+                                fontWeight="600"
+                                sx={{
+                                  color: '#00CED1',
+                                  borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
+                                  paddingBottom: 1,
+                                  marginBottom: 2,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 1
+                                }}
+                              >
+                                🏆 Rankings de Frequência - TOP 3
+                              </Typography>
+                            </Box>
+
+                            {/* Grid com os 3 gráficos de ranking */}
+                            <Grid container spacing={3} sx={{ mb: 3 }}>
+                              {/* TOP 3 MELHORES */}
+                              <Grid item xs={12} md={4}>
+                                <Fade in={true} timeout={1500}>
+                                  <Paper 
+                                    elevation={3} 
+                                    sx={{ 
+                                      p: 2, 
+                                      height: 350,
+                                      borderRadius: 3,
+                                      border: '8px solid rgba(76, 175, 80, 0.5)',
+                                      boxShadow: '0 4px 20px rgba(76, 175, 80, 0.2)',
+                                      transition: 'all 0.3s ease',
+                                      '&:hover': {
+                                        boxShadow: '0 8px 30px rgba(76, 175, 80, 0.3)',
+                                        transform: 'translateY(-4px)',
+                                      }
+                                    }}
+                                  >
+                                    {top3Melhores.length > 0 ? (
+                                      <Bar 
+                                        data={dadosMelhores} 
+                                        options={opcoesHorizontal('🥇 TOP 3 Melhores Frequências', '%')}
+                                      />
+                                    ) : (
+                                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                          Sem dados disponíveis
+                                        </Typography>
+                                      </Box>
+                                    )}
+                                  </Paper>
+                                </Fade>
+                              </Grid>
+
+                              {/* TOP 3 CONSISTENTES */}
+                              <Grid item xs={12} md={4}>
+                                <Fade in={true} timeout={1600}>
+                                  <Paper 
+                                    elevation={3} 
+                                    sx={{ 
+                                      p: 2, 
+                                      height: 350,
+                                      borderRadius: 3,
+                                      border: '8px solid rgba(255, 193, 7, 0.5)',
+                                      boxShadow: '0 4px 20px rgba(255, 193, 7, 0.2)',
+                                      transition: 'all 0.3s ease',
+                                      '&:hover': {
+                                        boxShadow: '0 8px 30px rgba(255, 193, 7, 0.3)',
+                                        transform: 'translateY(-4px)',
+                                      }
+                                    }}
+                                  >
+                                    {top3Consistentes.length > 0 ? (
+                                      <Bar 
+                                        data={dadosConsistentes} 
+                                        options={opcoesHorizontal('📈 TOP 3 Mais Consistentes', '')}
+                                      />
+                                    ) : (
+                                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 1 }}>
+                                        <Typography variant="body2" color="text.secondary" align="center">
+                                          Sem alunos com frequência ≥ 75%
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary" align="center">
+                                          (Requer frequência mínima de 75%)
+                                        </Typography>
+                                      </Box>
+                                    )}
+                                  </Paper>
+                                </Fade>
+                              </Grid>
+
+                              {/* TOP 3 PIORES */}
+                              <Grid item xs={12} md={4}>
+                                <Fade in={true} timeout={1700}>
+                                  <Paper 
+                                    elevation={3} 
+                                    sx={{ 
+                                      p: 2, 
+                                      height: 350,
+                                      borderRadius: 3,
+                                      border: '8px solid rgba(244, 67, 54, 0.5)',
+                                      boxShadow: '0 4px 20px rgba(244, 67, 54, 0.2)',
+                                      transition: 'all 0.3s ease',
+                                      '&:hover': {
+                                        boxShadow: '0 8px 30px rgba(244, 67, 54, 0.3)',
+                                        transform: 'translateY(-4px)',
+                                      }
+                                    }}
+                                  >
+                                    {top3Piores.length > 0 ? (
+                                      <Bar 
+                                        data={dadosPiores} 
+                                        options={opcoesHorizontal('⚠️ TOP 3 Piores Frequências', '%')}
+                                      />
+                                    ) : (
+                                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                          Sem dados disponíveis
+                                        </Typography>
+                                      </Box>
+                                    )}
+                                  </Paper>
+                                </Fade>
+                              </Grid>
+                            </Grid>
+
+                            {/* Legenda explicativa */}
+                            <Alert severity="info" icon={<AssessmentOutlined />} sx={{ mb: 3 }}>
+                              <Typography variant="body2">
+                                <strong>🥇 Melhores:</strong> Alunos com maior percentual de frequência | 
+                                <strong> 📈 Consistentes:</strong> Alunos com ≥75% de frequência e mais presenças totais | 
+                                <strong> ⚠️ Piores:</strong> Alunos com menor percentual (precisam de atenção)
+                              </Typography>
+                            </Alert>
+                          </>
+                        );
+                      })()}
                     </>
                   );
                 })()}
@@ -2628,6 +3203,7 @@ const Dashboard = () => {
                           <Table size="small">
                             <TableHead>
                               <TableRow>
+                                <TableCell>Ações</TableCell>
                                 <TableCell>Aluno</TableCell>
                                 <TableCell align="center">Total Aulas</TableCell>
                                 <TableCell align="center">Presentes</TableCell>
@@ -2661,6 +3237,18 @@ const Dashboard = () => {
                                       bgcolor: aluno.classificacao === 'critico' ? 'rgba(211, 47, 47, 0.08)' : 'inherit'
                                     }}
                                   >
+                                    <TableCell align="center" sx={{ width: '80px' }}>
+                                      <Tooltip title="Ver Histórico de Frequências">
+                                        <IconButton
+                                          onClick={() => handleVisualizarHistorico(aluno)}
+                                          color="primary"
+                                          size="small"
+                                          disabled={loadingHistorico}
+                                        >
+                                          <Assessment />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </TableCell>
                                     <TableCell>
                                       <Typography variant="body2" fontWeight="600">
                                         {aluno.aluno.nome}
@@ -2783,6 +3371,19 @@ const Dashboard = () => {
               </Fade>
             </Grid>
       </Grid>
+
+      {/* Modal de Histórico de Frequência */}
+      <ModalHistoricoFrequencia
+        open={openModalHistorico}
+        onClose={() => {
+          setOpenModalHistorico(false);
+          setAlunoHistoricoSelecionado(null);
+          setFrequenciaHistorico(null);
+        }}
+        aluno={alunoHistoricoSelecionado}
+        frequenciaData={frequenciaHistorico}
+      />
+
     </Container>
   );
 };
