@@ -26,6 +26,7 @@ import {
   TextField,
   Fade,
   Zoom,
+  useTheme,
 } from '@mui/material';
 import {
   PictureAsPdf,
@@ -45,6 +46,9 @@ import PageHeader from '../components/PageHeader';
 import { Summarize as RelatoriosIcon } from '@mui/icons-material';
 
 const Relatorios = () => {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
+  
   const [turmas, setTurmas] = useState([]);
   const [alunos, setAlunos] = useState([]);
   const [disciplinas, setDisciplinas] = useState([]);
@@ -252,7 +256,25 @@ const Relatorios = () => {
         </Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} md={3}>
-            <FormControl fullWidth>
+            <FormControl 
+              fullWidth
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-select': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-icon': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
+            >
               <InputLabel>Turma</InputLabel>
               <Select
                 value={turmaSelecionada}
@@ -270,7 +292,26 @@ const Relatorios = () => {
           </Grid>
 
           <Grid item xs={12} md={3}>
-            <FormControl fullWidth disabled={!turmaSelecionada}>
+            <FormControl 
+              fullWidth 
+              disabled={!turmaSelecionada}
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-select': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-icon': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
+            >
               <InputLabel>Aluno</InputLabel>
               <Select
                 value={alunoSelecionado}
@@ -288,7 +329,25 @@ const Relatorios = () => {
           </Grid>
 
           <Grid item xs={12} md={2}>
-            <FormControl fullWidth>
+            <FormControl 
+              fullWidth
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-select': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-icon': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
+            >
               <InputLabel>Disciplina</InputLabel>
               <Select
                 value={disciplinaSelecionada}
@@ -306,7 +365,25 @@ const Relatorios = () => {
           </Grid>
 
           <Grid item xs={12} md={2}>
-            <FormControl fullWidth>
+            <FormControl 
+              fullWidth
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-select': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-icon': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
+            >
               <InputLabel>Trimestre</InputLabel>
               <Select
                 value={trimestre}
@@ -328,6 +405,19 @@ const Relatorios = () => {
               label="Ano"
               value={ano}
               onChange={(e) => setAno(e.target.value)}
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiOutlinedInput-input': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
             />
           </Grid>
         </Grid>

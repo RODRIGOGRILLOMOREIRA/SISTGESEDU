@@ -33,6 +33,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  useTheme,
 } from '@mui/material';
 import PageHeader from '../components/PageHeader';
 import { Assignment as HabilidadesIcon } from '@mui/icons-material';
@@ -58,6 +59,9 @@ const NIVEIS_DESENVOLVIMENTO = [
 ];
 
 const Habilidades = () => {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
+  
   const [habilidades, setHabilidades] = useState([]);
   const [disciplinas, setDisciplinas] = useState([]);
   const [turmas, setTurmas] = useState([]);
@@ -430,7 +434,26 @@ const Habilidades = () => {
         </Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={2}>
-            <FormControl fullWidth size="small">
+            <FormControl 
+              fullWidth 
+              size="small"
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-select': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-icon': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
+            >
               <InputLabel>Turma</InputLabel>
               <Select
                 name="turma"
@@ -448,7 +471,27 @@ const Habilidades = () => {
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth size="small" disabled={!filters.turma}>
+            <FormControl 
+              fullWidth 
+              size="small" 
+              disabled={!filters.turma}
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-select': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-icon': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
+            >
               <InputLabel>Aluno</InputLabel>
               <Select
                 name="aluno"
@@ -466,7 +509,27 @@ const Habilidades = () => {
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={6} md={2}>
-            <FormControl fullWidth size="small" disabled={!!filters.aluno}>
+            <FormControl 
+              fullWidth 
+              size="small" 
+              disabled={!!filters.aluno}
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-select': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-icon': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
+            >
               <InputLabel>Disciplina</InputLabel>
               <Select
                 name="disciplina"
@@ -492,10 +555,42 @@ const Habilidades = () => {
               name="ano"
               value={filters.ano}
               onChange={handleFilterChange}
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiOutlinedInput-input': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
             />
           </Grid>
           <Grid item xs={12} sm={6} md={1.5}>
-            <FormControl fullWidth size="small">
+            <FormControl 
+              fullWidth 
+              size="small"
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-select': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-icon': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
+            >
               <InputLabel>Trimestre</InputLabel>
               <Select
                 name="trimestre"

@@ -34,6 +34,7 @@ import {
   ListItemText,
   Divider,
   Badge,
+  useTheme,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -70,6 +71,9 @@ const FREQUENCIA_STATUS = {
 };
 
 const Frequencias = () => {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
+  
   // Função helper para formatar data sem problemas de timezone
   const formatarDataLocal = (dataString) => {
     if (!dataString) return '';
@@ -871,6 +875,22 @@ const Frequencias = () => {
               label="Turma"
               value={filtros.turma}
               onChange={(e) => setFiltros({ ...filtros, turma: e.target.value })}
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-select': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-icon': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
             >
               <MenuItem value="">Selecione uma turma</MenuItem>
               {turmas.map(turma => (
@@ -889,17 +909,27 @@ const Frequencias = () => {
               value={filtros.data}
               onChange={(e) => setFiltros({ ...filtros, data: e.target.value })}
               InputLabelProps={{ shrink: true }}
-              sx={{
+              sx={(theme) => ({
                 '& input[type="date"]': {
                   fontSize: '1.15rem',
                   padding: '14px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
                 },
                 '& input[type="date"]::-webkit-calendar-picker-indicator': {
                   fontSize: '1.5rem',
-                  cursor: 'pointer'
-                }
-              }}
+                  cursor: 'pointer',
+                  filter: !isDarkMode ? 'invert(1)' : 'invert(0.6) sepia(1) saturate(5) hue-rotate(140deg)',
+                },
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
             />
           </Grid>
         </Grid>
@@ -920,6 +950,22 @@ const Frequencias = () => {
                 onChange={(e) => setFiltros({ ...filtros, dataInicio: e.target.value })}
                 InputLabelProps={{ shrink: true }}
                 size="small"
+                sx={(theme) => ({
+                  '& input[type="date"]': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                  '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                    filter: !isDarkMode ? 'invert(1)' : 'invert(0.6) sepia(1) saturate(5) hue-rotate(140deg)',
+                  },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                    },
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                })}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
@@ -931,6 +977,22 @@ const Frequencias = () => {
                 onChange={(e) => setFiltros({ ...filtros, dataFim: e.target.value })}
                 InputLabelProps={{ shrink: true }}
                 size="small"
+                sx={(theme) => ({
+                  '& input[type="date"]': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                  '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                    filter: !isDarkMode ? 'invert(1)' : 'invert(0.6) sepia(1) saturate(5) hue-rotate(140deg)',
+                  },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                    },
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                })}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
@@ -942,6 +1004,22 @@ const Frequencias = () => {
                 value={filtros.tipoPeriodo}
                 onChange={(e) => setFiltros({ ...filtros, tipoPeriodo: e.target.value })}
                 disabled={!filtros.dataInicio || !filtros.dataFim}
+                sx={(theme) => ({
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                    },
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                  '& .MuiSelect-select': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                  '& .MuiSelect-icon': {
+                    color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                  },
+                })}
               >
                 <MenuItem value="diario">Diário</MenuItem>
                 <MenuItem value="semanal">Semanal</MenuItem>

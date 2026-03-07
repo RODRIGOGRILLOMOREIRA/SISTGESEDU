@@ -48,7 +48,7 @@ const avaliacaoSchema = new mongoose.Schema({
         type: Number,
         default: 0,
         min: 0,
-        max: 10
+        max: 3.0
       },
       data: Date,
       habilidades: [{
@@ -61,7 +61,20 @@ const avaliacaoSchema = new mongoose.Schema({
         type: Number,
         default: 0,
         min: 0,
-        max: 10
+        max: 3.0
+      },
+      data: Date,
+      habilidades: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Habilidade'
+      }]
+    },
+    pc3: {
+      nota: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 4.0
       },
       data: Date,
       habilidades: [{
@@ -160,11 +173,12 @@ avaliacaoSchema.index({ ano: 1, trimestre: 1 });
 avaliacaoSchema.index({ notaFinalTrimestre: 1, ano: 1 });
 avaliacaoSchema.index({ classificacao: 1, ano: 1, trimestre: 1 });
 
-// Método para calcular Média Final (PC1 + PC2)
+// Método para calcular Média Final (PC1 + PC2 + PC3)
 avaliacaoSchema.methods.calcularMediaFinal = function() {
   const pc1 = this.pontosCorte?.pc1?.nota || 0;
   const pc2 = this.pontosCorte?.pc2?.nota || 0;
-  this.pontosCorte.mediaFinal = parseFloat((pc1 + pc2).toFixed(2));
+  const pc3 = this.pontosCorte?.pc3?.nota || 0;
+  this.pontosCorte.mediaFinal = parseFloat((pc1 + pc2 + pc3).toFixed(2));
   return this.pontosCorte.mediaFinal;
 };
 
@@ -215,19 +229,22 @@ avaliacaoSchema.methods.calcularNotaTrimestre = function() {
 // Hook para calcular tudo automaticamente antes de salvar
 avaliacaoSchema.pre('save', function(next) {
   // NOVO SISTEMA: Calcular pontos de corte
-  if (this.pontosCorte && (this.pontosCorte.pc1 || this.pontosCorte.pc2 || this.pontosCorte.eac)) {
+  if (this.pontosCorte && (this.pontosCorte.pc1 || this.pontosCorte.pc2 || this.pontosCorte.pc3 || this.pontosCorte.eac)) {
     // Validar limites
-    if (this.pontosCorte.pc1?.nota > 50) {
-      return next(new Error('PC1 não pode ultrapassar 50 pontos'));
+    if (this.pontosCorte.pc1?.nota > 3.0) {
+      return next(new Error('P.C. 01 não pode ultrapassar 3,0 pontos'));
     }
-    if (this.pontosCorte.pc2?.nota > 50) {
-      return next(new Error('PC2 não pode ultrapassar 50 pontos'));
+    if (this.pontosCorte.pc2?.nota > 3.0) {
+      return next(new Error('P.C. 02 não pode ultrapassar 3,0 pontos'));
     }
-    if (this.pontosCorte.eac?.nota > 100) {
-      return next(new Error('EAC não pode ultrapassar 100 pontos'));
+    if (this.pontosCorte.pc3?.nota > 4.0) {
+      return next(new Error('P.C. 03 não pode ultrapassar 4,0 pontos'));
+    }
+    if (this.pontosCorte.eac?.nota > 10) {
+      return next(new Error('E.A.C não pode ultrapassar 10 pontos'));
     }
     
-    // Calcular Média Final (PC1 + PC2)
+    // Calcular Média Final (PC1 + PC2 + PC3)
     this.calcularMediaFinal();
     
     // Calcular Nota Final (max entre Média Final e EAC)

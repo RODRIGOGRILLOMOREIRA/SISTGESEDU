@@ -77,7 +77,49 @@ npm start          # Abre automaticamente em http://localhost:3000
 - ✅ **Sombras Dinâmicas** - BoxShadow 2→4→6 baseado no estado
 - ✅ **Responsivo** - FlexWrap para adaptar a qualquer tela
 
-#### 🎯 Sistema de Frequência Simplificado (MARÇO 2026) 🆕
+#### � Botões de Filtro Modernizados (06/03/2026) 🆕
+- ✅ **Design Premium** - Botões independentes com gradientes vibrantes
+  - 🔵 **TODOS**: Azul com gradiente (#1976d2 → #1565c0)
+  - 🟢 **ADEQUADO**: Verde com gradiente (#2e7d32 → #1b5e20) + badge "≥80%"
+  - 🟡 **ATENÇÃO**: Laranja com gradiente (#ed6c02 → #e65100) + badge "60-79%"
+  - 🔴 **CRÍTICO**: Vermelho com gradiente (#d32f2f → #c62828) + badge "<60%"
+- ✅ **Animações Suaves** - Transições de 0.3s com elevação no hover
+- ✅ **Ícones do Material-UI** - CheckCircleOutlined e WarningAmberOutlined
+- ✅ **Contadores Dinâmicos** - Chips com número de alunos em cada categoria
+- ✅ **Bordas Arredondadas** - Border-radius de 3 para look moderno
+- ✅ **Sombras Dinâmicas** - BoxShadow 2→4→6 baseado no estado
+- ✅ **Responsivo** - FlexWrap para adaptar a qualquer tela
+
+#### 🎨 Sistema de Tema Claro/Escuro Unificado (06/03/2026) 🆕
+- ✅ **Padronização de Filtros em Todas as Páginas**
+  - 📄 **Dashboard**: Filtros com estilo condicional completo
+  - 📄 **Avaliações**: TextField select (Turma, Disciplina, Trimestre, Ano)
+  - 📄 **Frequências**: TextField select/date (Turma, Data, Período)
+  - 📄 **Habilidades**: FormControl/Select (Turma, Aluno, Disciplina, Trimestre) + TextField (Ano)
+  - 📄 **Relatórios**: FormControl/Select (Turma, Aluno, Disciplina, Trimestre) + TextField (Ano)
+- ✅ **Modo Claro** (Light Mode):
+  - 🎨 Bordas brancas (#FFFFFF !important)
+  - ✍️ Texto branco em todos os campos
+  - 📅 Ícones de calendário invertidos para branco
+  - 🎯 Labels brancas em todos os componentes
+- ✅ **Modo Escuro** (Dark Mode):
+  - 🎨 Bordas padrão do tema
+  - ✍️ Texto ciano (#00CED1 !important) em todos os campos
+  - 📅 Ícones de calendário com filtro ciano
+  - 🎯 Labels ciano em todos os componentes
+- ✅ **Implementação Técnica**:
+  - Hook `useTheme()` importado em todas as páginas
+  - Variável `isDarkMode` para detecção do tema atual
+  - Prop `sx={(theme) => ({})}` com callback para acesso ao theme
+  - Estilos condicionais usando `!isDarkMode ? '#FFFFFF' : '#00CED1'`
+  - Suporte a FormControl/Select e TextField com todos os sub-componentes
+- ✅ **Consistência Visual Total**:
+  - Mesmo padrão aplicado em 5 páginas principais
+  - Sem erros de compilação
+  - Temas sincronizados com ThemeContext
+  - Transições suaves entre modos
+
+#### �🎯 Sistema de Frequência Simplificado (MARÇO 2026) 🆕
 - ✅ **Frequência Geral Diária** - Sistema reformulado para registro simples de presença por dia (não mais por disciplina)
 - ✅ **1 Registro por Aluno por Dia** - Simplificação do modelo de dados para facilitar controle
 - ✅ **Dashboard Funcionando 100%** - Listagem completa de alunos com estatísticas acumuladas

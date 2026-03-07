@@ -91,7 +91,7 @@ exports.createAvaliacao = async (req, res) => {
   }
 };
 
-// @desc    Atualizar pontos de corte (PC1, PC2 ou EAC)
+// @desc    Atualizar pontos de corte (P.C. 01, P.C. 02, P.C. 03 ou E.A.C)
 // @route   PUT /api/avaliacoes/:id/pontos-corte
 exports.atualizarPontosCorte = async (req, res) => {
   try {
@@ -127,6 +127,13 @@ exports.atualizarPontosCorte = async (req, res) => {
       };
     }
     
+    if (pontosCorte.pc3) {
+      avaliacao.pontosCorte.pc3 = {
+        ...avaliacao.pontosCorte.pc3,
+        ...pontosCorte.pc3
+      };
+    }
+    
     if (pontosCorte.eac) {
       avaliacao.pontosCorte.eac = {
         ...avaliacao.pontosCorte.eac,
@@ -146,6 +153,7 @@ exports.atualizarPontosCorte = async (req, res) => {
     const todasHabilidades = [
       ...(pontosCorte.pc1?.habilidades || []),
       ...(pontosCorte.pc2?.habilidades || []),
+      ...(pontosCorte.pc3?.habilidades || []),
       ...(pontosCorte.eac?.habilidades || [])
     ].filter(Boolean);
     
@@ -591,12 +599,13 @@ exports.gerarTemplatePorTurma = async (req, res) => {
       })),
       template,
       instrucoes: {
-        sistema: 'Sistema de Pontos de Corte (PC1, PC2, EAC)',
-        pc1: 'Nota de 0 a 10 (com uma casa decimal, ex: 8,5). Data no formato YYYY-MM-DD (ex: 2026-03-15)',
-        pc2: 'Nota de 0 a 10 (com uma casa decimal, ex: 7,5). Data no formato YYYY-MM-DD',
-        eac: 'Nota de 0 a 10 (com uma casa decimal, ex: 9,0). Data no formato YYYY-MM-DD',
-        habilidades: 'Preencha as colunas de habilidades (pc1_habilidades, pc2_habilidades, eac_habilidades) com os códigos separados por vírgula ou ponto e vírgula. Exemplo: EF06MA01,EF06MA02 ou EF06MA01;EF06MA02',
-        notaFinal: 'A nota final do trimestre será calculada automaticamente como o maior valor entre: (PC1 + PC2) ou EAC',
+        sistema: 'Sistema de Pontos de Corte (P.C. 01, P.C. 02, P.C. 03, E.A.C)',
+        pc1: 'P.C. 01: Nota de 0 a 3,0 (com uma casa decimal, ex: 2,5). Data no formato YYYY-MM-DD (ex: 2026-03-15)',
+        pc2: 'P.C. 02: Nota de 0 a 3,0 (com uma casa decimal, ex: 2,8). Data no formato YYYY-MM-DD',
+        pc3: 'P.C. 03: Nota de 0 a 4,0 (com uma casa decimal, ex: 3,5). Data no formato YYYY-MM-DD',
+        eac: 'E.A.C: Nota de 0 a 10 (com uma casa decimal, ex: 9,0). Data no formato YYYY-MM-DD',
+        habilidades: 'Preencha as colunas de habilidades (pc1_habilidades, pc2_habilidades, pc3_habilidades, eac_habilidades) com os códigos separados por vírgula ou ponto e vírgula. Exemplo: EF06MA01,EF06MA02 ou EF06MA01;EF06MA02',
+        notaFinal: 'A nota final do trimestre será calculada automaticamente como o maior valor entre: (P.C. 01 + P.C. 02 + P.C. 03) ou E.A.C',
         trimestre: 'Valores: 1, 2 ou 3',
         formato_data: 'YYYY-MM-DD (ex: 2026-03-15)',
         multiplas_habilidades: 'Sim, você pode informar várias habilidades separadas por vírgula em cada ponto de corte'
@@ -796,7 +805,7 @@ exports.importarAvaliacoes = async (req, res) => {
         }
 
         // Calcular Média Final e Nota Final do Trimestre (0 a 10)
-        const mediaFinal = (avaliacaoData.pontosCorte.pc1.nota + avaliacaoData.pontosCorte.pc2.nota) / 2;
+        const mediaFinal = avaliacaoData.pontosCorte.pc1.nota + avaliacaoData.pontosCorte.pc2.nota + (avaliacaoData.pontosCorte.pc3?.nota || 0);
         avaliacaoData.pontosCorte.mediaFinal = parseFloat(mediaFinal.toFixed(1));
         avaliacaoData.notaFinalTrimestre = parseFloat(Math.max(mediaFinal, avaliacaoData.pontosCorte.eac.nota).toFixed(1));
         

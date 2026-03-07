@@ -26,6 +26,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  useTheme,
 } from '@mui/material';
 import {
   Add,
@@ -59,6 +60,8 @@ const CLASSIFICACOES = {
 };
 
 const Avaliacoes = () => {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
   const [turmas, setTurmas] = useState([]);
   const [disciplinas, setDisciplinas] = useState([]);
   const [habilidadesDisponiveis, setHabilidadesDisponiveis] = useState([]);
@@ -80,6 +83,7 @@ const Avaliacoes = () => {
     pontosCorte: {
       pc1: { nota: 0, data: '', habilidades: [] },
       pc2: { nota: 0, data: '', habilidades: [] },
+      pc3: { nota: 0, data: '', habilidades: [] },
       eac: { nota: 0, data: '', habilidades: [] }
     },
     observacoes: ''
@@ -164,6 +168,7 @@ const Avaliacoes = () => {
         pontosCorte: {
           pc1: avaliacao.pontosCorte?.pc1 || { nota: 0, data: '', habilidades: [] },
           pc2: avaliacao.pontosCorte?.pc2 || { nota: 0, data: '', habilidades: [] },
+          pc3: avaliacao.pontosCorte?.pc3 || { nota: 0, data: '', habilidades: [] },
           eac: avaliacao.pontosCorte?.eac || { nota: 0, data: '', habilidades: [] }
         },
         observacoes: avaliacao.observacoes || ''
@@ -173,6 +178,7 @@ const Avaliacoes = () => {
         pontosCorte: {
           pc1: { nota: 0, data: '', habilidades: [] },
           pc2: { nota: 0, data: '', habilidades: [] },
+          pc3: { nota: 0, data: '', habilidades: [] },
           eac: { nota: 0, data: '', habilidades: [] }
         },
         observacoes: ''
@@ -218,7 +224,8 @@ const Avaliacoes = () => {
   const calcularMediaFinal = () => {
     const pc1 = parseFloat(formData.pontosCorte.pc1.nota) || 0;
     const pc2 = parseFloat(formData.pontosCorte.pc2.nota) || 0;
-    return ((pc1 + pc2) / 2).toFixed(1);
+    const pc3 = parseFloat(formData.pontosCorte.pc3.nota) || 0;
+    return (pc1 + pc2 + pc3).toFixed(1);
   };
 
   const calcularNotaFinal = () => {
@@ -462,6 +469,22 @@ const Avaliacoes = () => {
               label="Turma"
               value={filtros.turma}
               onChange={(e) => setFiltros({ ...filtros, turma: e.target.value })}
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-select': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-icon': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
             >
               <MenuItem value="">Selecione uma turma</MenuItem>
               {turmas.map((turma) => (
@@ -479,6 +502,22 @@ const Avaliacoes = () => {
               label="Disciplina"
               value={filtros.disciplina}
               onChange={(e) => setFiltros({ ...filtros, disciplina: e.target.value })}
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-select': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-icon': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
             >
               <MenuItem value="">Selecione uma disciplina</MenuItem>
               {disciplinas.map((disciplina) => (
@@ -496,6 +535,22 @@ const Avaliacoes = () => {
               label="Trimestre"
               value={filtros.trimestre}
               onChange={(e) => setFiltros({ ...filtros, trimestre: e.target.value })}
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-select': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiSelect-icon': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
             >
               <MenuItem value={1}>1º Trimestre</MenuItem>
               <MenuItem value={2}>2º Trimestre</MenuItem>
@@ -510,6 +565,19 @@ const Avaliacoes = () => {
               type="number"
               value={filtros.ano}
               onChange={(e) => setFiltros({ ...filtros, ano: e.target.value })}
+              sx={(theme) => ({
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: !isDarkMode ? '#FFFFFF !important' : undefined,
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+                '& .MuiOutlinedInput-input': {
+                  color: !isDarkMode ? '#FFFFFF !important' : '#00CED1 !important',
+                },
+              })}
             />
           </Grid>
 
@@ -797,14 +865,14 @@ const Avaliacoes = () => {
         <DialogContent dividers>
           {/* PC1 */}
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>📊 Ponto de Corte 1 (PC1)</Typography>
+            <Typography variant="h6" sx={{ mb: 2 }}>📊 P.C. 01 (Ponto de Corte 1) - Máx: 3,0</Typography>
             <Grid container spacing={2}>
               <Grid item xs={6}>
                 <TextField
                   fullWidth
-                  label="Nota PC1"
+                  label="Nota P.C. 01"
                   type="number"
-                  inputProps={{ min: 0, max: 10, step: 0.1 }}
+                  inputProps={{ min: 0, max: 3.0, step: 0.1 }}
                   value={formData.pontosCorte.pc1.nota}
                   onChange={(e) =>
                     setFormData({
@@ -815,13 +883,36 @@ const Avaliacoes = () => {
                       },
                     })
                   }
-                  helperText="Nota de 0 a 10 (ex: 8,5)"
+                  helperText="Nota de 0 a 3,0 (ex: 2,5)"
+                  sx={(theme) => ({
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                        borderWidth: 2,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '& .MuiInputBase-input': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '& .MuiFormHelperText-root': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                  })}
                 />
               </Grid>
               <Grid item xs={6}>
                 <TextField
                   fullWidth
-                  label="Data do PC1"
+                  label="Data do P.C. 01"
                   type="date"
                   value={formData.pontosCorte.pc1.data ? formData.pontosCorte.pc1.data.split('T')[0] : ''}
                   onChange={(e) =>
@@ -834,7 +925,7 @@ const Avaliacoes = () => {
                     })
                   }
                   InputLabelProps={{ shrink: true }}
-                  sx={{
+                  sx={(theme) => ({
                     '& input[type="date"]': {
                       fontSize: '1.1rem',
                       padding: '14px',
@@ -843,8 +934,26 @@ const Avaliacoes = () => {
                     '& input[type="date"]::-webkit-calendar-picker-indicator': {
                       fontSize: '1.4rem',
                       cursor: 'pointer'
+                    },
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                        borderWidth: 2,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '& .MuiInputBase-input': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
                     }
-                  }}
+                  })}
                 />
               </Grid>
             </Grid>
@@ -863,21 +972,45 @@ const Avaliacoes = () => {
                 })
               }
               renderInput={(params) => (
-                <TextField {...params} label="Habilidades trabalhadas no PC1" sx={{ mt: 2 }} />
+                <TextField {...params} label="Habilidades trabalhadas no P.C. 01" sx={(theme) => ({ 
+                  mt: 2,
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      borderWidth: 2,
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: theme.palette.mode === 'light' ? 'white' : undefined,
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.mode === 'light' ? 'white' : undefined,
+                  },
+                  '& .MuiChip-root': {
+                    color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                  },
+                })} />
               )}
             />
           </Box>
 
           {/* PC2 */}
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>📊 Ponto de Corte 2 (PC2)</Typography>
+            <Typography variant="h6" sx={{ mb: 2 }}>📊 P.C. 02 (Ponto de Corte 2) - Máx: 3,0</Typography>
             <Grid container spacing={2}>
               <Grid item xs={6}>
                 <TextField
                   fullWidth
-                  label="Nota PC2"
+                  label="Nota P.C. 02"
                   type="number"
-                  inputProps={{ min: 0, max: 10, step: 0.1 }}
+                  inputProps={{ min: 0, max: 3.0, step: 0.1 }}
                   value={formData.pontosCorte.pc2.nota}
                   onChange={(e) =>
                     setFormData({
@@ -888,13 +1021,36 @@ const Avaliacoes = () => {
                       },
                     })
                   }
-                  helperText="Nota de 0 a 10 (ex: 7,5)"
+                  helperText="Nota de 0 a 3,0 (ex: 2,8)"
+                  sx={(theme) => ({
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                        borderWidth: 2,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '& .MuiInputBase-input': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '& .MuiFormHelperText-root': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                  })}
                 />
               </Grid>
               <Grid item xs={6}>
                 <TextField
                   fullWidth
-                  label="Data do PC2"
+                  label="Data do P.C. 02"
                   type="date"
                   value={formData.pontosCorte.pc2.data ? formData.pontosCorte.pc2.data.split('T')[0] : ''}
                   onChange={(e) =>
@@ -907,7 +1063,7 @@ const Avaliacoes = () => {
                     })
                   }
                   InputLabelProps={{ shrink: true }}
-                  sx={{
+                  sx={(theme) => ({
                     '& input[type="date"]': {
                       fontSize: '1.1rem',
                       padding: '14px',
@@ -916,8 +1072,26 @@ const Avaliacoes = () => {
                     '& input[type="date"]::-webkit-calendar-picker-indicator': {
                       fontSize: '1.4rem',
                       cursor: 'pointer'
-                    }
-                  }}
+                    },
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                        borderWidth: 2,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '& .MuiInputBase-input': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                  })}
                 />
               </Grid>
             </Grid>
@@ -936,7 +1110,169 @@ const Avaliacoes = () => {
                 })
               }
               renderInput={(params) => (
-                <TextField {...params} label="Habilidades trabalhadas no PC2" sx={{ mt: 2 }} />
+                <TextField {...params} label="Habilidades trabalhadas no P.C. 02" sx={(theme) => ({ 
+                  mt: 2,
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      borderWidth: 2,
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: theme.palette.mode === 'light' ? 'white' : undefined,
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.mode === 'light' ? 'white' : undefined,
+                  },
+                  '& .MuiChip-root': {
+                    color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                  },
+                })} />
+              )}
+            />
+          </Box>
+
+          {/* PC3 */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>📊 P.C. 03 (Ponto de Corte 3) - Máx: 4,0</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Nota P.C. 03"
+                  type="number"
+                  inputProps={{ min: 0, max: 4.0, step: 0.1 }}
+                  value={formData.pontosCorte.pc3.nota}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      pontosCorte: {
+                        ...formData.pontosCorte,
+                        pc3: { ...formData.pontosCorte.pc3, nota: parseFloat(e.target.value) || 0 },
+                      },
+                    })
+                  }
+                  helperText="Nota de 0 a 4,0 (ex: 3,5)"
+                  sx={(theme) => ({
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                        borderWidth: 2,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '& .MuiInputBase-input': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '& .MuiFormHelperText-root': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                  })}
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Data do P.C. 03"
+                  type="date"
+                  value={formData.pontosCorte.pc3.data ? formData.pontosCorte.pc3.data.split('T')[0] : ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      pontosCorte: {
+                        ...formData.pontosCorte,
+                        pc3: { ...formData.pontosCorte.pc3, data: e.target.value },
+                      },
+                    })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                  sx={(theme) => ({
+                    '& input[type="date"]': {
+                      fontSize: '1.1rem',
+                      padding: '14px',
+                      cursor: 'pointer'
+                    },
+                    '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                      fontSize: '1.4rem',
+                      cursor: 'pointer'
+                    },
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                        borderWidth: 2,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '& .MuiInputBase-input': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                  })}
+                />
+              </Grid>
+            </Grid>
+            <Autocomplete
+              multiple
+              options={habilidadesDisponiveis}
+              getOptionLabel={(option) => `${option.codigo} - ${option.descricao}`}
+              value={habilidadesDisponiveis.filter(h => formData.pontosCorte.pc3.habilidades.includes(h._id))}
+              onChange={(e, newValue) =>
+                setFormData({
+                  ...formData,
+                  pontosCorte: {
+                    ...formData.pontosCorte,
+                    pc3: { ...formData.pontosCorte.pc3, habilidades: newValue.map(v => v._id) },
+                  },
+                })
+              }
+              renderInput={(params) => (
+                <TextField {...params} label="Habilidades trabalhadas no P.C. 03" sx={(theme) => ({ 
+                  mt: 2,
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      borderWidth: 2,
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: theme.palette.mode === 'light' ? 'white' : undefined,
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.mode === 'light' ? 'white' : undefined,
+                  },
+                  '& .MuiChip-root': {
+                    color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                  },
+                })} />
               )}
             />
           </Box>
@@ -945,21 +1281,21 @@ const Avaliacoes = () => {
           <Box sx={{ mb: 4, p: 3, bgcolor: 'info.light', borderRadius: 2 }}>
             <Typography variant="h6" sx={{ mb: 1 }}>📈 Média Final (Automática)</Typography>
             <Typography variant="h3" sx={{ fontWeight: 'bold', color: 'info.dark' }}>
-              {calcularMediaFinal()} / 100
+              {calcularMediaFinal()} / 10
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Cálculo: PC1 ({formData.pontosCorte.pc1.nota}) + PC2 ({formData.pontosCorte.pc2.nota})
+              Cálculo: P.C. 01 ({formData.pontosCorte.pc1.nota}) + P.C. 02 ({formData.pontosCorte.pc2.nota}) + P.C. 03 ({formData.pontosCorte.pc3.nota})
             </Typography>
           </Box>
 
           {/* EAC */}
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>📝 EAC (Ex. Aprendizagem Complementar)</Typography>
+            <Typography variant="h6" sx={{ mb: 2 }}>📝 E.A.C (Exame de Aprendizagem Complementar)</Typography>
             <Grid container spacing={2}>
               <Grid item xs={6}>
                 <TextField
                   fullWidth
-                  label="Nota EAC"
+                  label="Nota E.A.C"
                   type="number"
                   inputProps={{ min: 0, max: 10, step: 0.1 }}
                   value={formData.pontosCorte.eac.nota}
@@ -973,12 +1309,35 @@ const Avaliacoes = () => {
                     })
                   }
                   helperText="Nota de 0 a 10 (ex: 9,0)"
+                  sx={(theme) => ({
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                        borderWidth: 2,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '& .MuiInputBase-input': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '& .MuiFormHelperText-root': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                  })}
                 />
               </Grid>
               <Grid item xs={6}>
                 <TextField
                   fullWidth
-                  label="Data do EAC"
+                  label="Data do E.A.C"
                   type="date"
                   value={formData.pontosCorte.eac.data ? formData.pontosCorte.eac.data.split('T')[0] : ''}
                   onChange={(e) =>
@@ -991,7 +1350,7 @@ const Avaliacoes = () => {
                     })
                   }
                   InputLabelProps={{ shrink: true }}
-                  sx={{
+                  sx={(theme) => ({
                     '& input[type="date"]': {
                       fontSize: '1.1rem',
                       padding: '14px',
@@ -1000,8 +1359,26 @@ const Avaliacoes = () => {
                     '& input[type="date"]::-webkit-calendar-picker-indicator': {
                       fontSize: '1.4rem',
                       cursor: 'pointer'
-                    }
-                  }}
+                    },
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                        borderWidth: 2,
+                      },
+                      '&:hover fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '& .MuiInputBase-input': {
+                      color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                  })}
                 />
               </Grid>
             </Grid>
@@ -1020,7 +1397,31 @@ const Avaliacoes = () => {
                 })
               }
               renderInput={(params) => (
-                <TextField {...params} label="Habilidades trabalhadas no EAC" sx={{ mt: 2 }} />
+                <TextField {...params} label="Habilidades trabalhadas no E.A.C" sx={(theme) => ({ 
+                  mt: 2,
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                      borderWidth: 2,
+                    },
+                    '&:hover fieldset': {
+                      borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                    },
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: theme.palette.mode === 'light' ? 'white' : undefined,
+                  },
+                  '& .MuiInputBase-input': {
+                    color: theme.palette.mode === 'light' ? 'white' : undefined,
+                  },
+                  '& .MuiChip-root': {
+                    color: theme.palette.mode === 'light' ? 'white' : undefined,
+                    borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                  },
+                })} />
               )}
             />
           </Box>
@@ -1044,6 +1445,26 @@ const Avaliacoes = () => {
             rows={3}
             value={formData.observacoes}
             onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+            sx={(theme) => ({
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                  borderWidth: 2,
+                },
+                '&:hover fieldset': {
+                  borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: theme.palette.mode === 'light' ? 'white' : undefined,
+                },
+              },
+              '& .MuiInputLabel-root': {
+                color: theme.palette.mode === 'light' ? 'white' : undefined,
+              },
+              '& .MuiInputBase-input': {
+                color: theme.palette.mode === 'light' ? 'white' : undefined,
+              },
+            })}
           />
         </DialogContent>
 

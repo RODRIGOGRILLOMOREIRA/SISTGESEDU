@@ -99,7 +99,17 @@ const Layout = () => {
                 <ListItemIcon sx={{ minWidth: drawerCollapsed ? 'auto' : 56, justifyContent: 'center' }}>
                   {item.icon}
                 </ListItemIcon>
-                {!drawerCollapsed && <ListItemText primary={item.text} />}
+                {!drawerCollapsed && (
+                  <ListItemText 
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      sx: {
+                        color: (theme) => theme.palette.mode === 'light' ? '#003366' : undefined,
+                        fontWeight: (theme) => theme.palette.mode === 'light' ? 700 : undefined,
+                      }
+                    }}
+                  />
+                )}
               </ListItemButton>
             </Tooltip>
           </ListItem>
@@ -113,7 +123,17 @@ const Layout = () => {
               <ListItemIcon sx={{ minWidth: drawerCollapsed ? 'auto' : 56, justifyContent: 'center' }}>
                 <Logout />
               </ListItemIcon>
-              {!drawerCollapsed && <ListItemText primary="Sair" />}
+              {!drawerCollapsed && (
+                <ListItemText 
+                  primary="Sair"
+                  primaryTypographyProps={{
+                    sx: {
+                      color: (theme) => theme.palette.mode === 'light' ? '#003366' : undefined,
+                      fontWeight: (theme) => theme.palette.mode === 'light' ? 700 : undefined,
+                    }
+                  }}
+                />
+              )}
             </ListItemButton>
           </Tooltip>
         </ListItem>
