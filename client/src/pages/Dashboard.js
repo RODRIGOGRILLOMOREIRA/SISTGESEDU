@@ -51,6 +51,7 @@ import {
 } from '@mui/icons-material';
 import html2pdf from 'html2pdf.js';
 import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -118,6 +119,7 @@ const Dashboard = () => {
   const [distribuicaoHabilidades, setDistribuicaoHabilidades] = useState(null);
   const [dashboardFrequencia, setDashboardFrequencia] = useState({
     totalRegistros: 0,
+    totalDiasRegistrados: 0,
     presentes: 0,
     faltas: 0,
     faltasJustificadas: 0,
@@ -270,6 +272,7 @@ const Dashboard = () => {
         todosAlunos: alunosValidos, // Usar lista filtrada
       } : {
         totalRegistros: 0,
+        totalDiasRegistrados: 0,
         presentes: 0,
         faltas: 0,
         faltasJustificadas: 0,
@@ -294,6 +297,7 @@ const Dashboard = () => {
       // Setar estrutura vazia em caso de erro
       setDashboardFrequencia({
         totalRegistros: 0,
+        totalDiasRegistrados: 0,
         presentes: 0,
         faltas: 0,
         faltasJustificadas: 0,
@@ -352,14 +356,8 @@ const Dashboard = () => {
     }
   };
 
-  // Função para exportar Dashboard de Frequência em PDF com múltiplas páginas
+  // Função para exportar Relatório de Frequência em PDF
   const exportarFrequenciaPDF = async () => {
-    // Validar se os containers estão disponíveis
-    if (!containerGraficoComparacaoRef.current || !containerGraficoPredicaoRef.current) {
-      toast.error('Erro: Gráficos não disponíveis. Selecione uma turma e aguarde o carregamento.');
-      return;
-    }
-
     // Validar se há dados para exportar
     if (!dashboardFrequencia.todosAlunos || dashboardFrequencia.todosAlunos.length === 0) {
       toast.error('Erro: Nenhum dado disponível para exportação. Selecione uma turma com dados.');
@@ -368,255 +366,345 @@ const Dashboard = () => {
 
     try {
       setExportando(true);
-      toast.info('📸 Capturando gráficos... Aguarde', { autoClose: 2000 });
-
-      // 1. AGUARDAR RENDERIZAÇÃO COMPLETA
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // 2. CAPTURAR GRÁFICOS COM HTML2CANVAS
-      const canvasComparacao = await html2canvas(containerGraficoComparacaoRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 1200
-      });
-
-      const canvasPredicao = await html2canvas(containerGraficoPredicaoRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 1200
-      });
-
-      // 3. CONVERTER CANVAS PARA BASE64
-      const imagemComparacao = canvasComparacao.toDataURL('image/jpeg', 0.98);
-      const imagemPredicao = canvasPredicao.toDataURL('image/jpeg', 0.98);
-
-      // Verificar se as imagens foram geradas
-      if (!imagemComparacao || !imagemPredicao) {
-        toast.error('Erro: Falha ao capturar os gráficos.');
-        return;
-      }
-
       toast.info('📄 Gerando PDF... Aguarde', { autoClose: 2000 });
+      console.log('📄 Iniciando geração de PDF...');
 
-      // 4. CRIAR CONTAINER TEMPORÁRIO - PÁGINA 1 (GRÁFICOS)
-      const containerGraficos = document.createElement('div');
-      containerGraficos.style.width = '1400px';
-      containerGraficos.style.backgroundColor = '#ffffff';
-      containerGraficos.style.padding = '40px';
-      containerGraficos.style.position = 'absolute';
-      containerGraficos.style.left = '0';
-      containerGraficos.style.top = '0';
-      containerGraficos.style.visibility = 'hidden';
-      
-      const turmaInfo = filters.turma ? turmas.find(t => t._id === filters.turma) : null;
-      const periodoInfo = filters.dataInicio && filters.dataFim 
-        ? ` | Período: ${formatarDataBR(filters.dataInicio)} a ${formatarDataBR(filters.dataFim)}` 
-        : '';
-      
-      containerGraficos.innerHTML = `
-        <div style="margin-bottom: 30px; text-align: center; border-bottom: 3px solid #1976d2; padding-bottom: 15px;">
-          <h1 style="color: #1976d2; font-weight: 700; margin: 0;">📊 Dashboard de Frequência - Análise Gráfica</h1>
-          <h3 style="color: #666; margin: 10px 0;">Sistema de Gestão Escolar - SistGesEdu</h3>
-          <p style="color: #999; margin: 5px 0;">Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
-          ${turmaInfo ? `<p style="color: #666; font-weight: 600; margin: 5px 0;">Turma: ${turmaInfo.nome}${periodoInfo}</p>` : ''}
-        </div>
-        
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
-          <div style="background-color: #0D47A1; color: white; padding: 20px; border-radius: 8px; text-align: center;">
-            <h1 style="font-weight: 700; margin-bottom: 10px;">${dashboardFrequencia.totalRegistros}</h1>
-            <h4 style="margin: 0;">Total de Registros</h4>
-          </div>
-          <div style="background-color: #2E7D32; color: white; padding: 20px; border-radius: 8px; text-align: center;">
-            <h1 style="font-weight: 700; margin-bottom: 10px;">${dashboardFrequencia.percentualPresenca || 0}%</h1>
-            <h4 style="margin: 0;">Presentes</h4>
-            <p style="margin-top: 10px; font-weight: 600;">${dashboardFrequencia.presentes} alunos</p>
-          </div>
-          <div style="background-color: #C62828; color: white; padding: 20px; border-radius: 8px; text-align: center;">
-            <h1 style="font-weight: 700; margin-bottom: 10px;">${dashboardFrequencia.percentualFaltas || 0}%</h1>
-            <h4 style="margin: 0;">Faltas</h4>
-            <p style="margin-top: 10px; font-weight: 600;">${dashboardFrequencia.faltas} alunos</p>
-          </div>
-          <div style="background-color: #F57C00; color: white; padding: 20px; border-radius: 8px; text-align: center;">
-            <h1 style="font-weight: 700; margin-bottom: 10px;">${dashboardFrequencia.faltasJustificadas}</h1>
-            <h4 style="margin: 0;">Justificadas</h4>
-          </div>
-        </div>
-        
-        <div style="margin-bottom: 30px;">
-          <h3 style="color: #1976d2; margin-bottom: 15px;">📊 Comparação de Frequência</h3>
-          <img src="${imagemComparacao}" style="width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px;" />
-        </div>
-        
-        <div>
-          <h3 style="color: #1976d2; margin-bottom: 15px;">🎯 Análise de Risco e Predição</h3>
-          <img src="${imagemPredicao}" style="width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px;" />
-        </div>
-      `;
-      
-      document.body.appendChild(containerGraficos);
-
-      // 5. CRIAR CONTAINER TEMPORÁRIO - PÁGINA 2 (TABELA)
-      const containerTabela = document.createElement('div');
-      containerTabela.style.width = '800px';
-      containerTabela.style.backgroundColor = '#ffffff';
-      containerTabela.style.padding = '40px';
-      containerTabela.style.position = 'absolute';
-      containerTabela.style.left = '0';
-      containerTabela.style.top = '0';
-      containerTabela.style.visibility = 'hidden';
-      
-      // Gerar linhas da tabela
-      const linhasTabela = dashboardFrequencia.todosAlunos.map(aluno => {
-        const percentual = aluno.percentualPresenca;
-        let statusLabel = 'Adequado', statusIcon = '✅', statusBg = '#e8f5e9';
-        
-        if (aluno.classificacao === 'critico') {
-          statusLabel = 'Crítico'; statusIcon = '🚨'; statusBg = '#ffebee';
-        } else if (aluno.classificacao === 'atencao') {
-          statusLabel = 'Atenção'; statusIcon = '⚠️'; statusBg = '#fff3e0';
-        }
-        
-        return `
-          <tr style="background-color: ${statusBg};">
-            <td style="border: 1px solid #ddd; padding: 12px; font-size: 11px; font-weight: 600;">${aluno.aluno.nome}</td>
-            <td style="border: 1px solid #ddd; padding: 12px; font-size: 10px;">${aluno.aluno.matricula}</td>
-            <td style="border: 1px solid #ddd; padding: 12px; font-size: 11px; font-weight: 600; text-align: center;">${aluno.total}</td>
-            <td style="border: 1px solid #ddd; padding: 12px; font-size: 11px; font-weight: 700; color: #2e7d32; text-align: center;">${aluno.presentes}</td>
-            <td style="border: 1px solid #ddd; padding: 12px; font-size: 11px; font-weight: 700; color: #c62828; text-align: center;">${aluno.faltas}</td>
-            <td style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700; text-align: center;">${percentual}%</td>
-            <td style="border: 1px solid #ddd; padding: 12px; font-size: 11px; font-weight: 600; text-align: center;">${statusIcon} ${statusLabel}</td>
-          </tr>
-        `;
-      }).join('');
-      
-      containerTabela.innerHTML = `
-        <div style="margin-bottom: 30px; text-align: center; border-bottom: 3px solid #1976d2; padding-bottom: 15px;">
-          <h1 style="color: #1976d2; font-weight: 700; margin: 0;">📋 Relatório Detalhado de Alunos</h1>
-          <h3 style="color: #666; margin: 10px 0;">Sistema de Gestão Escolar - SistGesEdu</h3>
-          <p style="color: #999; margin: 5px 0;">Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
-          ${turmaInfo ? `<p style="color: #666; font-weight: 600; margin: 5px 0;">Turma: ${turmaInfo.nome}${periodoInfo}</p>` : ''}
-        </div>
-        
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-          <thead>
-            <tr style="background-color: #1976d2; color: white;">
-              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700;">Aluno</th>
-              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700;">Matrícula</th>
-              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700; text-align: center;">Total Aulas</th>
-              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700; text-align: center;">Presentes</th>
-              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700; text-align: center;">Faltas</th>
-              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700; text-align: center;">Frequência</th>
-              <th style="border: 1px solid #ddd; padding: 12px; font-size: 12px; font-weight: 700; text-align: center;">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${linhasTabela}
-          </tbody>
-        </table>
-        
-        <div style="padding: 15px; background-color: #f5f5f5; border-radius: 8px;">
-          <p style="font-weight: 600; margin-bottom: 10px;">📊 Resumo:</p>
-          <p style="margin: 5px 0;">• Total de alunos: ${dashboardFrequencia.todosAlunos?.length || 0}</p>
-          <p style="margin: 5px 0;">• Total de registros: ${dashboardFrequencia.totalRegistros}</p>
-          <p style="margin: 5px 0;">• Presentes: ${dashboardFrequencia.presentes} (${dashboardFrequencia.percentualPresenca}%)</p>
-          <p style="margin: 5px 0;">• Faltas: ${dashboardFrequencia.faltas} (${dashboardFrequencia.percentualFaltas}%)</p>
-          <p style="margin: 5px 0;">• Faltas Justificadas: ${dashboardFrequencia.faltasJustificadas}</p>
-        </div>
-      `;
-      
-      document.body.appendChild(containerTabela);
-
-      // 6. AGUARDAR PARA GARANTIR RENDERIZAÇÃO
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // 7. CONFIGURAÇÕES DE EXPORTAÇÃO
+      // CRIAR PDF DIRECTLY COM JSPDF
       const dataAtual = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
-      const nomeArquivo = `Dashboard_Frequencia_${dataAtual}.pdf`;
-
-      const optGraficos = {
-        margin: [20, 20, 20, 20],
-        filename: nomeArquivo,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff'
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'landscape'
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
-
-      const optTabela = {
-        margin: [20, 20, 20, 20],
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff'
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'portrait'
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
-
-      // 8. GERAR PDFS
-      const pdfGraficos = await html2pdf()
-        .set(optGraficos)
-        .from(containerGraficos)
-        .toPdf()
-        .get('pdf');
-
-      const pdfTabela = await html2pdf()
-        .set(optTabela)
-        .from(containerTabela)
-        .toPdf()
-        .get('pdf');
-
-      // 9. COMBINAR PDFS
-      const totalPagesGraficos = pdfGraficos.internal.getNumberOfPages();
+      const nomeArquivo = `Relatorio_Frequencia_${dataAtual}.pdf`;
+      const turmaInfo = filters.turma ? turmas.find(t => t._id === filters.turma) : null;
       
-      for (let i = 1; i <= pdfTabela.internal.getNumberOfPages(); i++) {
-        pdfGraficos.addPage('a4', 'portrait');
-        const pageData = pdfTabela.internal.pages[i];
-        pdfGraficos.internal.pages[totalPagesGraficos + i] = pageData;
+      console.log('📄 Criando PDF com jsPDF...');
+      
+      // Criar PDF em modo portrait
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      console.log('📐 Dimensões da página:', pageWidth, 'x', pageHeight, 'mm');
+      
+      // ===== PÁGINA ÚNICA: RELATÓRIO DE FREQUÊNCIA =====
+      let yPos = 20;
+      const dataHora = new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR');
+      
+      // Cabeçalho
+      pdf.setFontSize(18);
+      pdf.setTextColor(25, 118, 210);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Relatório de Frequência - Turma', pageWidth / 2, yPos, { align: 'center' });
+      
+      yPos += 7;
+      pdf.setFontSize(12);
+      pdf.setTextColor(102, 102, 102);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('SistGesEdu', pageWidth / 2, yPos, { align: 'center' });
+      
+      yPos += 5;
+      pdf.setFontSize(8);
+      pdf.setTextColor(153, 153, 153);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Licença MIT 2026', pageWidth / 2, yPos, { align: 'center' });
+      
+      yPos += 4;
+      pdf.setFontSize(9);
+      pdf.setTextColor(153, 153, 153);
+      pdf.text(`Gerado em: ${dataHora}`, pageWidth / 2, yPos, { align: 'center' });
+      
+      if (turmaInfo) {
+        yPos += 4;
+        pdf.setFontSize(9);
+        pdf.setTextColor(102, 102, 102);
+        pdf.setFont('helvetica', 'bold');
+        const periodoInfo = filters.dataInicio && filters.dataFim 
+          ? ` | Período: ${formatarDataBR(filters.dataInicio)} a ${formatarDataBR(filters.dataFim)}` 
+          : '';
+        pdf.text(`Turma: ${turmaInfo.nome}${periodoInfo}`, pageWidth / 2, yPos, { align: 'center' });
       }
-
-      // 10. ADICIONAR NUMERAÇÃO
-      const totalPages = pdfGraficos.internal.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
-        pdfGraficos.setPage(i);
-        pdfGraficos.setFontSize(10);
-        pdfGraficos.setTextColor(100);
-        
-        const pageInfo = pdfGraficos.internal.getCurrentPageInfo();
-        const isLandscape = pageInfo.pageContext.width > pageInfo.pageContext.height;
-        
-        if (isLandscape) {
-          pdfGraficos.text(`Página ${i} de ${totalPages}`, 277, 200, { align: 'right' });
-        } else {
-          pdfGraficos.text(`Página ${i} de ${totalPages}`, 190, 287, { align: 'right' });
+      
+      yPos += 10;
+      
+      // Tabela de alunos - Ajustada para caber nas margens
+      const tableStartY = yPos;
+      const marginX = 15;
+      const tableWidth = pageWidth - (marginX * 2); // ~180mm
+      
+      // Distribuição de colunas otimizada
+      const col1X = marginX;           // Aluno (nome) - 100mm
+      const col2X = marginX + 100;     // Total - 16mm
+      const col3X = marginX + 116;     // Presentes - 16mm  
+      const col4X = marginX + 132;     // Faltas - 16mm
+      const col5X = marginX + 148;     // Frequência - 16mm
+      const col6X = marginX + 164;     // Status - 16mm
+      const rowHeight = 6;
+      
+      // Cabeçalho da tabela
+      pdf.setFillColor(25, 118, 210);
+      pdf.setDrawColor(255, 255, 255); // Borda branca
+      pdf.setLineWidth(0.5);
+      pdf.rect(col1X, yPos, tableWidth, rowHeight, 'FD');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Aluno', col1X + 2, yPos + 4.5);
+      pdf.text('Total', col2X + 2, yPos + 4.5);
+      pdf.text('Pres.', col3X + 2, yPos + 4.5);
+      pdf.text('Faltas', col4X + 2, yPos + 4.5);
+      pdf.text('Freq.', col5X + 2, yPos + 4.5);
+      pdf.text('Status', col6X + 2, yPos + 4.5);
+      
+      yPos += rowHeight;
+      
+      // Linhas de dados
+      pdf.setFont('helvetica', 'normal');
+      dashboardFrequencia.todosAlunos.forEach((aluno, index) => {
+        if (yPos > pageHeight - 40) {
+          pdf.addPage('a4', 'portrait');
+          yPos = 20;
+          
+          // Repetir cabeçalho na nova página
+          pdf.setFillColor(25, 118, 210);
+          pdf.setDrawColor(255, 255, 255); // Borda branca
+          pdf.setLineWidth(0.5);
+          pdf.rect(col1X, yPos, tableWidth, rowHeight, 'FD');
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Aluno', col1X + 2, yPos + 4.5);
+          pdf.text('Total', col2X + 2, yPos + 4.5);
+          pdf.text('Pres.', col3X + 2, yPos + 4.5);
+          pdf.text('Faltas', col4X + 2, yPos + 4.5);
+          pdf.text('Freq.', col5X + 2, yPos + 4.5);
+          pdf.text('Status', col6X + 2, yPos + 4.5);
+          yPos += rowHeight;
+          pdf.setFont('helvetica', 'normal');
         }
+        
+        let bgColor = [165, 214, 167]; // verde mais intenso (adequado) - 50% mais aparente
+        if (aluno.classificacao === 'critico') bgColor = [239, 154, 154]; // vermelho mais intenso - 50% mais aparente
+        else if (aluno.classificacao === 'atencao') bgColor = [255, 204, 128]; // laranja mais intenso - 50% mais aparente
+        
+        pdf.setFillColor(...bgColor);
+        pdf.setDrawColor(255, 255, 255); // Borda branca
+        pdf.setLineWidth(0.5);
+        pdf.rect(col1X, yPos, tableWidth, rowHeight, 'FD');
+        
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFontSize(7);
+        
+        // Nome do aluno (truncado para caber em 100mm)
+        let nomeAluno = aluno.aluno.nome;
+        if (nomeAluno.length > 42) {
+          nomeAluno = nomeAluno.substring(0, 39) + '...';
+        }
+        pdf.text(nomeAluno, col1X + 2, yPos + 4.5);
+        pdf.text(aluno.total.toString(), col2X + 6, yPos + 4.5, { align: 'center' });
+        pdf.text(aluno.presentes.toString(), col3X + 6, yPos + 4.5, { align: 'center' });
+        pdf.text(aluno.faltas.toString(), col4X + 6, yPos + 4.5, { align: 'center' });
+        
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`${aluno.percentualPresenca}%`, col5X + 6, yPos + 4.5, { align: 'center' });
+        pdf.setFont('helvetica', 'normal');
+        
+        // Status (emoji + texto)
+        let statusIcon = aluno.classificacao === 'critico' ? '!' : aluno.classificacao === 'atencao' ? '!' : '+';
+        pdf.setFontSize(7);
+        pdf.text(statusIcon, col6X + 8, yPos + 4.5, { align: 'center' });
+        
+        yPos += rowHeight;
+      });
+      
+      yPos += 5;
+      
+      // ===== RESUMO VISUAL ATRATIVO (OPÇÃO C) =====
+      if (yPos > pageHeight - 90) {
+        pdf.addPage('a4', 'portrait');
+        yPos = 20;
       }
-
-      // 11. SALVAR PDF
-      pdfGraficos.save(nomeArquivo);
-
-      // 12. LIMPAR CONTAINERS TEMPORÁRIOS
-      document.body.removeChild(containerGraficos);
-      document.body.removeChild(containerTabela);
+      
+      yPos += 5;
+      pdf.setFontSize(12);
+      pdf.setTextColor(25, 118, 210);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Resumo da Frequência', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 8;
+      
+      // PARTE 1: CARDS COLORIDOS (Presentes e Faltas)
+      const cardWidth = 80;
+      const cardHeight = 28;
+      const cardGap = 10;
+      const cardsStartX = (pageWidth - (cardWidth * 2 + cardGap)) / 2;
+      
+      // Calcular cor dinâmica baseada em percentuais
+      const percentPresenca = parseFloat(dashboardFrequencia.percentualPresenca || 0);
+      const percentFaltas = parseFloat(dashboardFrequencia.percentualFaltas || 0);
+      
+      // Cor Verde (Presentes) - dinâmica
+      let corVerde = [46, 125, 50]; // Verde escuro (>90%)
+      if (percentPresenca < 75) {
+        corVerde = [102, 187, 106]; // Verde claro (<75%)
+      } else if (percentPresenca < 90) {
+        corVerde = [67, 160, 71]; // Verde médio (75-90%)
+      }
+      
+      // Cor Vermelha (Faltas) - dinâmica
+      let corVermelha = [239, 83, 80]; // Vermelho claro (<10%)
+      if (percentFaltas > 25) {
+        corVermelha = [198, 40, 40]; // Vermelho escuro (>25%)
+      } else if (percentFaltas > 10) {
+        corVermelha = [229, 57, 53]; // Vermelho médio (10-25%)
+      }
+      
+      // Card 1: PRESENTES (Verde)
+      pdf.setFillColor(...corVerde);
+      pdf.setDrawColor(0, 172, 193); // Borda ciano
+      pdf.setLineWidth(1);
+      pdf.roundedRect(cardsStartX, yPos, cardWidth, cardHeight, 3, 3, 'FD');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${percentPresenca}%`, cardsStartX + cardWidth / 2, yPos + 12, { align: 'center' });
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`${dashboardFrequencia.presentes} presentes`, cardsStartX + cardWidth / 2, yPos + 19, { align: 'center' });
+      pdf.setFontSize(9);
+      pdf.text('✓ Frequência', cardsStartX + cardWidth / 2, yPos + 25, { align: 'center' });
+      
+      // Card 2: FALTAS (Vermelho)
+      pdf.setFillColor(...corVermelha);
+      pdf.setDrawColor(0, 172, 193); // Borda ciano
+      pdf.setLineWidth(1);
+      pdf.roundedRect(cardsStartX + cardWidth + cardGap, yPos, cardWidth, cardHeight, 3, 3, 'FD');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${percentFaltas}%`, cardsStartX + cardWidth + cardGap + cardWidth / 2, yPos + 12, { align: 'center' });
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`${dashboardFrequencia.faltas} faltas`, cardsStartX + cardWidth + cardGap + cardWidth / 2, yPos + 19, { align: 'center' });
+      pdf.setFontSize(9);
+      pdf.text('✗ Ausências', cardsStartX + cardWidth + cardGap + cardWidth / 2, yPos + 25, { align: 'center' });
+      
+      yPos += cardHeight + 10;
+      
+      // PARTE 2: BARRA DE PROGRESSO VISUAL
+      const barWidth = cardWidth * 2 + cardGap;
+      const barHeight = 12;
+      const barStartX = cardsStartX;
+      
+      // Fundo da barra (cinza claro)
+      pdf.setFillColor(230, 230, 230);
+      pdf.setDrawColor(0, 172, 193); // Borda ciano
+      pdf.setLineWidth(1);
+      pdf.roundedRect(barStartX, yPos, barWidth, barHeight, 2, 2, 'FD');
+      
+      // Barra verde (Presentes)
+      const percentTotalRegistros = (dashboardFrequencia.presentes / dashboardFrequencia.totalRegistros) * 100;
+      const barGreenWidth = (barWidth * percentTotalRegistros) / 100;
+      if (barGreenWidth > 0) {
+        pdf.setFillColor(...corVerde);
+        pdf.roundedRect(barStartX, yPos, barGreenWidth, barHeight, 2, 2, 'F');
+      }
+      
+      // Texto dentro da barra
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      if (barGreenWidth > 30) {
+        pdf.text(`${percentPresenca}% Presentes`, barStartX + barGreenWidth / 2, yPos + 8, { align: 'center' });
+      }
+      if (barWidth - barGreenWidth > 30) {
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(`${percentFaltas}% Faltas`, barStartX + barGreenWidth + (barWidth - barGreenWidth) / 2, yPos + 8, { align: 'center' });
+      }
+      
+      yPos += barHeight + 10;
+      
+      // PARTE 3: INFORMAÇÕES COMPLEMENTARES
+      pdf.setFillColor(248, 248, 248);
+      pdf.setDrawColor(0, 172, 193); // Borda ciano
+      pdf.setLineWidth(1);
+      pdf.roundedRect(barStartX, yPos, barWidth, 28, 2, 2, 'FD');
+      
+      yPos += 8;
+      
+      // Grid 2x2 de informações
+      const infoColWidth = barWidth / 2;
+      
+      // Coluna 1
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Total de Alunos:', barStartX + 5, yPos);
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${dashboardFrequencia.todosAlunos?.length || 0}`, barStartX + 40, yPos);
+      
+      // Coluna 2
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Total de Registros:', barStartX + infoColWidth + 5, yPos);
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${dashboardFrequencia.totalRegistros}`, barStartX + infoColWidth + 45, yPos);
+      
+      yPos += 7;
+      
+      // Linha 2 - Coluna 1
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Presentes:', barStartX + 5, yPos);
+      pdf.setFontSize(10);
+      pdf.setTextColor(...corVerde);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${dashboardFrequencia.presentes}`, barStartX + 40, yPos);
+      
+      // Linha 2 - Coluna 2
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Faltas:', barStartX + infoColWidth + 5, yPos);
+      pdf.setFontSize(10);
+      pdf.setTextColor(...corVermelha);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${dashboardFrequencia.faltas}`, barStartX + infoColWidth + 45, yPos);
+      
+      yPos += 7;
+      
+      // Linha 3 - Centralizada (Justificadas)
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Faltas Justificadas:', barStartX + 5, yPos);
+      pdf.setFontSize(10);
+      pdf.setTextColor(245, 124, 0);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${dashboardFrequencia.faltasJustificadas}`, barStartX + 45, yPos);
+      
+      yPos += 2;
+      
+      // Rodapé
+      pdf.setFontSize(10);
+      pdf.setTextColor(100);
+      pdf.setFont('helvetica', 'normal');
+      const currentPage = pdf.internal.getNumberOfPages();
+      pdf.text(`Página ${currentPage} de ${currentPage}`, pageWidth - 20, pageHeight - 10, { align: 'right' });
+      
+      console.log('✅ Relatório de Frequência criado com sucesso');
+      
+      // 7. SALVAR PDF
+      console.log('💾 Salvando PDF:', nomeArquivo);
+      const pdfBlob = pdf.output('blob');
+      console.log('📦 Tamanho do PDF:', pdfBlob.size, 'bytes');
+      pdf.save(nomeArquivo);
+      console.log('✅ PDF salvo com sucesso!');
       
       toast.success('✅ PDF exportado com sucesso!');
       
@@ -626,6 +714,34 @@ const Dashboard = () => {
     } finally {
       setExportando(false);
     }
+  };
+
+  // 🎨 CONFIGURAÇÃO GLOBAL DE TOOLTIPS - 100% maior, fundo cinza escuro, texto branco
+  const tooltipGlobalConfig = {
+    enabled: true,
+    backgroundColor: 'rgba(45, 45, 45, 0.95)',
+    titleColor: '#FFFFFF',
+    bodyColor: '#FFFFFF',
+    borderColor: 'rgba(0, 206, 209, 0.8)',
+    borderWidth: 2,
+    cornerRadius: 8,
+    padding: 16,
+    titleFont: {
+      size: 18,
+      weight: '700',
+      family: "'Inter', 'Roboto', sans-serif"
+    },
+    bodyFont: {
+      size: 15,
+      weight: '500',
+      family: "'Inter', 'Roboto', sans-serif"
+    },
+    displayColors: true,
+    boxWidth: 15,
+    boxHeight: 15,
+    boxPadding: 8,
+    usePointStyle: true,
+    multiKeyBackground: 'rgba(0, 206, 209, 0.3)',
   };
 
   const chartDataDesempenho = {
@@ -745,7 +861,8 @@ const Dashboard = () => {
       },
       title: {
         color: isDarkMode ? '#ffffff' : '#000000'
-      }
+      },
+      tooltip: tooltipGlobalConfig
     },
     scales: {
       y: {
@@ -784,7 +901,8 @@ const Dashboard = () => {
       },
       title: {
         color: isDarkMode ? '#ffffff' : '#000000'
-      }
+      },
+      tooltip: tooltipGlobalConfig
     },
     scales: {
       y: {
@@ -823,7 +941,8 @@ const Dashboard = () => {
       },
       title: {
         color: isDarkMode ? '#ffffff' : '#000000'
-      }
+      },
+      tooltip: tooltipGlobalConfig
     }
   };
 
@@ -1160,7 +1279,7 @@ const Dashboard = () => {
                   });
                 }}
                 sx={{
-                  color: '#003366 !important'
+                  color: (theme) => theme.palette.mode === 'light' ? '#8B4513 !important' : '#003366 !important'
                 }}
               >
                 📅 Últimos 7 dias
@@ -1182,7 +1301,7 @@ const Dashboard = () => {
                   });
                 }}
                 sx={{
-                  color: '#003366 !important'
+                  color: (theme) => theme.palette.mode === 'light' ? '#8B4513 !important' : '#003366 !important'
                 }}
               >
                 📅 Últimos 30 dias
@@ -1203,7 +1322,7 @@ const Dashboard = () => {
                   });
                 }}
                 sx={{
-                  color: '#003366 !important'
+                  color: (theme) => theme.palette.mode === 'light' ? '#8B4513 !important' : '#003366 !important'
                 }}
               >
                 📅 Mês Atual
@@ -1223,7 +1342,7 @@ const Dashboard = () => {
                   });
                 }}
                 sx={{
-                  color: '#003366 !important'
+                  color: (theme) => theme.palette.mode === 'light' ? '#8B4513 !important' : '#003366 !important'
                 }}
               >
                 📅 1º Trimestre 2026
@@ -1243,7 +1362,7 @@ const Dashboard = () => {
                   });
                 }}
                 sx={{
-                  color: '#003366 !important'
+                  color: (theme) => theme.palette.mode === 'light' ? '#8B4513 !important' : '#003366 !important'
                 }}
               >
                 📅 Ano Completo 2026
@@ -1262,7 +1381,7 @@ const Dashboard = () => {
                   });
                 }}
                 sx={{
-                  color: '#003366 !important'
+                  color: (theme) => theme.palette.mode === 'light' ? '#8B4513 !important' : '#003366 !important'
                 }}
               >
                 🔄 Limpar Filtros
@@ -1831,6 +1950,7 @@ const Dashboard = () => {
                         position: 'bottom'
                       },
                       tooltip: {
+                        ...tooltipGlobalConfig,
                         callbacks: {
                           label: function(context) {
                             const label = context.label || '';
@@ -2080,6 +2200,18 @@ const Dashboard = () => {
                         <Typography variant="body1" align="center" sx={{ mt: 1 }}>
                           Total de Registros
                         </Typography>
+                        <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                        <Typography 
+                          variant="h5" 
+                          align="center" 
+                          sx={{ 
+                            fontWeight: 600,
+                            textShadow: '0 0 1px rgba(255,255,255,0.6)',
+                            WebkitTextStroke: '1px rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {dashboardFrequencia.totalDiasRegistrados || 0} dias
+                        </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -2194,6 +2326,21 @@ const Dashboard = () => {
                         <Typography variant="body1" align="center" sx={{ mt: 1 }}>
                           Justificadas
                         </Typography>
+                        <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
+                        <Typography 
+                          variant="h5" 
+                          align="center" 
+                          sx={{ 
+                            fontWeight: 600,
+                            textShadow: '0 0 1px rgba(255,255,255,0.6)',
+                            WebkitTextStroke: '1px rgba(255,255,255,0.4)'
+                          }}
+                        >
+                          {dashboardFrequencia.totalRegistros > 0 
+                            ? ((dashboardFrequencia.faltasJustificadas / dashboardFrequencia.totalRegistros) * 100).toFixed(1)
+                            : 0
+                          }% do total
+                        </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -2301,6 +2448,7 @@ const Dashboard = () => {
                         color: isDarkMode ? '#ffffff' : '#000000'
                       },
                       tooltip: {
+                        ...tooltipGlobalConfig,
                         callbacks: {
                           label: function(context) {
                             const turma = turmasArray[context.dataIndex];
@@ -2457,6 +2605,7 @@ const Dashboard = () => {
                         color: isDarkMode ? '#ffffff' : '#000000'
                       },
                       tooltip: {
+                        ...tooltipGlobalConfig,
                         callbacks: {
                           label: function(context) {
                             const ponto = context.raw;
@@ -2692,11 +2841,29 @@ const Dashboard = () => {
                           .sort((a, b) => parseFloat(b.percentualPresenca) - parseFloat(a.percentualPresenca))
                           .slice(0, 3);
 
-                        // TOP 3 CONSISTENTES (frequência >= 75% e maior número de presenças)
+                        // TOP 3 MAIS CONSISTENTES NOS ÚLTIMOS 5 DIAS
+                        // Filtrar alunos que têm dados dos últimos 5 dias e ordenar por pontuação de consistência
                         const top3Consistentes = [...alunosComDados]
-                          .filter(a => parseFloat(a.percentualPresenca) >= 75)
-                          .sort((a, b) => b.presentes - a.presentes)
+                          .filter(a => a.ultimos5Dias && a.ultimos5Dias.diasComAula > 0)
+                          .sort((a, b) => {
+                            // Ordenar por: 1) Maior pontuação de consistência, 2) Maior % presença últimos 5 dias, 3) Mais dias com aula
+                            if (b.ultimos5Dias.pontuacaoConsistencia !== a.ultimos5Dias.pontuacaoConsistencia) {
+                              return b.ultimos5Dias.pontuacaoConsistencia - a.ultimos5Dias.pontuacaoConsistencia;
+                            }
+                            if (b.ultimos5Dias.percentualPresenca !== a.ultimos5Dias.percentualPresenca) {
+                              return b.ultimos5Dias.percentualPresenca - a.ultimos5Dias.percentualPresenca;
+                            }
+                            return b.ultimos5Dias.diasComAula - a.ultimos5Dias.diasComAula;
+                          })
                           .slice(0, 3);
+                        
+                        console.log('📊 Top 3 Consistentes (Últimos 5 Dias):', top3Consistentes.map(a => ({
+                          nome: a.aluno.nome,
+                          diasComAula: a.ultimos5Dias.diasComAula,
+                          presencas: a.ultimos5Dias.presencas,
+                          percentual: a.ultimos5Dias.percentualPresenca,
+                          pontuacao: a.ultimos5Dias.pontuacaoConsistencia
+                        })));
 
                         // TOP 3 PIORES FREQUÊNCIAS (ordenar por percentual crescente)
                         const top3Piores = [...alunosComDados]
@@ -2715,12 +2882,12 @@ const Dashboard = () => {
                           }]
                         };
 
-                        // Criar dados para gráfico TOP 3 Consistentes
+                        // Criar dados para gráfico TOP 3 Mais Consistentes (Últimos 5 Dias)
                         const dadosConsistentes = {
                           labels: top3Consistentes.map(a => a.aluno.nome.length > 20 ? a.aluno.nome.substring(0, 20) + '...' : a.aluno.nome),
                           datasets: [{
-                            label: 'Presenças Totais',
-                            data: top3Consistentes.map(a => a.presentes),
+                            label: 'Consistência (%)',
+                            data: top3Consistentes.map(a => a.ultimos5Dias?.pontuacaoConsistencia || 0),
                             backgroundColor: 'rgba(255, 193, 7, 0.8)',
                             borderColor: 'rgb(255, 193, 7)',
                             borderWidth: 2,
@@ -2756,11 +2923,26 @@ const Dashboard = () => {
                               padding: { bottom: 15 }
                             },
                             tooltip: {
+                              ...tooltipGlobalConfig,
                               callbacks: {
                                 label: function(context) {
                                   const aluno = sufixo === '%' 
                                     ? (titulo.includes('Melhores') ? top3Melhores : top3Piores)[context.dataIndex]
                                     : top3Consistentes[context.dataIndex];
+                                  
+                                  // Tooltip especial para Consistentes (últimos 5 dias)
+                                  if (sufixo === 'consistencia') {
+                                    return [
+                                      `${context.label}`,
+                                      `Consistência: ${context.parsed.x.toFixed(2)}%`,
+                                      `Presenças nos últimos 5 dias: ${aluno.ultimos5Dias?.presencas || 0} de ${aluno.ultimos5Dias?.totalAulas || 0}`,
+                                      `Dias com aula: ${aluno.ultimos5Dias?.diasComAula || 0}`,
+                                      `Frequência geral: ${aluno.percentualPresenca}%`,
+                                      `Matrícula: ${aluno.aluno.matricula}`
+                                    ];
+                                  }
+                                  
+                                  // Tooltip padrão para Melhores/Piores
                                   return [
                                     `${context.label}`,
                                     sufixo === '%' 
@@ -2778,10 +2960,10 @@ const Dashboard = () => {
                           scales: {
                             x: {
                               beginAtZero: true,
-                              max: sufixo === '%' ? 100 : undefined,
+                              max: (sufixo === '%' || sufixo === 'consistencia') ? 100 : undefined,
                               title: {
                                 display: true,
-                                text: sufixo === '%' ? 'Frequência (%)' : 'Número de Presenças',
+                                text: sufixo === 'consistencia' ? 'Consistência (%)' : (sufixo === '%' ? 'Frequência (%)' : 'Número de Presenças'),
                                 color: isDarkMode ? '#ffffff' : '#000000',
                                 font: { size: 14, weight: 'bold' }
                               },
@@ -2883,12 +3065,12 @@ const Dashboard = () => {
                                     {top3Consistentes.length > 0 ? (
                                       <Bar 
                                         data={dadosConsistentes} 
-                                        options={opcoesHorizontal('📈 TOP 3 Mais Consistentes', '')}
+                                        options={opcoesHorizontal('🎯 TOP 3 Mais Consistentes (Últimos 5 Dias)', 'consistencia')}
                                       />
                                     ) : (
                                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 1 }}>
                                         <Typography variant="body2" color="text.secondary" align="center">
-                                          Sem alunos com frequência ≥ 75%
+                                          Sem dados de frequência dos últimos 5 dias
                                         </Typography>
                                         <Typography variant="caption" color="text.secondary" align="center">
                                           (Requer frequência mínima de 75%)
@@ -3256,16 +3438,26 @@ const Dashboard = () => {
                                       <Typography 
                                         variant="caption" 
                                         sx={{
-                                          color: theme.palette.mode === 'light' ? '#003366' : 'text.secondary'
+                                          color: theme.palette.mode === 'light' ? '#8B4513' : 'text.secondary'
                                         }}
                                       >
                                         Mat: {aluno.aluno.matricula}
                                       </Typography>
                                     </TableCell>
                                     <TableCell align="center">
-                                      <Typography variant="body2" fontWeight="600">
-                                        {aluno.total}
-                                      </Typography>
+                                      <Chip 
+                                        label={aluno.total} 
+                                        size="medium"
+                                        variant="outlined"
+                                        sx={{
+                                          fontWeight: 700,
+                                          fontSize: '1rem',
+                                          borderColor: (theme) => theme.palette.mode === 'dark' ? '#00CED1' : '#8B4513',
+                                          '& .MuiChip-label': {
+                                            color: '#FFFFFF'
+                                          }
+                                        }}
+                                      />
                                     </TableCell>
                                     <TableCell align="center">
                                       <Chip 

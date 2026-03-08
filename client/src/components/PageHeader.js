@@ -52,7 +52,7 @@ const PageHeader = ({ title, subtitle, icon: Icon }) => {
             letterSpacing: '0.5px',
             background: (theme) => theme.palette.mode === 'dark'
               ? 'linear-gradient(135deg, #00bcd4 0%, #00ffff 100%)'
-              : 'linear-gradient(135deg, #003366 0%, #001a40 100%)',
+              : 'linear-gradient(135deg, #8B4513 0%, #654321 100%)',
             backgroundClip: 'text',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',

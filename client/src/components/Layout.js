@@ -33,6 +33,9 @@ import {
   Summarize,
   EventNote,
   Settings,
+  GitHub,
+  LinkedIn,
+  Instagram,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../hooks/useTheme';
@@ -86,7 +89,12 @@ const Layout = () => {
     <div>
       <Toolbar />
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
-        <IconButton onClick={handleDrawerCollapse} color="inherit">
+        <IconButton 
+          onClick={handleDrawerCollapse}
+          sx={{
+            color: (theme) => theme.palette.mode === 'light' ? '#8B4513' : 'inherit',
+          }}
+        >
           <MenuIcon />
         </IconButton>
       </Box>
@@ -96,7 +104,11 @@ const Layout = () => {
           <ListItem key={item.text} disablePadding>
             <Tooltip title={drawerCollapsed ? item.text : ''} placement="right">
               <ListItemButton onClick={() => navigate(item.path)}>
-                <ListItemIcon sx={{ minWidth: drawerCollapsed ? 'auto' : 56, justifyContent: 'center' }}>
+                <ListItemIcon sx={{ 
+                  minWidth: drawerCollapsed ? 'auto' : 56, 
+                  justifyContent: 'center',
+                  color: (theme) => theme.palette.mode === 'light' ? '#8B4513' : undefined,
+                }}>
                   {item.icon}
                 </ListItemIcon>
                 {!drawerCollapsed && (
@@ -104,7 +116,7 @@ const Layout = () => {
                     primary={item.text}
                     primaryTypographyProps={{
                       sx: {
-                        color: (theme) => theme.palette.mode === 'light' ? '#003366' : undefined,
+                        color: (theme) => theme.palette.mode === 'light' ? '#8B4513' : undefined,
                         fontWeight: (theme) => theme.palette.mode === 'light' ? 700 : undefined,
                       }
                     }}
@@ -120,7 +132,11 @@ const Layout = () => {
         <ListItem disablePadding>
           <Tooltip title={drawerCollapsed ? 'Sair' : ''} placement="right">
             <ListItemButton onClick={handleLogout}>
-              <ListItemIcon sx={{ minWidth: drawerCollapsed ? 'auto' : 56, justifyContent: 'center' }}>
+              <ListItemIcon sx={{ 
+                minWidth: drawerCollapsed ? 'auto' : 56, 
+                justifyContent: 'center',
+                color: (theme) => theme.palette.mode === 'light' ? '#8B4513' : undefined,
+              }}>
                 <Logout />
               </ListItemIcon>
               {!drawerCollapsed && (
@@ -128,7 +144,7 @@ const Layout = () => {
                   primary="Sair"
                   primaryTypographyProps={{
                     sx: {
-                      color: (theme) => theme.palette.mode === 'light' ? '#003366' : undefined,
+                      color: (theme) => theme.palette.mode === 'light' ? '#8B4513' : undefined,
                       fontWeight: (theme) => theme.palette.mode === 'light' ? 700 : undefined,
                     }
                   }}
@@ -138,6 +154,75 @@ const Layout = () => {
           </Tooltip>
         </ListItem>
       </List>
+      <Divider />
+      
+      {/* Redes Sociais */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        gap: drawerCollapsed ? 0 : 2,
+        flexDirection: drawerCollapsed ? 'column' : 'row',
+        py: 2,
+        px: 1
+      }}>
+        <Tooltip title="GitHub">
+          <IconButton
+            component="a"
+            href="https://github.com/RODRIGOGRILLOMOREIRA"
+            target="_blank"
+            rel="noopener noreferrer"
+            size="small"
+            sx={{
+              color: (theme) => theme.palette.mode === 'dark' ? '#00CED1' : '#8B4513',
+              '&:hover': {
+                color: (theme) => theme.palette.mode === 'dark' ? '#00FFFF' : '#D2691E',
+                transform: 'scale(1.2)',
+              },
+            }}
+          >
+            <GitHub />
+          </IconButton>
+        </Tooltip>
+        
+        <Tooltip title="LinkedIn">
+          <IconButton
+            component="a"
+            href="https://www.linkedin.com/in/rodrigogrillomoreira"
+            target="_blank"
+            rel="noopener noreferrer"
+            size="small"
+            sx={{
+              color: (theme) => theme.palette.mode === 'dark' ? '#00CED1' : '#8B4513',
+              '&:hover': {
+                color: (theme) => theme.palette.mode === 'dark' ? '#00FFFF' : '#D2691E',
+                transform: 'scale(1.2)',
+              },
+            }}
+          >
+            <LinkedIn />
+          </IconButton>
+        </Tooltip>
+        
+        <Tooltip title="Instagram">
+          <IconButton
+            component="a"
+            href="https://www.instagram.com/rodrigogrillomoreira"
+            target="_blank"
+            rel="noopener noreferrer"
+            size="small"
+            sx={{
+              color: (theme) => theme.palette.mode === 'dark' ? '#00CED1' : '#8B4513',
+              '&:hover': {
+                color: (theme) => theme.palette.mode === 'dark' ? '#00FFFF' : '#D2691E',
+                transform: 'scale(1.2)',
+              },
+            }}
+          >
+            <Instagram />
+          </IconButton>
+        </Tooltip>
+      </Box>
     </div>
   );
 
@@ -151,7 +236,7 @@ const Layout = () => {
           zIndex: (theme) => theme.zIndex.drawer + 1,
           background: (theme) => theme.palette.mode === 'dark'
             ? 'linear-gradient(135deg, #0A0E14 0%, #1a2332 100%)'
-            : 'linear-gradient(135deg, #008B8B 0%, #00CED1 100%)',
+            : 'linear-gradient(135deg, #8B4513 0%, #D2691E 100%)',
         }}
       >
         <Toolbar>

@@ -17,10 +17,10 @@ const darkColors = {
 };
 
 const lightColors = {
-  primary: '#00CED1',
-  secondary: '#4FD9DC',
-  background: '#F5F5F0',
-  paper: '#B5B5B5',
+  primary: '#8B4513',
+  secondary: '#A0522D',
+  background: '#F5DEB3',
+  paper: '#E6BE8A',
   text: '#1A1A1A',
 };
 
@@ -92,6 +92,32 @@ export const darkTheme = createTheme({
     },
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        '*::-webkit-scrollbar': {
+          width: '18px', // 50% mais larga para modo escuro
+        },
+        '*::-webkit-scrollbar-track': {
+          backgroundColor: '#151A23', // Cor do paper no tema escuro
+          borderLeft: '1px solid rgba(0, 206, 209, 0.2)',
+        },
+        '*::-webkit-scrollbar-thumb': {
+          backgroundColor: '#00CED1', // Ciano
+          borderRadius: '10px',
+          border: '4px solid #151A23',
+          '&:hover': {
+            backgroundColor: '#00FFFF', // Ciano mais claro no hover
+          },
+          '&:active': {
+            backgroundColor: '#008B8B', // Ciano escuro no click
+          },
+        },
+        '*': {
+          scrollbarWidth: 'auto', // Para Firefox
+          scrollbarColor: '#00CED1 #151A23', // thumb track (Firefox)
+        },
+      },
+    },
     MuiAppBar: {
       styleOverrides: {
         root: {
@@ -168,15 +194,15 @@ export const lightTheme = createTheme({
     mode: 'light',
     primary: {
       main: lightColors.primary,
-      light: '#4FD9DC',
-      dark: '#008B8B',
-      contrastText: '#000000',
+      light: '#A0522D',
+      dark: '#654321',
+      contrastText: '#FFFFFF',
     },
     secondary: {
       main: lightColors.secondary,
-      light: '#66FFFF',
-      dark: '#00A8A8',
-      contrastText: '#000000',
+      light: '#D2691E',
+      dark: '#704214',
+      contrastText: '#FFFFFF',
     },
     background: {
       default: lightColors.background,
@@ -186,11 +212,11 @@ export const lightTheme = createTheme({
       primary: lightColors.text,
       secondary: lightColors.primary,
     },
-    divider: 'rgba(0, 139, 139, 0.12)',
+    divider: 'rgba(139, 69, 19, 0.12)',
     action: {
       active: lightColors.primary,
-      hover: 'rgba(0, 139, 139, 0.08)',
-      selected: 'rgba(0, 139, 139, 0.16)',
+      hover: 'rgba(139, 69, 19, 0.08)',
+      selected: 'rgba(139, 69, 19, 0.16)',
     },
   },
   typography: {
@@ -230,12 +256,38 @@ export const lightTheme = createTheme({
     },
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        '*::-webkit-scrollbar': {
+          width: '12px', // Largura padrão para modo claro
+        },
+        '*::-webkit-scrollbar-track': {
+          backgroundColor: '#F5DEB3', // Cor mel do background no tema claro
+          borderLeft: '1px solid rgba(139, 69, 19, 0.2)',
+        },
+        '*::-webkit-scrollbar-thumb': {
+          backgroundColor: '#8B4513', // Marrom
+          borderRadius: '10px',
+          border: '3px solid #F5DEB3',
+          '&:hover': {
+            backgroundColor: '#A0522D', // Marrom claro no hover
+          },
+          '&:active': {
+            backgroundColor: '#654321', // Marrom escuro no click
+          },
+        },
+        '*': {
+          scrollbarWidth: 'auto', // Para Firefox
+          scrollbarColor: '#8B4513 #F5DEB3', // thumb track (Firefox)
+        },
+      },
+    },
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: '#858585',
-          color: lightColors.primary,
-          boxShadow: '0 2px 8px rgba(0, 206, 209, 0.3)',
+          backgroundColor: '#D2691E',
+          color: '#FFFFFF',
+          boxShadow: '0 4px 12px rgba(139, 69, 19, 0.6)',
           border: '2px solid #FFFFFF',
         },
       },
@@ -243,7 +295,7 @@ export const lightTheme = createTheme({
     MuiDrawer: {
       styleOverrides: {
         paper: {
-          backgroundColor: '#959595',
+          backgroundColor: '#D2B48C',
           borderRight: '2px solid #FFFFFF',
         },
       },
@@ -257,9 +309,9 @@ export const lightTheme = createTheme({
         },
         contained: {
           border: '2px solid #FFFFFF',
-          boxShadow: '0 4px 12px rgba(0, 139, 139, 0.2)',
+          boxShadow: '0 4px 12px rgba(139, 69, 19, 0.2)',
           '&:hover': {
-            boxShadow: '0 6px 16px rgba(0, 139, 139, 0.3)',
+            boxShadow: '0 6px 16px rgba(139, 69, 19, 0.3)',
           },
         },
       },
@@ -269,14 +321,14 @@ export const lightTheme = createTheme({
         root: {
           borderRadius: 12,
           border: '2px solid #FFFFFF',
-          boxShadow: '0 4px 16px rgba(0, 206, 209, 0.5), 0 8px 24px rgba(0, 206, 209, 0.3)',
+          boxShadow: '0 4px 16px rgba(139, 69, 19, 0.5), 0 8px 24px rgba(139, 69, 19, 0.3)',
         },
       },
     },
     MuiTableHead: {
       styleOverrides: {
         root: {
-          backgroundColor: 'rgba(0, 206, 209, 0.15)',
+          backgroundColor: 'rgba(139, 69, 19, 0.15)',
           borderTop: '2px solid #FFFFFF',
           borderBottom: '2px solid #FFFFFF',
           '& .MuiTableCell-head': {
@@ -290,8 +342,8 @@ export const lightTheme = createTheme({
       styleOverrides: {
         root: {
           '&:hover': {
-            backgroundColor: 'rgba(0, 206, 209, 0.08)',
-            boxShadow: '0 2px 8px rgba(0, 206, 209, 0.4)',
+            backgroundColor: 'rgba(139, 69, 19, 0.08)',
+            boxShadow: '0 2px 8px rgba(139, 69, 19, 0.4)',
           },
         },
       },

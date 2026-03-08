@@ -1,6 +1,122 @@
 # 📋 Changelog - Sistema Analisador de Notas e Habilidades
 
-## Versão 2.10 - 21 de Fevereiro de 2026 🆕
+## Versão 2.11 - 08 de Março de 2026 🆕
+
+### 🎨 REFORMULAÇÃO COMPLETA DO TEMA MODO CLARO
+
+#### 🌟 Nova Identidade Visual - Tema Mel/Marrom
+- ✅ **Conversão Total de Cores**
+  - Substituição do tema ciano/teal por palette quente mel/marrom
+  - **Background**: #F5DEB3 (Wheat/Honey) - tom mel acolhedor
+  - **Cor Primária**: #8B4513 (Saddle Brown) - marrom profissional
+  - **Cor Secundária**: #A0522D (Sienna) - marrom médio
+  - **Paper**: #E6BE8A e #D2B48C (Tan) - tons harmoniosos
+  - Tema educacional e convidativo, ideal para ambiente escolar
+
+#### 🎨 Componentes Atualizados
+- ✅ **AppBar (Barra Superior)**
+  - Gradiente marrom: #8B4513 → #D2691E
+  - Sombra aumentada e em tom marrom: `0 4px 12px rgba(139, 69, 19, 0.6)`
+  - Ícones e textos em branco para contraste
+  - Borda branca de 2px para destaque
+
+- ✅ **Drawer (Menu Lateral)**
+  - Background tan (#D2B48C)
+  - Ícones do menu em marrom no modo claro
+  - Ícone de colapso/expansão em marrom
+  - Botão "Sair" com ícone marrom
+  - Textos do menu em marrom (#8B4513) com peso 700
+
+- ✅ **Redes Sociais no Menu**
+  - Adicionados ícones de GitHub, LinkedIn e Instagram
+  - Posicionados abaixo do botão "Sair"
+  - Cores condicionais: marrom no modo claro, ciano no modo escuro
+  - Links abrem em nova aba com `rel="noopener noreferrer"`
+  - Efeito hover com escala 1.2 e mudança de cor
+
+#### 📄 Páginas Atualizadas
+- ✅ **Home.js**
+  - Box de boas-vindas com gradiente marrom
+  - Título com gradiente #8B4513 → #654321
+  - Cards com sombra condicional marrom no hover
+  - useTheme hook para detecção de tema
+
+- ✅ **PageHeader.js**
+  - Nome da escola com gradiente marrom no modo claro
+  - Transição suave de cores
+
+- ✅ **Dashboard.js**
+  - Botões de filtro com texto marrom no modo claro
+  - Matrícula de aluno em marrom
+  - Chip "Total Aulas" com borda condicional (marrom/ciano)
+  - Títulos de tabelas em marrom
+  - Percentuais no gráfico "Comparação de Frequências por Turma" mantidos em branco no escuro e preto no claro
+
+#### 🎯 Componentes Visuais
+- ✅ **Scrollbar Customizado**
+  - Thumb marrom (#8B4513)
+  - Track mel (#F5DEB3)
+  - Hover em marrom médio (#A0522D)
+
+- ✅ **Botões, Cards e Tabelas**
+  - Sombras em tons de marrom com opacidades variadas
+  - TableHead com background marrom (#8B4513) e texto branco
+  - TableRow hover com efeito marrom transparente
+  - Divider em marrom (#8B4513)
+
+#### 💡 Modo Escuro Preservado
+- ✅ **Tema Ciano Intacto**
+  - Todas as funcionalidades do modo escuro mantidas
+  - Cor primária ciano (#00CED1) preservada
+  - Toggle entre temas funcionando perfeitamente
+  - Cores condicionais implementadas em todos componentes
+
+#### 📦 Arquivos Modificados
+- ✅ **client/src/theme.js** (~350 linhas)
+  - Objeto `lightColors` completamente reformulado
+  - Palette light theme com cores marrom/mel
+  - Componentes MuiAppBar, MuiDrawer, MuiButton, MuiCard, MuiTable atualizados
+  - Scrollbar customizado com cores marrons
+  
+- ✅ **client/src/components/Layout.js** (~355 linhas)
+  - Menu items com cores condicionais
+  - AppBar gradient atualizado
+  - Social media icons adicionados (GitHub, LinkedIn, Instagram)
+  - Ícone de menu colapso com cor condicional
+  
+- ✅ **client/src/pages/Home.js** (~200 linhas)
+  - useTheme hook integrado
+  - Gradientes e sombras condicionais
+  
+- ✅ **client/src/components/PageHeader.js** (~80 linhas)
+  - School name gradient condicional
+  
+- ✅ **client/src/pages/Dashboard.js** (~3500+ linhas)
+  - Filtros, tabelas e gráficos com cores condicionais
+  - Percentuais de gráficos ajustados por tema
+
+#### 🎯 Experiência do Usuário
+- ✅ **Consistência Visual Total**
+  - Todos os elementos seguem a palette mel/marrom no modo claro
+  - Nenhum resquício de ciano no light mode
+  - Transições suaves entre elementos
+  - Feedback visual claro em todas interações
+
+- ✅ **Acessibilidade**
+  - Contraste adequado entre texto e fundo
+  - Cores escolhidas para legibilidade
+  - Tema quente e acolhedor, menos cansativo para os olhos
+  - Ideal para uso prolongado em ambiente escolar
+
+#### 🚀 Performance
+- ✅ Todas as cores definidas no tema central (theme.js)
+- ✅ Uso de `theme.palette.mode` para detecção eficiente
+- ✅ Sem renderizações desnecessárias
+- ✅ Carregamento instantâneo das preferências salvas
+
+---
+
+## Versão 2.10 - 21 de Fevereiro de 2026
 
 ### ✨ TEMPLATE PERSONALIZADO PARA IMPORTAÇÃO DE ALUNOS
 

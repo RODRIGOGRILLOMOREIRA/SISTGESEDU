@@ -24,10 +24,12 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../hooks/useTheme';
 
 const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
 
   const cards = [
     { 
@@ -102,10 +104,14 @@ const Home = () => {
           sx={{ 
             mb: 6, 
             textAlign: 'center',
-            background: 'linear-gradient(135deg, rgba(0, 206, 209, 0.1) 0%, rgba(0, 139, 139, 0.05) 100%)',
+            background: isDarkMode 
+              ? 'linear-gradient(135deg, rgba(0, 206, 209, 0.1) 0%, rgba(0, 139, 139, 0.05) 100%)'
+              : 'linear-gradient(135deg, rgba(139, 69, 19, 0.1) 0%, rgba(160, 82, 45, 0.05) 100%)',
             borderRadius: 4,
             p: 4,
-            boxShadow: '0 4px 20px rgba(0, 206, 209, 0.15)',
+            boxShadow: isDarkMode
+              ? '0 4px 20px rgba(0, 206, 209, 0.15)'
+              : '0 4px 20px rgba(139, 69, 19, 0.15)',
           }}
         >
           <Typography 
@@ -114,7 +120,9 @@ const Home = () => {
             gutterBottom 
             sx={{ 
               fontWeight: 700,
-              background: 'linear-gradient(135deg, #00CED1 0%, #008B8B 100%)',
+              background: isDarkMode
+                ? 'linear-gradient(135deg, #00CED1 0%, #008B8B 100%)'
+                : 'linear-gradient(135deg, #8B4513 0%, #654321 100%)',
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -152,7 +160,9 @@ const Home = () => {
                   transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                   '&:hover': {
                     transform: 'translateY(-8px) scale(1.02)',
-                    boxShadow: '0 12px 30px rgba(0, 206, 209, 0.4)',
+                    boxShadow: isDarkMode
+                      ? '0 12px 30px rgba(0, 206, 209, 0.4)'
+                      : '0 12px 30px rgba(139, 69, 19, 0.4)',
                   },
                   '&::before': {
                     content: '""',

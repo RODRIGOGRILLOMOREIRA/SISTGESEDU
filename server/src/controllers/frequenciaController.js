@@ -547,6 +547,97 @@ exports.getDashboardFrequencia = async (req, res) => {
       { $sort: { _id: 1 } }
     ]);
     
+    // === NOVIDADE: CALCULAR CONSISTÊNCIA DOS ÚLTIMOS 5 DIAS ===
+    // Calcular data de 5 dias atrás
+    const dataHoje = new Date();
+    const data5DiasAtras = new Date(dataHoje);
+    data5DiasAtras.setDate(dataHoje.getDate() - 5);
+    data5DiasAtras.setHours(0, 0, 0, 0);
+    
+    console.log('📅 Calculando consistência dos últimos 5 dias:', {
+      dataHoje: dataHoje.toISOString(),
+      data5DiasAtras: data5DiasAtras.toISOString()
+    });
+    
+    // Buscar frequências dos últimos 5 dias por aluno
+    const ultimos5DiasFilter = {
+      ...filter,
+      data: {
+        $gte: data5DiasAtras,
+        $lte: dataHoje
+      }
+    };
+    
+    const frequenciasUltimos5Dias = await Frequencia.aggregate([
+      { $match: ultimos5DiasFilter },
+      {
+        $group: {
+          _id: '$aluno',
+          totalAulas: { $sum: 1 },
+          presencas: {
+            $sum: { $cond: [{ $eq: ['$status', 'presente'] }, 1, 0] }
+          },
+          // Contar dias únicos com aula
+          datasUnicas: { $addToSet: { $dateToString: { format: '%Y-%m-%d', date: '$data' } } }
+        }
+      },
+      {
+        $addFields: {
+          diasComAula: { $size: '$datasUnicas' },
+          percentualPresencaUltimos5Dias: {
+            $multiply: [
+              { $divide: ['$presencas', '$totalAulas'] },
+              100
+            ]
+          },
+          // Pontuação de consistência: (presencas / dias_com_aula) * 100
+          pontuacaoConsistencia: {
+            $multiply: [
+              { $divide: ['$presencas', { $size: '$datasUnicas' }] },
+              100
+            ]
+          }
+        }
+      }
+    ]);
+    
+    console.log(`📊 Backend - Frequências últimos 5 dias: ${frequenciasUltimos5Dias.length} alunos com registros`);
+    
+    // Mapear dados dos últimos 5 dias para cada aluno
+    const mapUltimos5Dias = new Map(
+      frequenciasUltimos5Dias.map(item => [
+        item._id.toString(),
+        {
+          totalAulas: item.totalAulas,
+          presencas: item.presencas,
+          diasComAula: item.diasComAula,
+          percentualPresenca: parseFloat(item.percentualPresencaUltimos5Dias.toFixed(2)),
+          pontuacaoConsistencia: parseFloat(item.pontuacaoConsistencia.toFixed(2))
+        }
+      ])
+    );
+    
+    // Adicionar dados dos últimos 5 dias aos alunos classificados
+    const alunosComUltimos5Dias = alunosClassificados.map(aluno => {
+      const dados5Dias = mapUltimos5Dias.get(aluno.aluno._id.toString()) || {
+        totalAulas: 0,
+        presencas: 0,
+        diasComAula: 0,
+        percentualPresenca: 0,
+        pontuacaoConsistencia: 0
+      };
+      
+      return {
+        ...aluno,
+        ultimos5Dias: dados5Dias
+      };
+    });
+    
+    console.log('✅ Alunos com dados dos últimos 5 dias:', alunosComUltimos5Dias.slice(0, 3).map(a => ({
+      nome: a.aluno.nome,
+      ultimos5Dias: a.ultimos5Dias
+    })));
+    
     // Contadores por classificação
     const contadores = {
       total: alunosClassificados.length,
@@ -555,23 +646,43 @@ exports.getDashboardFrequencia = async (req, res) => {
       critico: alunosClassificados.filter(a => a.classificacao === 'critico').length
     };
     
+    // Calcular número de dias únicos com registros
+    const diasUnicosResult = await Frequencia.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: null,
+          datasUnicas: { $addToSet: { $dateToString: { format: '%Y-%m-%d', date: '$data' } } }
+        }
+      },
+      {
+        $project: {
+          totalDiasUnicos: { $size: '$datasUnicas' }
+        }
+      }
+    ]);
+    
+    const totalDiasRegistrados = diasUnicosResult.length > 0 ? diasUnicosResult[0].totalDiasUnicos : 0;
+    
     console.log('📊 Backend - Resposta Dashboard:', {
       totalRegistros: total,
       presentes: presencas,
       faltas,
       faltasJustificadas,
-      totalAlunos: alunosClassificados.length,
+      totalAlunos: alunosComUltimos5Dias.length,
+      totalDiasRegistrados,
       contadores
     });
     
     res.json({
       totalRegistros: total,
+      totalDiasRegistrados,
       presentes: presencas,
       faltas,
       faltasJustificadas,
       percentualPresenca: parseFloat(percentualPresenca),
       percentualFaltas: total > 0 ? ((faltas / total) * 100).toFixed(2) : 0,
-      todosAlunos: alunosClassificados,
+      todosAlunos: alunosComUltimos5Dias,
       contadores,
       frequenciaPorDiaSemana: frequenciaPorDia
     });

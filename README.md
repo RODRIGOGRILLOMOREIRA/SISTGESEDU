@@ -3,7 +3,7 @@
 <div align="center">
 
 ![Status](https://img.shields.io/badge/Status-Produção-success?style=for-the-badge)
-![Versão](https://img.shields.io/badge/Versão-2.10-blue?style=for-the-badge)
+![Versão](https://img.shields.io/badge/Versão-2.11-blue?style=for-the-badge)
 ![Licença](https://img.shields.io/badge/Licença-MIT-green?style=for-the-badge)
 ![Node](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js)
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)
@@ -112,7 +112,7 @@ npm install
 
 ```env
 REACT_APP_API_URL=http://localhost:5000/api
-REACT_APP_VERSION=2.10
+REACT_APP_VERSION=2.11
 ```
 
 ```bash
@@ -346,10 +346,10 @@ O sistema utiliza um modelo pedagógico inovador:
 - 👁️ **Contraste**: Otimizado para leitura prolongada
 
 #### Modo Claro
-- ☀️ **Cor Primária**: Verde Ciano Escuro (#00796B)
-- ⬜ **Background**: Branco (#FFFFFF)
-- 🎨 **Componentes**: Cards claros com sombras suaves
-- 💡 **Brilho**: Ideal para ambientes iluminados
+- ☀️ **Cor Primária**: Marrom (#8B4513 - Saddle Brown)
+- 🍯 **Background**: Mel (#F5DEB3 - Wheat/Honey)
+- 🎨 **Componentes**: Cards claros com sombras marrons suaves
+- 💡 **Brilho**: Tema quente e acolhedor, ideal para ambientes educacionais
 
 #### Persistência
 - 💾 **LocalStorage**: Preferência salva no navegador
@@ -623,7 +623,7 @@ vercel --prod
 **Variáveis de Ambiente:**
 ```env
 REACT_APP_API_URL=https://seubackend.herokuapp.com/api
-REACT_APP_VERSION=2.10
+REACT_APP_VERSION=2.11
 NODE_ENV=production
 ```
 
