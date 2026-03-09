@@ -121,8 +121,7 @@ export const darkTheme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: '#000000',
-          color: darkColors.primary,
+          // Cores definidas inline no Layout.js via sx prop
         },
       },
     },
@@ -285,10 +284,7 @@ export const lightTheme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: '#D2691E',
-          color: '#FFFFFF',
-          boxShadow: '0 4px 12px rgba(139, 69, 19, 0.6)',
-          border: '2px solid #FFFFFF',
+          // Cores, sombra e borda definidas inline no Layout.js via sx prop
         },
       },
     },

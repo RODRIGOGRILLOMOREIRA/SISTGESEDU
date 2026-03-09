@@ -101,6 +101,16 @@ const Alunos = () => {
     if (turmas.length === 0 && !turmasLoading) {
       loadTurmas();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Carregar dados ao montar o componente
+  useEffect(() => {
+    const carregarDados = async () => {
+      await syncData(); // Carrega alunos e turmas do SchoolContext
+    };
+    carregarDados();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Filtrar alunos baseado na pesquisa
@@ -129,14 +139,21 @@ const Alunos = () => {
   const loadTurmas = async () => {
     try {
       setTurmasLoading(true);
+      console.log('Iniciando carregamento de turmas...');
       const data = await turmaService.getAll();
-      setLocalTurmas(data);
-      if (data.length === 0) {
-        console.warn('Nenhuma turma cadastrada. Crie turmas antes de importar alunos.');
+      console.log('Turmas recebidas do backend:', data);
+      // Garantir que data seja um array
+      const turmasArray = Array.isArray(data) ? data : [];
+      console.log(`${turmasArray.length} turmas processadas`);
+      setLocalTurmas(turmasArray);
+      if (turmasArray.length === 0) {
+        console.warn('Nenhuma turma cadastrada. Crie turmas antes de cadastrar alunos.');
+        toast.warning('Nenhuma turma cadastrada. Crie turmas primeiro!', { autoClose: 5000 });
       }
     } catch (error) {
       console.error('Erro ao carregar turmas:', error);
       toast.error('Erro ao carregar turmas. Verifique a conexão com o servidor.');
+      setLocalTurmas([]); // Garantir array vazio em caso de erro
     } finally {
       setTurmasLoading(false);
     }
@@ -345,8 +362,24 @@ const Alunos = () => {
   };
 
   const handleOpen = (aluno = null) => {
+    console.log('=== MODAL ABRINDO ===');
+    console.log('localTurmas:', localTurmas);
+    console.log('Quantidade de turmas:', localTurmas.length);
+    console.log('turmasLoading:', turmasLoading);
+    
+    // Garantir que as turmas estejam carregadas ao abrir o modal
+    if (localTurmas.length === 0) {
+      console.log('Carregando turmas ao abrir modal...');
+      loadTurmas();
+    } else {
+      console.log(`${localTurmas.length} turmas disponíveis`);
+      localTurmas.forEach((turma, index) => {
+        console.log(`Turma ${index + 1}:`, turma.nome, '-', turma._id);
+      });
+    }
+    
     if (aluno) {
-      setFormData({
+      const novoFormData = {
         nome: aluno.nome,
         matricula: aluno.matricula,
         dataNascimento: aluno.dataNascimento ? aluno.dataNascimento.split('T')[0] : '',
@@ -356,10 +389,12 @@ const Alunos = () => {
           telefone: aluno.responsavel?.telefone || '',
           email: aluno.responsavel?.email || '',
         },
-      });
+      };
+      console.log('Editando aluno - formData inicial:', novoFormData);
+      setFormData(novoFormData);
       setEditId(aluno._id);
     } else {
-      setFormData({
+      const novoFormData = {
         nome: '',
         matricula: '',
         dataNascimento: '',
@@ -369,12 +404,15 @@ const Alunos = () => {
           telefone: '',
           email: '',
         },
-      });
+      };
+      console.log('Novo aluno - formData inicial:', novoFormData);
+      setFormData(novoFormData);
       setEditId(null);
     }
     setTabValue(0);
     setImportData([]);
     setOpen(true);
+    console.log('=== MODAL ABERTO ===');
   };
 
   const handleClose = () => {
@@ -398,6 +436,7 @@ const Alunos = () => {
 
   const handleSubmit = async () => {
     try {
+      console.log('Dados do formulário a serem enviados:', formData);
       if (editId) {
         await alunoService.update(editId, formData);
         toast.success('Aluno atualizado com sucesso!');
@@ -408,6 +447,7 @@ const Alunos = () => {
       handleClose();
       await syncData(); // Sincroniza tanto alunos quanto turmas
     } catch (error) {
+      console.error('Erro ao salvar aluno:', error);
       toast.error(error.response?.data?.message || 'Erro ao salvar aluno');
     }
   };
@@ -1111,10 +1151,24 @@ const Alunos = () => {
               <TextField
                 select
                 label="Turma"
-                value={formData.turma}
-                onChange={(e) => setFormData({ ...formData, turma: e.target.value })}
+                value={formData.turma || ''}
+                onChange={(e) => {
+                  console.log('Turma selecionada:', e.target.value);
+                  console.log('formData antes:', formData);
+                  const novoFormData = { ...formData, turma: e.target.value };
+                  console.log('formData depois:', novoFormData);
+                  setFormData(novoFormData);
+                }}
                 fullWidth
-                helperText={localTurmas.length === 0 ? "Crie turmas na aba 'Turmas' primeiro" : ""}
+                SelectProps={{
+                  native: false,
+                }}
+                helperText={
+                  turmasLoading ? "Carregando turmas..." :
+                  localTurmas.length === 0 ? "⚠️ Crie turmas na aba 'Turmas' primeiro" : 
+                  `${localTurmas.length} turma(s) disponível(is) - Selecione uma (opcional)`
+                }
+                error={localTurmas.length === 0 && !turmasLoading}
               >
                 {turmasLoading ? (
                   <MenuItem disabled>
@@ -1124,16 +1178,14 @@ const Alunos = () => {
                   <MenuItem value="">
                     <em>Nenhuma turma cadastrada - Crie turmas primeiro</em>
                   </MenuItem>
-                ) : (
-                  <>
-                    <MenuItem value="">Sem turma</MenuItem>
-                    {localTurmas.map((turma) => (
-                      <MenuItem key={turma._id} value={turma._id}>
-                        {turma.nome} - {turma.serie} ({turma.turno})
-                      </MenuItem>
-                    ))}
-                  </>
-                )}
+                ) : [
+                  <MenuItem key="" value="">Sem turma</MenuItem>,
+                  ...localTurmas.map((turma) => (
+                    <MenuItem key={turma._id} value={turma._id}>
+                      {turma.nome} - {turma.serie} ({turma.turno})
+                    </MenuItem>
+                  ))
+                ]}
               </TextField>
 
               <Typography variant="h6" sx={{ mt: 2 }}>

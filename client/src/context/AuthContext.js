@@ -16,15 +16,22 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar se há usuário no localStorage
+    // Verificar se há usuário no localStorage apenas uma vez
     const storedUser = localStorage.getItem('user');
     const storedToken = localStorage.getItem('token');
 
     if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Erro ao parsear usuário do localStorage:', error);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      }
     }
     setLoading(false);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Array vazio - executar apenas uma vez na montagem
 
   const login = async (email, senha) => {
     const data = await authService.login(email, senha);

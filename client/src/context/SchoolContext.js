@@ -14,7 +14,6 @@ export const useSchool = () => {
 export const SchoolProvider = ({ children }) => {
   const [schoolSettings, setSchoolSettings] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
   
   // Dados centralizados para sincronização
   const [alunos, setAlunos] = useState([]);
@@ -32,7 +31,6 @@ export const SchoolProvider = ({ children }) => {
       const response = await api.get('/settings');
       console.log('SchoolSettings carregadas:', response.data);
       setSchoolSettings(response.data);
-      setRefreshKey(prev => prev + 1); // Forçar re-renderização
     } catch (error) {
       console.error('Erro ao carregar configurações da escola:', error);
     } finally {
@@ -114,15 +112,16 @@ export const SchoolProvider = ({ children }) => {
     ]);
   }, [loadAlunos, loadTurmas, loadAvaliacoes, loadHabilidades]);
 
+  // Carregar apenas configurações da escola na inicialização
+  // Os dados (alunos, turmas, etc.) serão carregados sob demanda pelas páginas
   useEffect(() => {
     loadSchoolSettings();
-    syncData(); // Carregar dados iniciais
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateSchoolSettings = (newSettings) => {
     console.log('Atualizando SchoolSettings:', newSettings);
     setSchoolSettings(newSettings);
-    setRefreshKey(prev => prev + 1); // Forçar re-renderização
   };
 
   return (
@@ -131,7 +130,6 @@ export const SchoolProvider = ({ children }) => {
       loading, 
       loadSchoolSettings,
       updateSchoolSettings,
-      refreshKey,
       // Dados e funções para sincronização
       alunos,
       turmas,

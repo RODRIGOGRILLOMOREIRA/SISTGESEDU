@@ -95,6 +95,12 @@ const Turmas = () => {
   useEffect(() => {
     loadProfessores();
     loadDisciplinas();
+    // Carregar dados ao montar o componente
+    const carregarDados = async () => {
+      await syncData(); // Carrega turmas e alunos do SchoolContext
+    };
+    carregarDados();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadTurmas = async () => {

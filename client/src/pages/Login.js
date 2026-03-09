@@ -36,7 +36,7 @@ import axios from 'axios';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   
   const [formData, setFormData] = useState({
@@ -49,6 +49,13 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [schoolSettings, setSchoolSettings] = useState(null);
+
+  // Redirecionar se já estiver autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     loadSchoolSettings();

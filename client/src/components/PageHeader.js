@@ -3,7 +3,7 @@ import { Box, Typography, Avatar } from '@mui/material';
 import { useSchool } from '../context/SchoolContext';
 
 const PageHeader = ({ title, subtitle, icon: Icon }) => {
-  const { schoolSettings, refreshKey } = useSchool();
+  const { schoolSettings } = useSchool();
 
   return (
     <Box 
@@ -27,7 +27,6 @@ const PageHeader = ({ title, subtitle, icon: Icon }) => {
       >
         {schoolSettings?.logo && (
           <Avatar
-            key={`pageheader-logo-${refreshKey}`}
             src={schoolSettings.logo}
             alt="Logo da Escola"
             imgProps={{ 

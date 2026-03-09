@@ -50,13 +50,7 @@ const Layout = () => {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
-  const { schoolSettings, refreshKey } = useSchool();
-
-  // Debug: Log quando schoolSettings mudar
-  React.useEffect(() => {
-    console.log('Layout - SchoolSettings atualizadas:', schoolSettings);
-    console.log('RefreshKey:', refreshKey);
-  }, [schoolSettings, refreshKey]);
+  const { schoolSettings } = useSchool();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -237,17 +231,26 @@ const Layout = () => {
           background: (theme) => theme.palette.mode === 'dark'
             ? 'linear-gradient(135deg, #0A0E14 0%, #1a2332 100%)'
             : 'linear-gradient(135deg, #8B4513 0%, #D2691E 100%)',
+          boxShadow: (theme) => theme.palette.mode === 'dark'
+            ? '0 4px 12px rgba(0, 206, 209, 0.3)'
+            : '0 4px 12px rgba(139, 69, 19, 0.6)',
+          border: (theme) => theme.palette.mode === 'dark'
+            ? 'none'
+            : '2px solid #FFFFFF',
         }}
       >
         <Toolbar>
           <IconButton
-            color="inherit"
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
+            style={{ color: '#FFFFFF' }}
+            sx={{ 
+              mr: 2, 
+              display: { sm: 'none' },
+            }}
           >
-            <MenuIcon />
+            <MenuIcon style={{ color: '#FFFFFF' }} />
           </IconButton>
           <Box sx={{ 
             display: 'flex', 
@@ -256,7 +259,6 @@ const Layout = () => {
           }}>
             {schoolSettings?.logo && (
               <Avatar
-                key={`appbar-logo-${refreshKey}`}
                 src={schoolSettings.logo}
                 alt="Logo da Escola"
                 imgProps={{ 
@@ -295,8 +297,11 @@ const Layout = () => {
             {user?.nome} ({user?.tipo})
           </Typography>
           <Tooltip title={isDarkMode ? 'Modo Claro' : 'Modo Escuro'}>
-            <IconButton onClick={toggleTheme} color="inherit">
-              {isDarkMode ? <Brightness7 /> : <Brightness4 />}
+            <IconButton 
+              onClick={toggleTheme}
+              style={{ color: '#FFFFFF' }}
+            >
+              {isDarkMode ? <Brightness7 style={{ color: '#FFFFFF' }} /> : <Brightness4 style={{ color: '#FFFFFF' }} />}
             </IconButton>
           </Tooltip>
         </Toolbar>
