@@ -461,7 +461,7 @@ const Login = () => {
           {/* Informações Adicionais */}
           <Box sx={{ mt: 2, textAlign: 'center' }}>
             <Typography variant="caption" color="text.secondary">
-              © {new Date().getFullYear()} {schoolSettings?.nomeEscola || 'Sistema de Gestão Escolar'}. Todos os direitos reservados.
+              © {new Date().getFullYear()} SistGesEdu , Licença MIT , todos os direitos reservados
             </Typography>
           </Box>
         </Paper>
