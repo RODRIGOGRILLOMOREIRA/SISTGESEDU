@@ -13,22 +13,22 @@
 }
 
 .MuiPaper-elevation1 {
-  box-shadow: 0 2px 8px rgba(0, 206, 209, 0.1) !important;
+  box-shadow: 0 3px 12px rgba(0, 206, 209, 0.1) !important;
 }
 
 .MuiPaper-elevation2 {
-  box-shadow: 0 4px 12px rgba(0, 206, 209, 0.15) !important;
+  box-shadow: 0 6px 18px rgba(0, 206, 209, 0.15) !important;
 }
 
 .MuiPaper-elevation3 {
-  box-shadow: 0 6px 16px rgba(0, 206, 209, 0.2) !important;
+  box-shadow: 0 9px 24px rgba(0, 206, 209, 0.2) !important;
 }
 
 /* Hover effect para cards */
 .MuiCard-root:hover,
 .MuiPaper-root:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 206, 209, 0.3) !important;
+  box-shadow: 0 12px 36px rgba(0, 206, 209, 0.3) !important;
 }
 
 /* ==================== BOTÕES ==================== */
@@ -47,7 +47,7 @@
 
 .MuiButton-contained:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 206, 209, 0.4) !important;
+  box-shadow: 0 9px 30px rgba(0, 206, 209, 0.4) !important;
   background: linear-gradient(135deg, #00FFFF 0%, #00CED1 100%) !important;
 }
 
@@ -65,7 +65,7 @@
 .MuiTableContainer-root {
   border-radius: 12px !important;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 206, 209, 0.15) !important;
+  box-shadow: 0 6px 18px rgba(0, 206, 209, 0.15) !important;
 }
 
 .MuiTableHead-root {
@@ -194,7 +194,7 @@
 
 /* ==================== APPBAR ==================== */
 .MuiAppBar-root {
-  box-shadow: 0 4px 12px rgba(0, 206, 209, 0.2) !important;
+  box-shadow: 0 6px 18px rgba(0, 206, 209, 0.2) !important;
   backdrop-filter: blur(10px) !important;
 }
 
@@ -234,7 +234,7 @@
   border-radius: 12px !important;
   margin-bottom: 8px !important;
   border: 1px solid rgba(0, 206, 209, 0.1) !important;
-  box-shadow: 0 2px 8px rgba(0, 206, 209, 0.1) !important;
+  box-shadow: 0 3px 12px rgba(0, 206, 209, 0.1) !important;
 }
 
 .MuiAccordion-root:before {
@@ -242,7 +242,7 @@
 }
 
 .MuiAccordion-root:hover {
-  box-shadow: 0 4px 12px rgba(0, 206, 209, 0.2) !important;
+  box-shadow: 0 6px 18px rgba(0, 206, 209, 0.2) !important;
 }
 
 .MuiAccordionSummary-root {
@@ -475,7 +475,7 @@ body:not(.dark-mode) .MuiListItemIcon-root {
 body:not(.dark-mode) .MuiDrawer-paper {
   background: linear-gradient(180deg, rgba(139, 69, 19, 0.04) 0%, transparent 100%) !important;
   border-right: 2px solid rgba(139, 69, 19, 0.2) !important;
-  box-shadow: 4px 0 16px rgba(139, 69, 19, 0.2) !important;
+  box-shadow: 6px 0 24px rgba(139, 69, 19, 0.2) !important;
 }
 
 /* Hover e item ativo no menu lateral */
@@ -490,12 +490,12 @@ body:not(.dark-mode) .MuiListItemButton-root.Mui-selected {
 
 /* Sombra da AppBar (barra de topo) */
 body:not(.dark-mode) .MuiAppBar-root {
-  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.4) !important;
+  box-shadow: 0 6px 18px rgba(139, 69, 19, 0.4) !important;
 }
 
 /* Cabeçalhos das tabelas */
 body:not(.dark-mode) .MuiTableContainer-root {
-  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.12) !important;
+  box-shadow: 0 6px 18px rgba(139, 69, 19, 0.12) !important;
 }
 body:not(.dark-mode) .MuiTableHead-root {
   background: linear-gradient(135deg, rgba(139, 69, 19, 0.1) 0%, rgba(101, 67, 33, 0.05) 100%) !important;
@@ -506,17 +506,17 @@ body:not(.dark-mode) .MuiTableCell-head {
 
 /* Sombras dos cards/papers (todos os dashboards e páginas) */
 body:not(.dark-mode) .MuiPaper-elevation1 {
-  box-shadow: 0 2px 8px rgba(139, 69, 19, 0.08) !important;
+  box-shadow: 0 3px 12px rgba(139, 69, 19, 0.08) !important;
 }
 body:not(.dark-mode) .MuiPaper-elevation2 {
-  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.12) !important;
+  box-shadow: 0 6px 18px rgba(139, 69, 19, 0.12) !important;
 }
 body:not(.dark-mode) .MuiPaper-elevation3 {
-  box-shadow: 0 6px 16px rgba(139, 69, 19, 0.15) !important;
+  box-shadow: 0 9px 24px rgba(139, 69, 19, 0.15) !important;
 }
 
 /* Hover dos cards/papers no modo claro */
 body:not(.dark-mode) .MuiCard-root:hover,
 body:not(.dark-mode) .MuiPaper-root:hover {
-  box-shadow: 0 8px 24px rgba(139, 69, 19, 0.2) !important;
+  box-shadow: 0 12px 36px rgba(139, 69, 19, 0.2) !important;
 }
