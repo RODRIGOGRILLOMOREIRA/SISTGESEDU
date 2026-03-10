@@ -240,7 +240,7 @@ exports.getFrequenciaAluno = async (req, res) => {
     
     // Calcular estatísticas
     const total = frequencias.length;
-    const presencas = frequencias.filter(f => f.status === 'presente').length;
+    const presencas = frequencias.filter(f => f.status === 'presente' || f.status === 'falta-justificada').length;
     const faltas = frequencias.filter(f => f.status === 'falta').length;
     const faltasJustificadas = frequencias.filter(f => f.status === 'falta-justificada').length;
     const percentualPresenca = total > 0 ? ((presencas / total) * 100).toFixed(2) : 100;
@@ -304,7 +304,7 @@ exports.getFrequenciaTurmaDia = async (req, res) => {
     
     const resumo = {
       total: frequencias.length,
-      presentes: frequencias.filter(f => f.status === 'presente').length,
+      presentes: frequencias.filter(f => f.status === 'presente' || f.status === 'falta-justificada').length,
       faltas: frequencias.filter(f => f.status === 'falta').length,
       faltasJustificadas: frequencias.filter(f => f.status === 'falta-justificada').length,
       percentualPresenca: 0
@@ -370,7 +370,7 @@ exports.getDashboardFrequencia = async (req, res) => {
     // Estatísticas gerais
     const [total, presencas, faltas, faltasJustificadas] = await Promise.all([
       Frequencia.countDocuments(filter),
-      Frequencia.countDocuments({ ...filter, status: 'presente' }),
+      Frequencia.countDocuments({ ...filter, status: { $in: ['presente', 'falta-justificada'] } }),
       Frequencia.countDocuments({ ...filter, status: 'falta' }),
       Frequencia.countDocuments({ ...filter, status: 'falta-justificada' })
     ]);
@@ -405,10 +405,10 @@ exports.getDashboardFrequencia = async (req, res) => {
           _id: '$aluno', // Sempre agrupa por aluno (frequência geral)
           totalAulas: { $sum: 1 },
           presencas: {
-            $sum: { $cond: [{ $eq: ['$status', 'presente'] }, 1, 0] }
+            $sum: { $cond: [{ $in: ['$status', ['presente', 'falta-justificada']] }, 1, 0] }
           },
           faltas: {
-            $sum: { $cond: [{ $in: ['$status', ['falta', 'falta-justificada']] }, 1, 0] }
+            $sum: { $cond: [{ $eq: ['$status', 'falta'] }, 1, 0] }
           }
         }
       },
@@ -540,33 +540,26 @@ exports.getDashboardFrequencia = async (req, res) => {
           _id: { $dayOfWeek: '$data' },
           total: { $sum: 1 },
           presencas: {
-            $sum: { $cond: [{ $eq: ['$status', 'presente'] }, 1, 0] }
+            $sum: { $cond: [{ $in: ['$status', ['presente', 'falta-justificada']] }, 1, 0] }
           }
         }
       },
       { $sort: { _id: 1 } }
     ]);
     
-    // === NOVIDADE: CALCULAR CONSISTÊNCIA DOS ÚLTIMOS 5 DIAS ===
-    // Calcular data de 5 dias atrás
-    const dataHoje = new Date();
-    const data5DiasAtras = new Date(dataHoje);
-    data5DiasAtras.setDate(dataHoje.getDate() - 5);
-    data5DiasAtras.setHours(0, 0, 0, 0);
-    
-    console.log('📅 Calculando consistência dos últimos 5 dias:', {
-      dataHoje: dataHoje.toISOString(),
-      data5DiasAtras: data5DiasAtras.toISOString()
-    });
-    
-    // Buscar frequências dos últimos 5 dias por aluno
-    const ultimos5DiasFilter = {
-      ...filter,
-      data: {
-        $gte: data5DiasAtras,
-        $lte: dataHoje
-      }
-    };
+    // === ÚLTIMOS 5 DIAS REGISTRADOS (apenas datas com algum lançamento) ===
+    // Busca as datas distintas que têm registro e usa as 5 mais recentes
+    const datasComRegistro = await Frequencia.distinct('data', { ...filter, ativo: true });
+    const ultimas5Datas = datasComRegistro
+      .sort((a, b) => new Date(b) - new Date(a))
+      .slice(0, 5);
+
+    console.log('📅 Últimos 5 dias registrados:', ultimas5Datas.map(d => new Date(d).toISOString().split('T')[0]));
+
+    // Buscar frequências dos últimos 5 dias registrados por aluno
+    const ultimos5DiasFilter = ultimas5Datas.length > 0
+      ? { ...filter, data: { $in: ultimas5Datas } }
+      : { ...filter, data: { $gte: new Date(0) } };
     
     const frequenciasUltimos5Dias = await Frequencia.aggregate([
       { $match: ultimos5DiasFilter },
@@ -575,10 +568,12 @@ exports.getDashboardFrequencia = async (req, res) => {
           _id: '$aluno',
           totalAulas: { $sum: 1 },
           presencas: {
-            $sum: { $cond: [{ $eq: ['$status', 'presente'] }, 1, 0] }
+            $sum: { $cond: [{ $in: ['$status', ['presente', 'falta-justificada']] }, 1, 0] }
           },
           // Contar dias únicos com aula
-          datasUnicas: { $addToSet: { $dateToString: { format: '%Y-%m-%d', date: '$data' } } }
+          datasUnicas: { $addToSet: { $dateToString: { format: '%Y-%m-%d', date: '$data' } } },
+          faltas: { $sum: { $cond: [{ $eq: ['$status', 'falta'] }, 1, 0] } },
+          datasAusentes: { $addToSet: { $cond: [{ $eq: ['$status', 'falta'] }, { $dateToString: { format: '%Y-%m-%d', date: '$data' } }, null] } }
         }
       },
       {
@@ -612,7 +607,9 @@ exports.getDashboardFrequencia = async (req, res) => {
           presencas: item.presencas,
           diasComAula: item.diasComAula,
           percentualPresenca: parseFloat(item.percentualPresencaUltimos5Dias.toFixed(2)),
-          pontuacaoConsistencia: parseFloat(item.pontuacaoConsistencia.toFixed(2))
+          pontuacaoConsistencia: parseFloat(item.pontuacaoConsistencia.toFixed(2)),
+          faltas: item.faltas || 0,
+          temFaltasConsecutivas: item.diasComAula >= 5 && (item.datasAusentes || []).filter(d => d !== null).length >= item.diasComAula
         }
       ])
     );
@@ -624,7 +621,9 @@ exports.getDashboardFrequencia = async (req, res) => {
         presencas: 0,
         diasComAula: 0,
         percentualPresenca: 0,
-        pontuacaoConsistencia: 0
+        pontuacaoConsistencia: 0,
+        faltas: 0,
+        temFaltasConsecutivas: false
       };
       
       return {
@@ -1112,7 +1111,7 @@ exports.getEstatisticasTurma = async (req, res) => {
     
     // Stats do dia
     const [presentesHoje, faltasHoje, justificadasHoje] = await Promise.all([
-      Frequencia.countDocuments({ ...filtroHoje, status: 'presente' }),
+      Frequencia.countDocuments({ ...filtroHoje, status: { $in: ['presente', 'falta-justificada'] } }),
       Frequencia.countDocuments({ ...filtroHoje, status: 'falta' }),
       Frequencia.countDocuments({ ...filtroHoje, status: 'falta-justificada' })
     ]);
@@ -1120,7 +1119,7 @@ exports.getEstatisticasTurma = async (req, res) => {
     // Stats acumuladas
     const [totalRegistros, presentesAcumulado, faltasAcumulado, justificadasAcumulado] = await Promise.all([
       Frequencia.countDocuments(filtroAcumulado),
-      Frequencia.countDocuments({ ...filtroAcumulado, status: 'presente' }),
+      Frequencia.countDocuments({ ...filtroAcumulado, status: { $in: ['presente', 'falta-justificada'] } }),
       Frequencia.countDocuments({ ...filtroAcumulado, status: 'falta' }),
       Frequencia.countDocuments({ ...filtroAcumulado, status: 'falta-justificada' })
     ]);
@@ -1224,7 +1223,7 @@ exports.getEstatisticasPorPeriodo = async (req, res) => {
           _id: groupBy,
           total: { $sum: 1 },
           presentes: {
-            $sum: { $cond: [{ $eq: ['$status', 'presente'] }, 1, 0] }
+            $sum: { $cond: [{ $in: ['$status', ['presente', 'falta-justificada']] }, 1, 0] }
           },
           faltas: {
             $sum: { $cond: [{ $eq: ['$status', 'falta'] }, 1, 0] }
@@ -1247,7 +1246,7 @@ exports.getEstatisticasPorPeriodo = async (req, res) => {
     // Totais gerais do período
     const [totalGeral, presentesGeral, faltasGeral, justificadasGeral] = await Promise.all([
       Frequencia.countDocuments(filtro),
-      Frequencia.countDocuments({ ...filtro, status: 'presente' }),
+      Frequencia.countDocuments({ ...filtro, status: { $in: ['presente', 'falta-justificada'] } }),
       Frequencia.countDocuments({ ...filtro, status: 'falta' }),
       Frequencia.countDocuments({ ...filtro, status: 'falta-justificada' })
     ]);
@@ -1306,7 +1305,7 @@ exports.getFrequenciaAcumuladaAluno = async (req, res) => {
     
     // Estatísticas gerais
     const total = frequencias.length;
-    const presentes = frequencias.filter(f => f.status === 'presente').length;
+    const presentes = frequencias.filter(f => f.status === 'presente' || f.status === 'falta-justificada').length;
     const faltas = frequencias.filter(f => f.status === 'falta').length;
     const justificadas = frequencias.filter(f => f.status === 'falta-justificada').length;
     const percentualPresenca = total > 0 ? parseFloat(((presentes / total) * 100).toFixed(2)) : 100;
@@ -1331,7 +1330,7 @@ exports.getFrequenciaAcumuladaAluno = async (req, res) => {
         };
       }
       porDisciplina[disciplinaId].total++;
-      if (freq.status === 'presente') porDisciplina[disciplinaId].presentes++;
+      if (freq.status === 'presente' || freq.status === 'falta-justificada') porDisciplina[disciplinaId].presentes++;
       if (freq.status === 'falta') porDisciplina[disciplinaId].faltas++;
       if (freq.status === 'falta-justificada') porDisciplina[disciplinaId].justificadas++;
     });
@@ -1348,7 +1347,7 @@ exports.getFrequenciaAcumuladaAluno = async (req, res) => {
       {
         $group: {
           _id: '$data',
-          presentes: { $sum: { $cond: [{ $eq: ['$status', 'presente'] }, 1, 0] } },
+          presentes: { $sum: { $cond: [{ $in: ['$status', ['presente', 'falta-justificada']] }, 1, 0] } },
           faltas: { $sum: { $cond: [{ $eq: ['$status', 'falta'] }, 1, 0] } },
           justificadas: { $sum: { $cond: [{ $eq: ['$status', 'falta-justificada'] }, 1, 0] } },
           total: { $sum: 1 }

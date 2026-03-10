@@ -119,7 +119,7 @@ frequenciaSchema.statics.calcularPresenca = async function(alunoId, filtros = {}
   
   const [total, presencas] = await Promise.all([
     this.countDocuments(query),
-    this.countDocuments({ ...query, status: 'presente' })
+    this.countDocuments({ ...query, status: { $in: ['presente', 'falta-justificada'] } })
   ]);
   
   return total > 0 ? ((presencas / total) * 100).toFixed(2) : 100;
@@ -138,7 +138,7 @@ frequenciaSchema.statics.getFaltasPorPeriodo = async function(alunoId, ano, trim
     aluno: alunoId,
     ano,
     trimestre,
-    status: { $in: ['falta', 'falta-justificada'] },
+    status: 'falta',
     ativo: true
   });
 };

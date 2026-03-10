@@ -12,9 +12,10 @@ export const ThemeProvider = ({ children }) => {
     return saved !== null ? JSON.parse(saved) : true; // Padrão: modo escuro
   });
 
-  // Salvar preferência no localStorage
+  // Salvar preferência no localStorage e sincronizar classe no body
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+    document.body.classList.toggle('dark-mode', isDarkMode);
   }, [isDarkMode]);
 
   // Alternar tema

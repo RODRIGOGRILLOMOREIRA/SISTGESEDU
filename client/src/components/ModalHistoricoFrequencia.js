@@ -326,7 +326,7 @@ const ModalHistoricoFrequencia = ({
                         </TableCell>
                         <TableCell align="center">
                           <Chip 
-                            label={disc.faltas + disc.justificadas} 
+                            label={disc.faltas}
                             color="error" 
                             size="small"
                             sx={{ fontWeight: 600 }}
@@ -400,7 +400,7 @@ const ModalHistoricoFrequencia = ({
                         </TableCell>
                         <TableCell align="center">
                           <Chip 
-                            label={dia.faltas + dia.justificadas} 
+                            label={dia.faltas}
                             color="error" 
                             size="small"
                             sx={{ fontWeight: 600 }}

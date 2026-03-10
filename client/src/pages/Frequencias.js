@@ -339,13 +339,12 @@ const Frequencias = () => {
     
     // Contar apenas os alunos ATUAIS da turma (evitar IDs antigos no objeto presencas)
     const alunosIds = alunos.map(a => a._id);
-    const presentes = alunosIds.filter(id => presencas[id] === 'presente').length;
+    const presentes = alunosIds.filter(id => presencas[id] === 'presente' || presencas[id] === 'falta-justificada').length;
     const faltasSemJustificativa = alunosIds.filter(id => presencas[id] === 'falta').length;
     const faltasJustificadas = alunosIds.filter(id => presencas[id] === 'falta-justificada').length;
-    const faltas = faltasSemJustificativa + faltasJustificadas;
-    
-    // Calcular percentual: começa em 100% e diminui com as faltas
-    // Faltas justificadas também contam como faltas no percentual
+    const faltas = faltasSemJustificativa;
+
+    // Percentual: presentes (inclui justificadas) / total
     let percentual = 100;
     if (total > 0) {
       percentual = ((presentes / total) * 100);

@@ -1572,7 +1572,7 @@ const Dashboard = () => {
                 gutterBottom 
                 fontWeight="600"
                 sx={{
-                  color: '#00CED1',
+                  color: isDarkMode ? '#00CED1' : '#8B4513',
                   borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
                   paddingBottom: 1,
                   marginBottom: 2
@@ -1605,7 +1605,7 @@ const Dashboard = () => {
                 gutterBottom 
                 fontWeight="600"
                 sx={{
-                  color: '#00CED1',
+                  color: isDarkMode ? '#00CED1' : '#8B4513',
                   borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
                   paddingBottom: 1,
                   marginBottom: 2
@@ -1640,7 +1640,7 @@ const Dashboard = () => {
                 gutterBottom 
                 fontWeight="600"
                 sx={{
-                  color: '#00CED1',
+                  color: isDarkMode ? '#00CED1' : '#8B4513',
                   borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
                   paddingBottom: 1,
                   marginBottom: 2
@@ -1870,7 +1870,7 @@ const Dashboard = () => {
                 gutterBottom 
                 fontWeight="600"
                 sx={{
-                  color: '#00CED1',
+                  color: isDarkMode ? '#00CED1' : '#8B4513',
                   borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
                   paddingBottom: 1,
                   marginBottom: 2
@@ -1929,7 +1929,7 @@ const Dashboard = () => {
                 gutterBottom 
                 fontWeight="600"
                 sx={{
-                  color: '#00CED1',
+                  color: isDarkMode ? '#00CED1' : '#8B4513',
                   borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
                   paddingBottom: 1,
                   marginBottom: 2
@@ -1994,7 +1994,7 @@ const Dashboard = () => {
                   gutterBottom 
                   fontWeight="600"
                   sx={{
-                    color: '#00CED1',
+                    color: isDarkMode ? '#00CED1' : '#8B4513',
                     borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
                     paddingBottom: 1,
                     marginBottom: 2
@@ -2090,7 +2090,7 @@ const Dashboard = () => {
                       variant="h6" 
                       fontWeight="600"
                       sx={{
-                        color: '#00CED1',
+                        color: isDarkMode ? '#00CED1' : '#8B4513',
                         borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
                         paddingBottom: 1
                       }}
@@ -2841,29 +2841,11 @@ const Dashboard = () => {
                           .sort((a, b) => parseFloat(b.percentualPresenca) - parseFloat(a.percentualPresenca))
                           .slice(0, 3);
 
-                        // TOP 3 MAIS CONSISTENTES NOS ÚLTIMOS 5 DIAS
-                        // Filtrar alunos que têm dados dos últimos 5 dias e ordenar por pontuação de consistência
-                        const top3Consistentes = [...alunosComDados]
-                          .filter(a => a.ultimos5Dias && a.ultimos5Dias.diasComAula > 0)
-                          .sort((a, b) => {
-                            // Ordenar por: 1) Maior pontuação de consistência, 2) Maior % presença últimos 5 dias, 3) Mais dias com aula
-                            if (b.ultimos5Dias.pontuacaoConsistencia !== a.ultimos5Dias.pontuacaoConsistencia) {
-                              return b.ultimos5Dias.pontuacaoConsistencia - a.ultimos5Dias.pontuacaoConsistencia;
-                            }
-                            if (b.ultimos5Dias.percentualPresenca !== a.ultimos5Dias.percentualPresenca) {
-                              return b.ultimos5Dias.percentualPresenca - a.ultimos5Dias.percentualPresenca;
-                            }
-                            return b.ultimos5Dias.diasComAula - a.ultimos5Dias.diasComAula;
-                          })
-                          .slice(0, 3);
-                        
-                        console.log('📊 Top 3 Consistentes (Últimos 5 Dias):', top3Consistentes.map(a => ({
-                          nome: a.aluno.nome,
-                          diasComAula: a.ultimos5Dias.diasComAula,
-                          presencas: a.ultimos5Dias.presencas,
-                          percentual: a.ultimos5Dias.percentualPresenca,
-                          pontuacao: a.ultimos5Dias.pontuacaoConsistencia
-                        })));
+                        // TOP 5 MAIS FALTOSOS NOS ÚLTIMOS 5 DIAS
+                        const top5Inconsistentes = [...alunosComDados]
+                          .filter(a => a.ultimos5Dias && a.ultimos5Dias.faltas > 0)
+                          .sort((a, b) => (b.ultimos5Dias.faltas || 0) - (a.ultimos5Dias.faltas || 0))
+                          .slice(0, 5);
 
                         // TOP 3 PIORES FREQUÊNCIAS (ordenar por percentual crescente)
                         const top3Piores = [...alunosComDados]
@@ -2882,15 +2864,25 @@ const Dashboard = () => {
                           }]
                         };
 
-                        // Criar dados para gráfico TOP 3 Mais Consistentes (Últimos 5 Dias)
-                        const dadosConsistentes = {
-                          labels: top3Consistentes.map(a => a.aluno.nome.length > 20 ? a.aluno.nome.substring(0, 20) + '...' : a.aluno.nome),
+                        // Criar dados para gráfico TOP 5 Mais Faltosos (Últimos 5 Dias)
+                        const dadosInconsistentes = {
+                          labels: top5Inconsistentes.map(a => a.aluno.nome.length > 20 ? a.aluno.nome.substring(0, 20) + '...' : a.aluno.nome),
                           datasets: [{
-                            label: 'Consistência (%)',
-                            data: top3Consistentes.map(a => a.ultimos5Dias?.pontuacaoConsistencia || 0),
-                            backgroundColor: 'rgba(255, 193, 7, 0.8)',
-                            borderColor: 'rgb(255, 193, 7)',
-                            borderWidth: 2,
+                            label: 'Faltas (registros)',
+                            data: top5Inconsistentes.map(a => a.ultimos5Dias?.faltas || 0),
+                            backgroundColor: top5Inconsistentes.map(a =>
+                              a.ultimos5Dias?.temFaltasConsecutivas
+                                ? 'rgba(211, 47, 47, 0.85)'
+                                : 'rgba(255, 193, 7, 0.8)'
+                            ),
+                            borderColor: top5Inconsistentes.map(a =>
+                              a.ultimos5Dias?.temFaltasConsecutivas
+                                ? 'rgb(183, 28, 28)'
+                                : 'rgb(255, 193, 7)'
+                            ),
+                            borderWidth: top5Inconsistentes.map(a =>
+                              a.ultimos5Dias?.temFaltasConsecutivas ? 4 : 2
+                            ),
                           }]
                         };
 
@@ -2926,20 +2918,24 @@ const Dashboard = () => {
                               ...tooltipGlobalConfig,
                               callbacks: {
                                 label: function(context) {
-                                  const aluno = sufixo === '%' 
+                                  const aluno = sufixo === '%'
                                     ? (titulo.includes('Melhores') ? top3Melhores : top3Piores)[context.dataIndex]
-                                    : top3Consistentes[context.dataIndex];
-                                  
-                                  // Tooltip especial para Consistentes (últimos 5 dias)
-                                  if (sufixo === 'consistencia') {
+                                    : top5Inconsistentes[context.dataIndex];
+
+                                  // Tooltip especial para Inconsistentes (últimos 5 dias)
+                                  if (sufixo === 'inconsistencia') {
+                                    const alerta = aluno?.ultimos5Dias?.temFaltasConsecutivas
+                                      ? '⚠️ ALERTA: 5 dias consecutivos com falta!'
+                                      : '';
                                     return [
                                       `${context.label}`,
-                                      `Consistência: ${context.parsed.x.toFixed(2)}%`,
-                                      `Presenças nos últimos 5 dias: ${aluno.ultimos5Dias?.presencas || 0} de ${aluno.ultimos5Dias?.totalAulas || 0}`,
-                                      `Dias com aula: ${aluno.ultimos5Dias?.diasComAula || 0}`,
-                                      `Frequência geral: ${aluno.percentualPresenca}%`,
-                                      `Matrícula: ${aluno.aluno.matricula}`
-                                    ];
+                                      `Faltas 5 dias: ${context.parsed.x}`,
+                                      `Total de registros: ${aluno?.ultimos5Dias?.totalAulas || 0}`,
+                                      `Dias com aula no período: ${aluno?.ultimos5Dias?.diasComAula || 0}`,
+                                      `Frequência geral: ${aluno?.percentualPresenca}%`,
+                                      `Matrícula: ${aluno?.aluno?.matricula}`,
+                                      alerta
+                                    ].filter(Boolean);
                                   }
                                   
                                   // Tooltip padrão para Melhores/Piores
@@ -2960,10 +2956,10 @@ const Dashboard = () => {
                           scales: {
                             x: {
                               beginAtZero: true,
-                              max: (sufixo === '%' || sufixo === 'consistencia') ? 100 : undefined,
+                              max: sufixo === '%' ? 100 : undefined,
                               title: {
                                 display: true,
-                                text: sufixo === 'consistencia' ? 'Consistência (%)' : (sufixo === '%' ? 'Frequência (%)' : 'Número de Presenças'),
+                                text: sufixo === 'inconsistencia' ? 'Faltas (registros)' : sufixo === '%' ? 'Frequência (%)' : 'Número de Presenças',
                                 color: isDarkMode ? '#ffffff' : '#000000',
                                 font: { size: 14, weight: 'bold' }
                               },
@@ -2995,7 +2991,7 @@ const Dashboard = () => {
                                 variant="h6" 
                                 fontWeight="600"
                                 sx={{
-                                  color: '#00CED1',
+                                  color: isDarkMode ? '#00CED1' : '#8B4513',
                                   borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
                                   paddingBottom: 1,
                                   marginBottom: 2,
@@ -3044,36 +3040,33 @@ const Dashboard = () => {
                                 </Fade>
                               </Grid>
 
-                              {/* TOP 3 CONSISTENTES */}
+                              {/* TOP 5 INCONSISTENTES */}
                               <Grid item xs={12} md={4}>
                                 <Fade in={true} timeout={1600}>
-                                  <Paper 
-                                    elevation={3} 
-                                    sx={{ 
-                                      p: 2, 
+                                  <Paper
+                                    elevation={3}
+                                    sx={{
+                                      p: 2,
                                       height: 350,
                                       borderRadius: 3,
-                                      border: '8px solid rgba(255, 193, 7, 0.5)',
-                                      boxShadow: '0 4px 20px rgba(255, 193, 7, 0.2)',
+                                      border: '8px solid rgba(255, 152, 0, 0.5)',
+                                      boxShadow: '0 4px 20px rgba(255, 152, 0, 0.2)',
                                       transition: 'all 0.3s ease',
                                       '&:hover': {
-                                        boxShadow: '0 8px 30px rgba(255, 193, 7, 0.3)',
+                                        boxShadow: '0 8px 30px rgba(255, 152, 0, 0.3)',
                                         transform: 'translateY(-4px)',
                                       }
                                     }}
                                   >
-                                    {top3Consistentes.length > 0 ? (
-                                      <Bar 
-                                        data={dadosConsistentes} 
-                                        options={opcoesHorizontal('🎯 TOP 3 Mais Consistentes (Últimos 5 Dias)', 'consistencia')}
+                                    {top5Inconsistentes.length > 0 ? (
+                                      <Bar
+                                        data={dadosInconsistentes}
+                                        options={opcoesHorizontal('⚠️ TOP 5 Mais Faltosos (Últimos 5 Dias Registrados)', 'inconsistencia')}
                                       />
                                     ) : (
                                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 1 }}>
                                         <Typography variant="body2" color="text.secondary" align="center">
-                                          Sem dados de frequência dos últimos 5 dias
-                                        </Typography>
-                                        <Typography variant="caption" color="text.secondary" align="center">
-                                          (Requer frequência mínima de 75%)
+                                          Nenhum aluno com faltas nos últimos 5 dias registrados
                                         </Typography>
                                       </Box>
                                     )}
@@ -3119,8 +3112,8 @@ const Dashboard = () => {
                             {/* Legenda explicativa */}
                             <Alert severity="info" icon={<AssessmentOutlined />} sx={{ mb: 3 }}>
                               <Typography variant="body2">
-                                <strong>🥇 Melhores:</strong> Alunos com maior percentual de frequência | 
-                                <strong> 📈 Consistentes:</strong> Alunos com ≥75% de frequência e mais presenças totais | 
+                                <strong>🥇 Melhores:</strong> Alunos com maior percentual de frequência |
+                                <strong> ⚠️ Inconsistentes:</strong> Alunos com mais faltas nos últimos 5 dias registrados (barra vermelha = ausente em todos os 5 dias registrados) |
                                 <strong> ⚠️ Piores:</strong> Alunos com menor percentual (precisam de atenção)
                               </Typography>
                             </Alert>

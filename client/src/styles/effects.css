@@ -460,3 +460,63 @@ textarea,
 select {
   transition: none !important;
 }
+
+/* ===================================================
+   MODO CLARO: substitui ciano por marrocos (#8B4513)
+   Ativado quando body NÃO possui a classe .dark-mode
+   =================================================== */
+
+/* Ícones do menu lateral */
+body:not(.dark-mode) .MuiListItemIcon-root {
+  color: #8B4513 !important;
+}
+
+/* Fundo, borda e sombra do drawer (menu lateral) */
+body:not(.dark-mode) .MuiDrawer-paper {
+  background: linear-gradient(180deg, rgba(139, 69, 19, 0.04) 0%, transparent 100%) !important;
+  border-right: 2px solid rgba(139, 69, 19, 0.2) !important;
+  box-shadow: 4px 0 16px rgba(139, 69, 19, 0.2) !important;
+}
+
+/* Hover e item ativo no menu lateral */
+body:not(.dark-mode) .MuiListItemButton-root:hover {
+  background: rgba(139, 69, 19, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(139, 69, 19, 0.15) !important;
+}
+body:not(.dark-mode) .MuiListItemButton-root.Mui-selected {
+  background: linear-gradient(135deg, rgba(139, 69, 19, 0.15) 0%, rgba(101, 67, 33, 0.08) 100%) !important;
+  border-left: 4px solid #8B4513 !important;
+}
+
+/* Sombra da AppBar (barra de topo) */
+body:not(.dark-mode) .MuiAppBar-root {
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.4) !important;
+}
+
+/* Cabeçalhos das tabelas */
+body:not(.dark-mode) .MuiTableContainer-root {
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.12) !important;
+}
+body:not(.dark-mode) .MuiTableHead-root {
+  background: linear-gradient(135deg, rgba(139, 69, 19, 0.1) 0%, rgba(101, 67, 33, 0.05) 100%) !important;
+}
+body:not(.dark-mode) .MuiTableCell-head {
+  color: #8B4513 !important;
+}
+
+/* Sombras dos cards/papers (todos os dashboards e páginas) */
+body:not(.dark-mode) .MuiPaper-elevation1 {
+  box-shadow: 0 2px 8px rgba(139, 69, 19, 0.08) !important;
+}
+body:not(.dark-mode) .MuiPaper-elevation2 {
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.12) !important;
+}
+body:not(.dark-mode) .MuiPaper-elevation3 {
+  box-shadow: 0 6px 16px rgba(139, 69, 19, 0.15) !important;
+}
+
+/* Hover dos cards/papers no modo claro */
+body:not(.dark-mode) .MuiCard-root:hover,
+body:not(.dark-mode) .MuiPaper-root:hover {
+  box-shadow: 0 8px 24px rgba(139, 69, 19, 0.2) !important;
+}

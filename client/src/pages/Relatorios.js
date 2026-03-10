@@ -447,7 +447,7 @@ const Relatorios = () => {
             >
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <PictureAsPdf sx={{ fontSize: 40, color: '#00CED1', mr: 2 }} />
+                <PictureAsPdf sx={{ fontSize: 40, color: isDarkMode ? '#00CED1' : '#8B4513', mr: 2 }} />
                 <Box>
                   <Typography variant="h6">Boletim Individual</Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -492,7 +492,7 @@ const Relatorios = () => {
             >
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Assessment sx={{ fontSize: 40, color: '#00CED1', mr: 2 }} />
+                <Assessment sx={{ fontSize: 40, color: isDarkMode ? '#00CED1' : '#8B4513', mr: 2 }} />
                 <Box>
                   <Typography variant="h6">Desempenho da Turma</Typography>
                   <Typography variant="body2" color="text.secondary">

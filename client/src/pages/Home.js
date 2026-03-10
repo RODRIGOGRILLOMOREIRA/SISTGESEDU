@@ -234,7 +234,7 @@ const Home = () => {
               gutterBottom 
               sx={{ 
                 fontWeight: 600,
-                color: '#00CED1',
+                color: isDarkMode ? '#00CED1' : '#8B4513',
                 mb: 3,
                 display: 'flex',
                 alignItems: 'center',
@@ -276,7 +276,9 @@ const Home = () => {
                         minWidth: 24,
                         height: 24,
                         borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #00CED1 0%, #008B8B 100%)',
+                        background: isDarkMode
+                          ? 'linear-gradient(135deg, #00CED1 0%, #008B8B 100%)'
+                          : 'linear-gradient(135deg, #8B4513 0%, #654321 100%)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
