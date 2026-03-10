@@ -3,7 +3,7 @@
 <div align="center">
 
 ![Status](https://img.shields.io/badge/Status-Produção-success?style=for-the-badge)
-![Versão](https://img.shields.io/badge/Versão-2.11-blue?style=for-the-badge)
+![Versão](https://img.shields.io/badge/Versão-2.12-blue?style=for-the-badge)
 ![Licença](https://img.shields.io/badge/Licença-MIT-green?style=for-the-badge)
 ![Node](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js)
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)
@@ -33,8 +33,8 @@ O **SISTGESEDU** é um sistema profissional e completo para gestão escolar que 
 - ✅ **Dashboard Interativo**: Análises gráficas em tempo real com Chart.js
 - ✅ **Importação em Lote**: CSV e Excel com validação inteligente
 - ✅ **Relatórios PDF**: Boletins, históricos e mapas de desempenho
-- ✅ **Sistema de Temas**: Modo claro e escuro com persistência
-- ✅ **Autenticação JWT**: Sistema seguro com roles (admin, professor, coordenador)
+- ✅ **Sistema de Temas**: Modo claro (marrom/mel) e escuro (ciano/preto) com fundo decorativo em todas as páginas
+- ✅ **Autenticação JWT**: Sistema seguro com roles (admin, professor, coordenador) e sessão por aba (sessionStorage)
 - ✅ **Exportação WhatsApp**: Cards otimizados para compartilhamento mobile
 
 ### 🎯 Diferenciais
@@ -63,7 +63,7 @@ O **SISTGESEDU** é um sistema profissional e completo para gestão escolar que 
 
 ```bash
 git clone https://github.com/RODRIGOGRILLOMOREIRA/SISTGESEDU.git
-cd SISTGESEDU/sistgesedu
+cd SISTGESEDU
 ```
 
 #### 2️⃣ Configure o Backend
@@ -112,7 +112,7 @@ npm install
 
 ```env
 REACT_APP_API_URL=http://localhost:5000/api
-REACT_APP_VERSION=2.11
+REACT_APP_VERSION=2.12
 ```
 
 ```bash
@@ -192,6 +192,7 @@ Após executar `npm run seed`, use:
 - ✅ **Individual**: Registro por aluno, data e período
 - ✅ **Chamada de Turma**: Registro em lote (toda turma de uma vez)
 - ✅ **Status**: Presente, Falta, Falta Justificada, Atestado
+- ✅ **Falta Justificada = Presença**: Faltas justificadas contam como presença em todas as estatísticas, mantendo o rótulo visual "Justificada"
 - ✅ **Períodos**: Matutino, Vespertino, Noturno, Integral
 - ✅ **Justificativas**: Descrição, data e anexo (URL)
 - ✅ **Importação**: CSV/Excel com busca inteligente
@@ -261,6 +262,7 @@ O sistema utiliza um modelo pedagógico inovador:
 - 📈 **Evolução Trimestral**: Linha temporal de desempenho
 - 🎯 **Alunos em Risco**: Identificação automática (frequência < 75% OU média < 6.0)
 - 🏆 **Habilidades Desenvolvidas**: Contadores por nível
+- 🔴 **Top 5 Mais Faltosos**: Alunos com mais faltas nos últimos 5 dias registrados; barra vermelha de alerta para quem faltou em todos os 5 dias
 
 #### Gráficos Avançados
 - **Chart.js**: Biblioteca profissional de gráficos
@@ -341,20 +343,36 @@ O sistema utiliza um modelo pedagógico inovador:
 
 #### Modo Escuro (Padrão)
 - 🌙 **Cor Primária**: Verde Ciano (#00CED1)
-- ⬛ **Background**: Preto (#0A0E14)
-- 🎨 **Componentes**: Cards escuros com bordas sutis
+- ⬛ **Background**: Preto (#0A0E14 → #151A23 gradiente)
+- 🎨 **Componentes**: Cards escuros com bordas sutis cianas
+- 🔵 **Ícones/Títulos/Sombras**: Todos em ciano #00CED1
+- ✨ **Fundo Decorativo**: Grade de pontos radial + círculos com glow ciano em todas as páginas
 - 👁️ **Contraste**: Otimizado para leitura prolongada
 
 #### Modo Claro
 - ☀️ **Cor Primária**: Marrom (#8B4513 - Saddle Brown)
-- 🍯 **Background**: Mel (#F5DEB3 - Wheat/Honey)
+- 🍯 **Background**: Mel dourado (#FFF8E7 → #D2A060 gradiente)
 - 🎨 **Componentes**: Cards claros com sombras marrons suaves
+- 🟤 **Ícones/Títulos/Sombras**: Todos em marrom #8B4513 (AppBar, menu lateral, cabeçalhos de tabela, títulos de seção)
+- ✨ **Fundo Decorativo**: Padrão crosshatch diagonal + formas diamante + círculos bokeh em todas as páginas
 - 💡 **Brilho**: Tema quente e acolhedor, ideal para ambientes educacionais
 
-#### Persistência
-- 💾 **LocalStorage**: Preferência salva no navegador
-- 🔄 **Auto-aplicação**: Carregamento automático na inicialização
-- 🎯 **Toggle Rápido**: Botão no AppBar (ícone sol/lua)
+#### Mecanismo de Troca
+- 🏷️ **Classe CSS**: `body.dark-mode` toggled via `ThemeContext.js` → permite overrides em `effects.css` com alta especificidade (`body:not(.dark-mode)`)
+- 🔄 **Toggle na Login**: Botão sol/lua disponível diretamente na tela de login, antes de autenticar
+- 💾 **LocalStorage**: Preferência salva no navegador entre sessões
+- 🎯 **Toggle Rápido**: Botão no AppBar (ícone sol/lua) em todas as páginas autenticadas
+
+#### Página de Login Redesenhada
+- 🌑 **Escuro**: Grade de pontos ciano + 7 formas geométricas decorativas (círculos com glow)
+- ☀️ **Claro**: Crosshatch diagonal + formas diamante giradas + círculos com efeito bokeh (blur)
+- 🎨 **Card**: Glassmorphism com `backdropFilter: blur(10px)` e borda/sombra adaptadas ao tema
+- © **Rodapé**: "© 2026 SistGesEdu , Licença MIT , todos os direitos reservados"
+
+#### Autenticação baseada em Sessão
+- 🔑 **sessionStorage**: Token JWT e dados do usuário armazenados em `sessionStorage` (não `localStorage`)
+- 🚪 **Sessão por aba**: Ao fechar a aba ou o browser, a sessão é encerrada automaticamente
+- 🔒 **Início pelo Login**: A aplicação sempre inicia pela tela de login; redireciona para Home apenas após autenticação válida
 
 ### 🔒 Autenticação e Segurança
 
@@ -363,6 +381,8 @@ O sistema utiliza um modelo pedagógico inovador:
 - 🔐 **JWT**: Token com validade de 30 dias
 - 🔒 **Hashs Bcrypt**: Salt 10 para segurança de senhas
 - 🚫 **Proteção de Rotas**: Middleware em todas as rotas privadas
+- 💼 **SessionStorage**: Token armazenado por sessão de aba (não persiste entre reinicializações do browser)
+- 🚪 **Tela de Login**: Ponto de entrada obrigatório; redireciona para o sistema apenas após autenticação bem-sucedida
 
 #### Papéis e Permissões
 - 👑 **Admin**: Acesso total ao sistema
@@ -473,7 +493,8 @@ sistgesedu/
 │   │   │   ├── api.js               # Configuração Axios
 │   │   │   └── index.js             # Serviços consolidados
 │   │   ├── styles/                  # Estilos globais
-│   │   │   └── index.css
+│   │   │   ├── index.css
+│   │   │   └── effects.css          # Efeitos globais: modo escuro/claro, fundo decorativo
 │   │   └── utils/                   # Utilitários
 │   │       ├── exportUtils.js       # Exportação de imagens
 │   │       └── helpers.js           # Funções auxiliares
@@ -623,7 +644,7 @@ vercel --prod
 **Variáveis de Ambiente:**
 ```env
 REACT_APP_API_URL=https://seubackend.herokuapp.com/api
-REACT_APP_VERSION=2.11
+REACT_APP_VERSION=2.12
 NODE_ENV=production
 ```
 
