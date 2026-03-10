@@ -272,6 +272,9 @@ const Login = () => {
             border: isDarkMode
               ? '1px solid rgba(0,206,209,0.18)'
               : '1px solid rgba(139,69,19,0.22)',
+            boxShadow: isDarkMode
+              ? '0 6px 18px rgba(0,206,209,0.35), 0 12px 36px rgba(0,206,209,0.18)'
+              : '0 6px 24px rgba(139,69,19,0.35), 0 12px 36px rgba(139,69,19,0.18)',
           }}
         >
           {/* Logo e Nome da Escola */}

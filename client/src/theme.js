@@ -141,9 +141,9 @@ export const darkTheme = createTheme({
           fontWeight: 600,
         },
         contained: {
-          boxShadow: '0 4px 12px rgba(0, 206, 209, 0.3)',
+          boxShadow: '0 6px 18px rgba(0, 206, 209, 0.3)',
           '&:hover': {
-            boxShadow: '0 6px 16px rgba(0, 206, 209, 0.4)',
+            boxShadow: '0 9px 24px rgba(0, 206, 209, 0.4)',
           },
         },
       },
@@ -347,7 +347,7 @@ export const lightTheme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          boxShadow: '0 4px 16px rgba(0, 206, 209, 0.4), 0 8px 24px rgba(0, 206, 209, 0.2)',
+          boxShadow: '0 6px 24px rgba(139, 69, 19, 0.35), 0 12px 36px rgba(139, 69, 19, 0.18)',
         },
       },
     },
