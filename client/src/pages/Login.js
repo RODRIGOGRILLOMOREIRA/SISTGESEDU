@@ -124,14 +124,75 @@ const Login = () => {
         </Tooltip>
       </Box>
 
-      {/* Elementos decorativos */}
+      {/* ── Fundo moderno: grade de pontos ── */}
+      <Box
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          backgroundImage: isDarkMode
+            ? 'radial-gradient(circle, rgba(0,206,209,0.22) 1.5px, transparent 1.5px)'
+            : 'radial-gradient(circle, rgba(139,69,19,0.18) 1.5px, transparent 1.5px)',
+          backgroundSize: '30px 30px',
+        }}
+      />
+
+      {/* ── Círculo grande – canto superior direito ── */}
       <Box
         sx={{
           position: 'absolute',
           top: -100,
           right: -100,
-          width: 300,
-          height: 300,
+          width: 320,
+          height: 320,
+          borderRadius: '50%',
+          pointerEvents: 'none',
+          background: isDarkMode
+            ? 'radial-gradient(circle, rgba(0,206,209,0.18) 0%, rgba(0,139,139,0.06) 70%, transparent 100%)'
+            : 'radial-gradient(circle, rgba(139,69,19,0.18) 0%, rgba(101,67,33,0.06) 70%, transparent 100%)',
+        }}
+      />
+
+      {/* ── Círculo grande – canto inferior esquerdo ── */}
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: -150,
+          left: -150,
+          width: 420,
+          height: 420,
+          borderRadius: '50%',
+          pointerEvents: 'none',
+          background: isDarkMode
+            ? 'radial-gradient(circle, rgba(0,206,209,0.12) 0%, rgba(0,139,139,0.04) 70%, transparent 100%)'
+            : 'radial-gradient(circle, rgba(139,69,19,0.12) 0%, rgba(101,67,33,0.04) 70%, transparent 100%)',
+        }}
+      />
+
+      {/* ── Círculo médio – canto superior esquerdo ── */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: -70,
+          left: -70,
+          width: 240,
+          height: 240,
+          borderRadius: '50%',
+          pointerEvents: 'none',
+          background: isDarkMode
+            ? 'rgba(0, 206, 209, 0.07)'
+            : 'rgba(139, 69, 19, 0.07)',
+        }}
+      />
+
+      {/* ── Círculo pequeno – canto inferior direito ── */}
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: 60,
+          right: -50,
+          width: 180,
+          height: 180,
           borderRadius: '50%',
           pointerEvents: 'none',
           background: isDarkMode
@@ -139,18 +200,53 @@ const Login = () => {
             : 'rgba(139, 69, 19, 0.1)',
         }}
       />
+
+      {/* ── Anel flutuante – lateral esquerda ── */}
       <Box
         sx={{
           position: 'absolute',
-          bottom: -150,
-          left: -150,
-          width: 400,
-          height: 400,
+          top: '38%',
+          left: '6%',
+          width: 72,
+          height: 72,
+          borderRadius: '50%',
+          pointerEvents: 'none',
+          border: isDarkMode
+            ? '2px solid rgba(0,206,209,0.35)'
+            : '2px solid rgba(139,69,19,0.3)',
+          background: 'transparent',
+        }}
+      />
+
+      {/* ── Ponto de destaque – área superior central ── */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '12%',
+          right: '18%',
+          width: 44,
+          height: 44,
           borderRadius: '50%',
           pointerEvents: 'none',
           background: isDarkMode
-            ? 'rgba(0, 206, 209, 0.05)'
-            : 'rgba(139, 69, 19, 0.05)',
+            ? 'rgba(0, 206, 209, 0.25)'
+            : 'rgba(139, 69, 19, 0.2)',
+        }}
+      />
+
+      {/* ── Ponto de destaque – lateral direita ── */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '62%',
+          right: '7%',
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
+          pointerEvents: 'none',
+          background: isDarkMode
+            ? 'rgba(0, 206, 209, 0.3)'
+            : 'rgba(139, 69, 19, 0.25)',
         }}
       />
 
@@ -164,6 +260,9 @@ const Login = () => {
               ? 'rgba(21, 26, 35, 0.97)'
               : 'rgba(230, 190, 138, 0.97)',
             backdropFilter: 'blur(10px)',
+            border: isDarkMode
+              ? '1px solid rgba(0,206,209,0.18)'
+              : '1px solid rgba(139,69,19,0.22)',
           }}
         >
           {/* Logo e Nome da Escola */}
