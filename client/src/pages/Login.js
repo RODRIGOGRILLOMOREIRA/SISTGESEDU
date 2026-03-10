@@ -107,7 +107,7 @@ const Login = () => {
       }}
     >
       {/* Botão de Tema */}
-      <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
+      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1 }}>
         <Tooltip title={isDarkMode ? 'Modo Claro' : 'Modo Escuro'}>
           <IconButton 
             onClick={toggleTheme} 
@@ -133,6 +133,7 @@ const Login = () => {
           width: 300,
           height: 300,
           borderRadius: '50%',
+          pointerEvents: 'none',
           background: isDarkMode
             ? 'rgba(0, 206, 209, 0.1)'
             : 'rgba(139, 69, 19, 0.1)',
@@ -146,6 +147,7 @@ const Login = () => {
           width: 400,
           height: 400,
           borderRadius: '50%',
+          pointerEvents: 'none',
           background: isDarkMode
             ? 'rgba(0, 206, 209, 0.05)'
             : 'rgba(139, 69, 19, 0.05)',
