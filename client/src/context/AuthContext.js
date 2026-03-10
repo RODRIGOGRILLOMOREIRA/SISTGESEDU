@@ -16,17 +16,17 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar se há usuário no localStorage apenas uma vez
-    const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
+    // Verificar se há usuário no sessionStorage apenas uma vez
+    const storedUser = sessionStorage.getItem('user');
+    const storedToken = sessionStorage.getItem('token');
 
     if (storedUser && storedToken) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (error) {
-        console.error('Erro ao parsear usuário do localStorage:', error);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
+        console.error('Erro ao parsear usuário do sessionStorage:', error);
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('token');
       }
     }
     setLoading(false);
@@ -35,22 +35,22 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, senha) => {
     const data = await authService.login(email, senha);
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data));
+    sessionStorage.setItem('token', data.token);
+    sessionStorage.setItem('user', JSON.stringify(data));
     setUser(data);
     return data;
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     setUser(null);
   };
 
   const register = async (userData) => {
     const data = await authService.register(userData);
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data));
+    sessionStorage.setItem('token', data.token);
+    sessionStorage.setItem('user', JSON.stringify(data));
     setUser(data);
     return data;
   };
