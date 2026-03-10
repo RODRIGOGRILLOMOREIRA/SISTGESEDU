@@ -99,10 +99,9 @@ const Login = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: (theme) => 
-          theme.palette.mode === 'dark'
-            ? 'linear-gradient(135deg, #1a1a1a 0%, #2d3748 100%)'
-            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: isDarkMode
+          ? 'linear-gradient(135deg, #0A0E14 0%, #151A23 100%)'
+          : 'linear-gradient(135deg, #F5DEB3 0%, #D2B48C 100%)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -112,11 +111,11 @@ const Login = () => {
         <Tooltip title={isDarkMode ? 'Modo Claro' : 'Modo Escuro'}>
           <IconButton 
             onClick={toggleTheme} 
-            sx={{ 
-              color: 'white',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            sx={{
+              color: isDarkMode ? 'white' : '#8B4513',
+              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(139,69,19,0.12)',
               '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(139,69,19,0.22)',
               }
             }}
           >
@@ -134,10 +133,9 @@ const Login = () => {
           width: 300,
           height: 300,
           borderRadius: '50%',
-          background: (theme) => 
-            theme.palette.mode === 'dark'
-              ? 'rgba(0, 188, 212, 0.1)'
-              : 'rgba(255, 255, 255, 0.1)',
+          background: isDarkMode
+            ? 'rgba(0, 206, 209, 0.1)'
+            : 'rgba(139, 69, 19, 0.1)',
         }}
       />
       <Box
@@ -148,10 +146,9 @@ const Login = () => {
           width: 400,
           height: 400,
           borderRadius: '50%',
-          background: (theme) => 
-            theme.palette.mode === 'dark'
-              ? 'rgba(0, 188, 212, 0.05)'
-              : 'rgba(255, 255, 255, 0.05)',
+          background: isDarkMode
+            ? 'rgba(0, 206, 209, 0.05)'
+            : 'rgba(139, 69, 19, 0.05)',
         }}
       />
 
@@ -161,10 +158,9 @@ const Login = () => {
           sx={{
             p: 4,
             borderRadius: 4,
-            backgroundColor: (theme) => 
-              theme.palette.mode === 'dark'
-                ? 'rgba(30, 30, 30, 0.95)'
-                : 'rgba(255, 255, 255, 0.95)',
+            backgroundColor: isDarkMode
+              ? 'rgba(21, 26, 35, 0.97)'
+              : 'rgba(230, 190, 138, 0.97)',
             backdropFilter: 'blur(10px)',
           }}
         >
@@ -202,10 +198,9 @@ const Login = () => {
               gutterBottom
               sx={{
                 fontWeight: 700,
-                background: (theme) => 
-                  theme.palette.mode === 'dark'
-                    ? 'linear-gradient(45deg, #00bcd4 30%, #00e5ff 90%)'
-                    : 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+                background: isDarkMode
+                  ? 'linear-gradient(45deg, #00CED1 30%, #4FD9DC 90%)'
+                  : 'linear-gradient(45deg, #8B4513 30%, #A0522D 90%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 textAlign: 'center',
@@ -315,15 +310,13 @@ const Login = () => {
                 fontSize: '1.1rem',
                 fontWeight: 600,
                 borderRadius: 2,
-                background: (theme) => 
-                  theme.palette.mode === 'dark'
-                    ? 'linear-gradient(45deg, #00bcd4 30%, #00e5ff 90%)'
-                    : 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+                background: isDarkMode
+                  ? 'linear-gradient(45deg, #00CED1 30%, #4FD9DC 90%)'
+                  : 'linear-gradient(45deg, #8B4513 30%, #A0522D 90%)',
                 '&:hover': {
-                  background: (theme) => 
-                    theme.palette.mode === 'dark'
-                      ? 'linear-gradient(45deg, #00acc1 30%, #00d4e5 90%)'
-                      : 'linear-gradient(45deg, #5568d3 30%, #6b3fa0 90%)',
+                  background: isDarkMode
+                    ? 'linear-gradient(45deg, #008B8B 30%, #00CED1 90%)'
+                    : 'linear-gradient(45deg, #654321 30%, #8B4513 90%)',
                 },
               }}
             >
