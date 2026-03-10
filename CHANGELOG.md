@@ -1,6 +1,70 @@
 # 📋 Changelog - Sistema Analisador de Notas e Habilidades
 
-## Versão 2.11 - 08 de Março de 2026 🆕
+## Versão 2.12 - 09 de Março de 2026 🆕
+
+### 🎨 SISTEMA DE TEMAS — REVISÃO COMPLETA + FUNDO DECORATIVO GLOBAL
+
+#### 🟤 Modo Claro: Cobertura 100% em Marrom (#8B4513)
+- ✅ **Mecanismo CSS**: Classe `body.dark-mode` adicionada via `ThemeContext.js`; seletores `body:not(.dark-mode)` em `effects.css` sobrescrevem ciano com marrom em todos os componentes
+- ✅ **Ícones do menu lateral**: `#00CED1` → `#8B4513` em toda a sidebar
+- ✅ **Sombra AppBar / Drawer / Cards / MuiPaper**: Todas as sombras em marrom (expandidas 50%)
+- ✅ **Cabeçalhos de tabela** (`MuiTableCell-head`): Texto em `#8B4513`
+- ✅ **Títulos de seção** (Dashboard.js — 8 ocorrências): `color: '#00CED1'` → condicional por `isDarkMode`
+- ✅ **Ícones de relatórios** (Relatorios.js — 2 ocorrências): condicional por `isDarkMode`
+- ✅ **Título e bullets** de Home.js: condicional por `isDarkMode`
+
+#### ✨ Fundo Decorativo em Todas as Páginas (Layout.js)
+- ✅ **8 elementos fixos** inseridos antes do AppBar, com `position: 'fixed'`, `zIndex: -1`, `pointerEvents: 'none'`
+- ✅ **Modo escuro**: Grade de pontos radial (ciano, 30×30px) + 7 formas geométricas (círculos com glow ciano)
+- ✅ **Modo claro**: Crosshatch diagonal duplo + formas diamante (`rotate(45deg)`) + círculos com efeito bokeh (`filter: blur`)
+- ✅ **Gradiente de fundo** (`effects.css`):
+  - Escuro: `linear-gradient(135deg, #0A0E14 0%, #151A23 100%)`
+  - Claro: `linear-gradient(160deg, #FFF8E7 0%, #F5DEB3 30%, #E8C27A 65%, #D2A060 100%)`
+
+#### 🔐 Autenticação Baseada em Sessão (sessionStorage)
+- ✅ **`AuthContext.js`** e **`api.js`**: Migração de `localStorage` → `sessionStorage`
+- ✅ Sessão encerrada automaticamente ao fechar aba ou browser
+- ✅ App sempre inicia pela tela de Login; redireciona para Home somente após autenticação
+
+#### 🔑 Página de Login Redesenhada
+- ✅ **Fundo modo escuro**: Grade de pontos ciano + 7 formas decorativas (círculos)
+- ✅ **Fundo modo claro**: Crosshatch diagonal + formas diamante + círculos com blur (bokeh)
+- ✅ **Toggle de tema** funcional diretamente na página de login (antes de autenticar), `zIndex: 1`
+- ✅ **Card (Paper)**: Glassmorphism com `backdropFilter: blur(10px)`, borda e sombra adaptadas ao tema
+  - Escuro: sombra ciano expandida 50%: `0 6px 18px rgba(0,206,209,0.35), 0 12px 36px rgba(0,206,209,0.18)`
+  - Claro: sombra marrom expandida 50%: `0 6px 24px rgba(139,69,19,0.35), 0 12px 36px rgba(139,69,19,0.18)`
+- ✅ **Rodapé**: `© 2026 SistGesEdu , Licença MIT , todos os direitos reservados`
+- ✅ **`theme.js` (lightTheme)**: `MuiPaper.boxShadow` corrigido de ciano para marrom
+
+#### 📊 Dashboard — Top 5 Mais Faltosos
+- ✅ Substituído gráfico "Top 3 Consistentes" por "Top 5 Mais Faltosos nos Últimos 5 Dias Registrados"
+- ✅ Lógica baseada nos **últimos 5 dias que possuem registros** (não dias corridos)
+- ✅ Barra vermelha de alerta para alunos ausentes em **todos** os 5 dias registrados
+
+#### 📅 Falta Justificada = Presença nas Estatísticas
+- ✅ Status `falta-justificada` agora contabilizado como **presença** em todas as análises e gráficos
+- ✅ Rótulo visual "Justificada" mantido na interface (não impacta exibição)
+- ✅ Aplicado no model, controller e frontend (Dashboard, Frequências)
+
+#### 📦 Arquivos Modificados
+- ✅ `client/src/context/ThemeContext.js` — toggle de classe `body.dark-mode`
+- ✅ `client/src/context/AuthContext.js` — sessionStorage
+- ✅ `client/src/services/api.js` — sessionStorage
+- ✅ `client/src/styles/effects.css` — overrides modo claro + gradiente de fundo global
+- ✅ `client/src/theme.js` — sombras expandidas, lightTheme MuiPaper corrigido
+- ✅ `client/src/components/Layout.js` — 8 elementos decorativos fixos
+- ✅ `client/src/pages/Login.js` — redesign completo + toggle + rodapé
+- ✅ `client/src/pages/Dashboard.js` — Top 5 faltosos + 8 títulos condicionais
+- ✅ `client/src/pages/Relatorios.js` — 2 ícones condicionais
+- ✅ `client/src/pages/Home.js` — título e bullets condicionais
+- ✅ `server/src/models/Frequencia.js` — falta-justificada como presença
+- ✅ `server/src/controllers/frequenciaController.js` — lógica atualizada
+- ✅ `.gitignore` — criado para proteger `.env` e `node_modules/`
+- ✅ `README.md` — atualizado para v2.12
+
+---
+
+## Versão 2.11 - 08 de Março de 2026
 
 ### 🎨 REFORMULAÇÃO COMPLETA DO TEMA MODO CLARO
 
