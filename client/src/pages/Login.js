@@ -101,7 +101,7 @@ const Login = () => {
         justifyContent: 'center',
         background: isDarkMode
           ? 'linear-gradient(135deg, #0A0E14 0%, #151A23 100%)'
-          : 'linear-gradient(135deg, #F5DEB3 0%, #D2B48C 100%)',
+          : 'linear-gradient(160deg, #FFF8E7 0%, #F5DEB3 30%, #E8C27A 65%, #D2A060 100%)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -124,7 +124,7 @@ const Login = () => {
         </Tooltip>
       </Box>
 
-      {/* ── Fundo moderno: grade de pontos ── */}
+      {/* ── Padrão de fundo: pontos (escuro) / crosshatch diagonal (claro) ── */}
       <Box
         sx={{
           position: 'absolute',
@@ -132,8 +132,11 @@ const Login = () => {
           pointerEvents: 'none',
           backgroundImage: isDarkMode
             ? 'radial-gradient(circle, rgba(0,206,209,0.22) 1.5px, transparent 1.5px)'
-            : 'radial-gradient(circle, rgba(139,69,19,0.18) 1.5px, transparent 1.5px)',
-          backgroundSize: '30px 30px',
+            : [
+                'repeating-linear-gradient(45deg,  rgba(139,69,19,0.09) 0px, rgba(139,69,19,0.09) 1px, transparent 1px, transparent 22px)',
+                'repeating-linear-gradient(-45deg, rgba(139,69,19,0.06) 0px, rgba(139,69,19,0.06) 1px, transparent 1px, transparent 22px)',
+              ].join(', '),
+          backgroundSize: isDarkMode ? '30px 30px' : 'auto',
         }}
       />
 
@@ -147,9 +150,10 @@ const Login = () => {
           height: 320,
           borderRadius: '50%',
           pointerEvents: 'none',
+          filter: isDarkMode ? 'none' : 'blur(45px)',
           background: isDarkMode
             ? 'radial-gradient(circle, rgba(0,206,209,0.18) 0%, rgba(0,139,139,0.06) 70%, transparent 100%)'
-            : 'radial-gradient(circle, rgba(139,69,19,0.18) 0%, rgba(101,67,33,0.06) 70%, transparent 100%)',
+            : 'rgba(180, 90, 20, 0.35)',
         }}
       />
 
@@ -163,58 +167,62 @@ const Login = () => {
           height: 420,
           borderRadius: '50%',
           pointerEvents: 'none',
+          filter: isDarkMode ? 'none' : 'blur(55px)',
           background: isDarkMode
             ? 'radial-gradient(circle, rgba(0,206,209,0.12) 0%, rgba(0,139,139,0.04) 70%, transparent 100%)'
-            : 'radial-gradient(circle, rgba(139,69,19,0.12) 0%, rgba(101,67,33,0.04) 70%, transparent 100%)',
+            : 'rgba(139, 69, 19, 0.3)',
         }}
       />
 
-      {/* ── Círculo médio – canto superior esquerdo ── */}
+      {/* ── Forma média – canto superior esquerdo (círculo escuro / diamante claro) ── */}
       <Box
         sx={{
           position: 'absolute',
-          top: -70,
-          left: -70,
-          width: 240,
-          height: 240,
-          borderRadius: '50%',
+          top: isDarkMode ? -70 : -55,
+          left: isDarkMode ? -70 : -55,
+          width: isDarkMode ? 240 : 200,
+          height: isDarkMode ? 240 : 200,
+          borderRadius: isDarkMode ? '50%' : '18%',
+          transform: isDarkMode ? 'none' : 'rotate(45deg)',
           pointerEvents: 'none',
           background: isDarkMode
             ? 'rgba(0, 206, 209, 0.07)'
-            : 'rgba(139, 69, 19, 0.07)',
+            : 'rgba(139, 69, 19, 0.12)',
         }}
       />
 
-      {/* ── Círculo pequeno – canto inferior direito ── */}
+      {/* ── Forma pequena – canto inferior direito (círculo escuro / diamante claro) ── */}
       <Box
         sx={{
           position: 'absolute',
-          bottom: 60,
-          right: -50,
-          width: 180,
-          height: 180,
-          borderRadius: '50%',
+          bottom: isDarkMode ? 60 : 50,
+          right: isDarkMode ? -50 : -45,
+          width: isDarkMode ? 180 : 150,
+          height: isDarkMode ? 180 : 150,
+          borderRadius: isDarkMode ? '50%' : '18%',
+          transform: isDarkMode ? 'none' : 'rotate(45deg)',
           pointerEvents: 'none',
           background: isDarkMode
             ? 'rgba(0, 206, 209, 0.1)'
-            : 'rgba(139, 69, 19, 0.1)',
+            : 'rgba(160, 82, 45, 0.15)',
         }}
       />
 
-      {/* ── Anel flutuante – lateral esquerda ── */}
+      {/* ── Acento flutuante – lateral esquerda (anel circular escuro / diamante claro) ── */}
       <Box
         sx={{
           position: 'absolute',
           top: '38%',
           left: '6%',
-          width: 72,
-          height: 72,
-          borderRadius: '50%',
+          width: isDarkMode ? 72 : 58,
+          height: isDarkMode ? 72 : 58,
+          borderRadius: isDarkMode ? '50%' : '14%',
+          transform: isDarkMode ? 'none' : 'rotate(45deg)',
           pointerEvents: 'none',
           border: isDarkMode
             ? '2px solid rgba(0,206,209,0.35)'
-            : '2px solid rgba(139,69,19,0.3)',
-          background: 'transparent',
+            : '2.5px solid rgba(139,69,19,0.4)',
+          background: isDarkMode ? 'transparent' : 'rgba(139,69,19,0.06)',
         }}
       />
 
@@ -226,11 +234,12 @@ const Login = () => {
           right: '18%',
           width: 44,
           height: 44,
-          borderRadius: '50%',
+          borderRadius: isDarkMode ? '50%' : '14%',
+          transform: isDarkMode ? 'none' : 'rotate(45deg)',
           pointerEvents: 'none',
           background: isDarkMode
             ? 'rgba(0, 206, 209, 0.25)'
-            : 'rgba(139, 69, 19, 0.2)',
+            : 'rgba(160, 82, 45, 0.28)',
         }}
       />
 
@@ -246,7 +255,7 @@ const Login = () => {
           pointerEvents: 'none',
           background: isDarkMode
             ? 'rgba(0, 206, 209, 0.3)'
-            : 'rgba(139, 69, 19, 0.25)',
+            : 'rgba(139, 69, 19, 0.32)',
         }}
       />
 
