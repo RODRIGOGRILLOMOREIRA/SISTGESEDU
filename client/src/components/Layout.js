@@ -223,6 +223,115 @@ const Layout = () => {
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
+
+      {/* ══════════════════════════════════════════════
+          FUNDO DECORATIVO — fixo, atrás de todo conteúdo
+          Espelha o padrão visual da página de Login
+          ══════════════════════════════════════════════ */}
+
+      {/* Padrão de fundo: pontos (escuro) / crosshatch diagonal (claro) */}
+      <Box
+        sx={{
+          position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none',
+          backgroundImage: isDarkMode
+            ? 'radial-gradient(circle, rgba(0,206,209,0.22) 1.5px, transparent 1.5px)'
+            : [
+                'repeating-linear-gradient(45deg,  rgba(139,69,19,0.09) 0px, rgba(139,69,19,0.09) 1px, transparent 1px, transparent 22px)',
+                'repeating-linear-gradient(-45deg, rgba(139,69,19,0.06) 0px, rgba(139,69,19,0.06) 1px, transparent 1px, transparent 22px)',
+              ].join(', '),
+          backgroundSize: isDarkMode ? '30px 30px' : 'auto',
+        }}
+      />
+
+      {/* Círculo grande – canto superior direito */}
+      <Box
+        sx={{
+          position: 'fixed', top: -100, right: -100,
+          width: 320, height: 320, borderRadius: '50%',
+          zIndex: -1, pointerEvents: 'none',
+          filter: isDarkMode ? 'none' : 'blur(45px)',
+          background: isDarkMode
+            ? 'radial-gradient(circle, rgba(0,206,209,0.18) 0%, rgba(0,139,139,0.06) 70%, transparent 100%)'
+            : 'rgba(180, 90, 20, 0.35)',
+        }}
+      />
+
+      {/* Círculo grande – canto inferior esquerdo */}
+      <Box
+        sx={{
+          position: 'fixed', bottom: -150, left: -150,
+          width: 420, height: 420, borderRadius: '50%',
+          zIndex: -1, pointerEvents: 'none',
+          filter: isDarkMode ? 'none' : 'blur(55px)',
+          background: isDarkMode
+            ? 'radial-gradient(circle, rgba(0,206,209,0.12) 0%, rgba(0,139,139,0.04) 70%, transparent 100%)'
+            : 'rgba(139, 69, 19, 0.3)',
+        }}
+      />
+
+      {/* Forma média – canto superior esquerdo (círculo / diamante) */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: isDarkMode ? -70 : -55, left: isDarkMode ? -70 : -55,
+          width: isDarkMode ? 240 : 200, height: isDarkMode ? 240 : 200,
+          borderRadius: isDarkMode ? '50%' : '18%',
+          transform: isDarkMode ? 'none' : 'rotate(45deg)',
+          zIndex: -1, pointerEvents: 'none',
+          background: isDarkMode ? 'rgba(0,206,209,0.07)' : 'rgba(139,69,19,0.12)',
+        }}
+      />
+
+      {/* Forma pequena – canto inferior direito (círculo / diamante) */}
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: isDarkMode ? 60 : 50, right: isDarkMode ? -50 : -45,
+          width: isDarkMode ? 180 : 150, height: isDarkMode ? 180 : 150,
+          borderRadius: isDarkMode ? '50%' : '18%',
+          transform: isDarkMode ? 'none' : 'rotate(45deg)',
+          zIndex: -1, pointerEvents: 'none',
+          background: isDarkMode ? 'rgba(0,206,209,0.1)' : 'rgba(160,82,45,0.15)',
+        }}
+      />
+
+      {/* Acento flutuante – lateral esquerda (anel / diamante) */}
+      <Box
+        sx={{
+          position: 'fixed', top: '38%', left: '6%',
+          width: isDarkMode ? 72 : 58, height: isDarkMode ? 72 : 58,
+          borderRadius: isDarkMode ? '50%' : '14%',
+          transform: isDarkMode ? 'none' : 'rotate(45deg)',
+          zIndex: -1, pointerEvents: 'none',
+          border: isDarkMode ? '2px solid rgba(0,206,209,0.35)' : '2.5px solid rgba(139,69,19,0.4)',
+          background: isDarkMode ? 'transparent' : 'rgba(139,69,19,0.06)',
+        }}
+      />
+
+      {/* Ponto de destaque – área superior */}
+      <Box
+        sx={{
+          position: 'fixed', top: '12%', right: '18%',
+          width: 44, height: 44,
+          borderRadius: isDarkMode ? '50%' : '14%',
+          transform: isDarkMode ? 'none' : 'rotate(45deg)',
+          zIndex: -1, pointerEvents: 'none',
+          background: isDarkMode ? 'rgba(0,206,209,0.25)' : 'rgba(160,82,45,0.28)',
+        }}
+      />
+
+      {/* Ponto de destaque – lateral direita */}
+      <Box
+        sx={{
+          position: 'fixed', top: '62%', right: '7%',
+          width: 28, height: 28, borderRadius: '50%',
+          zIndex: -1, pointerEvents: 'none',
+          background: isDarkMode ? 'rgba(0,206,209,0.3)' : 'rgba(139,69,19,0.32)',
+        }}
+      />
+
+      {/* ══════════════════════════════════════════════ */}
+
       <AppBar
         position="fixed"
         sx={{

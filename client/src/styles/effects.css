@@ -466,6 +466,18 @@ select {
    Ativado quando body NÃO possui a classe .dark-mode
    =================================================== */
 
+/* Fundo da página no modo claro */
+body:not(.dark-mode) {
+  background: linear-gradient(160deg, #FFF8E7 0%, #F5DEB3 30%, #E8C27A 65%, #D2A060 100%) !important;
+  min-height: 100vh;
+}
+
+/* Fundo da página no modo escuro */
+body.dark-mode {
+  background: linear-gradient(135deg, #0A0E14 0%, #151A23 100%) !important;
+  min-height: 100vh;
+}
+
 /* Ícones do menu lateral */
 body:not(.dark-mode) .MuiListItemIcon-root {
   color: #8B4513 !important;
