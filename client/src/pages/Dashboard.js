@@ -35,6 +35,7 @@ import { useTheme } from '@mui/material/styles';
 import {
   AssessmentOutlined,
   Assessment,
+  Assignment as AssignmentIcon,
   SchoolOutlined,
   CheckCircleOutlined,
   TrendingUpOutlined,
@@ -48,6 +49,7 @@ import {
   Fullscreen as FullscreenIcon,
   FullscreenExit as FullscreenExitIcon,
   Close as CloseIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 import html2pdf from 'html2pdf.js';
 import html2canvas from 'html2canvas';
@@ -63,14 +65,28 @@ import {
   ArcElement,
   PointElement,
   LineElement,
+  RadialLinearScale,
+  Filler,
 } from 'chart.js';
-import { Bar, Pie, Line, Scatter } from 'react-chartjs-2';
-import { dashboardService, turmaService, disciplinaService, alunoService, frequenciaService } from '../services';
+import { Bar, Pie, Line, Scatter, Radar } from 'react-chartjs-2';
+import zoomPlugin from 'chartjs-plugin-zoom';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+import annotationPlugin from 'chartjs-plugin-annotation';
+import { dashboardService, turmaService, disciplinaService, alunoService, frequenciaService, avaliacaoService } from '../services';
 import { toast } from 'react-toastify';
 import PageHeader from '../components/PageHeader';
 import ModalHistoricoFrequencia from '../components/ModalHistoricoFrequencia';
 import { Dashboard as DashboardIcon } from '@mui/icons-material';
+import chartConfig from '../config/chartConfig';
+import chartExport from '../utils/chartExport';
+// v2.17 - Componentes de Gráficos Avançados
+import ChartWithExport from '../components/ChartWithExport';
+import GraficoRadar from '../components/GraficoRadar';
+import GraficoStackedBar from '../components/GraficoStackedBar';
+import GraficoMixed from '../components/GraficoMixed';
+import GraficoScatterCorrelacao from '../components/GraficoScatterCorrelacao';
 
+// Registrar componentes e plugins do Chart.js
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -80,7 +96,11 @@ ChartJS.register(
   Legend,
   ArcElement,
   PointElement,
-  LineElement
+  LineElement,
+  RadialLinearScale,
+  Filler,
+  zoomPlugin,
+  annotationPlugin
 );
 
 // Componente de transição para o Dialog
@@ -139,6 +159,37 @@ const Dashboard = () => {
   const [alunoHistoricoSelecionado, setAlunoHistoricoSelecionado] = useState(null);
   const [frequenciaHistorico, setFrequenciaHistorico] = useState(null);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
+  
+  // Estados para Dashboard de Notas por Aluno
+  const [dashboardNotas, setDashboardNotas] = useState({
+    estatisticas: {
+      totalAlunos: 0,
+      mediaGeralPC1: 0,
+      mediaGeralPC2: 0,
+      mediaGeralPC3: 0,
+      mediaGeralEAC: 0,
+      mediaGeralNotaFinal: 0,
+      distribuicao: {
+        adequado: 0,
+        proficiente: 0,
+        alerta: 0,
+        intervencao: 0,
+        semAvaliacao: 0
+      },
+      habilidadesGlobais: {
+        total: 0,
+        adequado: 0,
+        proficiente: 0,
+        alerta: 0,
+        intervencao: 0
+      }
+    },
+    alunosPorNota: [],
+    dadosPorTrimestre: []
+  });
+  const [filtroTrimestre, setFiltroTrimestre] = useState(''); // '', 1, 2, 3
+  const [filtroTipoNota, setFiltroTipoNota] = useState('todos'); // todos, pc1, pc2, pc3, mediaFinal, eac, notaFinal
+  const [loadingDashboardNotas, setLoadingDashboardNotas] = useState(false);
 
   // Funções para controle de expansão dos gráficos
   const handleExpandirGrafico = (tipoGrafico) => {
@@ -294,21 +345,75 @@ const Dashboard = () => {
       setDashboardFrequencia(dashFreqFormatado);
     } catch (error) {
       console.error('❌ Erro ao carregar dashboard:', error);
-      // Setar estrutura vazia em caso de erro
-      setDashboardFrequencia({
-        totalRegistros: 0,
-        totalDiasRegistrados: 0,
-        presentes: 0,
-        faltas: 0,
-        faltasJustificadas: 0,
-        percentualPresenca: 0,
-        percentualFaltas: 0,
-        todosAlunos: [],
-        contadores: { total: 0, adequado: 0, atencao: 0, critico: 0 },
-        frequenciaPorDiaSemana: []
-      });
     }
   };
+
+  // Função para carregar Dashboard de Notas por Aluno
+  const loadDashboardNotas = async () => {
+    if (!filters.turma || !filters.disciplina) {
+      setDashboardNotas({
+        estatisticas: {
+          totalAlunos: 0,
+          mediaGeralPC1: 0,
+          mediaGeralPC2: 0,
+          mediaGeralPC3: 0,
+          mediaGeralEAC: 0,
+          mediaGeralNotaFinal: 0,
+          distribuicao: {
+            adequado: 0,
+            proficiente: 0,
+            alerta: 0,
+            intervencao: 0,
+            semAvaliacao: 0
+          },
+          habilidadesGlobais: {
+            total: 0,
+            adequado: 0,
+            proficiente: 0,
+            alerta: 0,
+            intervencao: 0
+          }
+        },
+        alunosPorNota: [],
+        dadosPorTrimestre: []
+      });
+      return;
+    }
+
+    try {
+      setLoadingDashboardNotas(true);
+      
+      const params = {
+        turma: filters.turma,
+        disciplina: filters.disciplina,
+        ano: filters.ano || new Date().getFullYear()
+      };
+      
+      if (filtroTrimestre) {
+        params.trimestre = filtroTrimestre;
+      }
+      
+      console.log('📊 Carregando Dashboard de Notas com params:', params);
+      
+      const data = await avaliacaoService.getDashboardNotas(params);
+      
+      console.log('✅ Dashboard de Notas recebido:', data);
+      
+      setDashboardNotas(data);
+    } catch (error) {
+      console.error('❌ Erro ao carregar dashboard de notas:', error);
+      toast.error('Erro ao carregar dashboard de notas');
+    } finally {
+      setLoadingDashboardNotas(false);
+    }
+  };
+
+  // useEffect para carregar dashboard de notas quando filtros mudarem
+  useEffect(() => {
+    if (filters.turma && filters.disciplina) {
+      loadDashboardNotas();
+    }
+  }, [filters.turma, filters.disciplina, filters.ano, filtroTrimestre]);
 
   /**
    * Handler para visualizar histórico de frequência de um aluno
@@ -1551,525 +1656,8 @@ const Dashboard = () => {
         </Grid>
       )}
 
-      {/* Gráficos */}
+      {/* Seção de Frequências em Tempo Real - Sempre renderiza, mesmo sem dados */}
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Fade in={true} timeout={800}>
-            <Paper 
-              sx={{ 
-                p: 3,
-                borderRadius: 3,
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
-                  transform: 'translateY(-2px)',
-                }
-              }}
-            >
-              <Typography 
-                variant="h6" 
-                gutterBottom 
-                fontWeight="600"
-                sx={{
-                  color: isDarkMode ? '#00CED1' : '#8B4513',
-                  borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
-                  paddingBottom: 1,
-                  marginBottom: 2
-                }}
-              >
-                Desempenho por Disciplina
-              </Typography>
-              <Box sx={{ height: 300 }}>
-              <Bar data={chartDataDesempenho} options={chartOptionsBar} />
-            </Box>
-          </Paper>
-          </Fade>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Fade in={true} timeout={900}>
-            <Paper 
-              sx={{ 
-                p: 3,
-                borderRadius: 3,
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
-                  transform: 'translateY(-2px)',
-                }
-              }}
-            >
-              <Typography 
-                variant="h6" 
-                gutterBottom 
-                fontWeight="600"
-                sx={{
-                  color: isDarkMode ? '#00CED1' : '#8B4513',
-                  borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
-                  paddingBottom: 1,
-                  marginBottom: 2
-                }}
-              >
-                Aprovação x Reprovação
-              </Typography>
-            <Box sx={{ height: 300, display: 'flex', justifyContent: 'center' }}>
-              {chartDataAprovacao && (
-                <Pie data={chartDataAprovacao} options={chartOptionsPie} />
-              )}
-            </Box>
-          </Paper>
-          </Fade>
-        </Grid>
-        <Grid item xs={12}>
-          <Fade in={true} timeout={1000}>
-            <Paper 
-              sx={{ 
-                p: 3,
-                borderRadius: 3,
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
-                  transform: 'translateY(-2px)',
-                }
-              }}
-            >
-              <Typography 
-                variant="h6" 
-                gutterBottom 
-                fontWeight="600"
-                sx={{
-                  color: isDarkMode ? '#00CED1' : '#8B4513',
-                  borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
-                  paddingBottom: 1,
-                  marginBottom: 2
-                }}
-              >
-                Evolução Trimestral
-              </Typography>
-            <Box sx={{ height: 300 }}>
-              <Line data={chartDataEvolucao} options={chartOptionsLine} />
-            </Box>
-          </Paper>
-          </Fade>
-        </Grid>
-
-        {/* Cards de Habilidades - Clicáveis para filtrar gráficos */}
-        {distribuicaoHabilidades && (
-          <Grid item xs={12}>
-            <Fade in={true} timeout={1050}>
-              <Box>
-                <Typography variant="h6" gutterBottom fontWeight="600" sx={{ mb: 2, px: 1 }}>
-                  📊 Estatísticas de Habilidades
-                </Typography>
-                <Grid container spacing={2}>
-                  {/* Card 1 - Não Desenvolvido (Vermelho) */}
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Card 
-                      sx={{ 
-                        bgcolor: 'error.main',
-                        color: 'white',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s',
-                        border: habilidadesFiltro === 'nao-desenvolvido' ? '3px solid #FFD700' : 'none',
-                        '&:hover': { 
-                          transform: 'scale(1.05)',
-                          boxShadow: 6
-                        }
-                      }}
-                      onClick={() => setHabilidadesFiltro(
-                        habilidadesFiltro === 'nao-desenvolvido' ? 'todos' : 'nao-desenvolvido'
-                      )}
-                    >
-                      <CardContent>
-                        <Typography 
-                          variant="h3" 
-                          align="center"
-                          sx={{
-                            fontWeight: 700,
-                            textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
-                            WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
-                          }}
-                        >
-                          {distribuicaoHabilidades.distribuicao?.['nao-desenvolvido']?.quantidade || 0}
-                        </Typography>
-                        <Typography variant="body1" align="center" sx={{ mt: 1 }}>
-                          Não Desenvolvido
-                        </Typography>
-                        <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
-                        <Typography variant="caption" align="center" display="block" sx={{ opacity: 0.9 }}>
-                          {distribuicaoHabilidades.distribuicao?.['nao-desenvolvido']?.percentual || 0}%
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-
-                  {/* Card 2 - Em Desenvolvimento (Amarelo) */}
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Card 
-                      sx={{ 
-                        bgcolor: 'warning.main',
-                        color: 'white',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s',
-                        border: habilidadesFiltro === 'em-desenvolvimento' ? '3px solid #FFD700' : 'none',
-                        '&:hover': { 
-                          transform: 'scale(1.05)',
-                          boxShadow: 6
-                        }
-                      }}
-                      onClick={() => setHabilidadesFiltro(
-                        habilidadesFiltro === 'em-desenvolvimento' ? 'todos' : 'em-desenvolvimento'
-                      )}
-                    >
-                      <CardContent>
-                        <Typography 
-                          variant="h3" 
-                          align="center"
-                          sx={{
-                            fontWeight: 700,
-                            textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
-                            WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
-                          }}
-                        >
-                          {distribuicaoHabilidades.distribuicao?.['em-desenvolvimento']?.quantidade || 0}
-                        </Typography>
-                        <Typography variant="body1" align="center" sx={{ mt: 1 }}>
-                          Em Desenvolvimento
-                        </Typography>
-                        <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
-                        <Typography variant="caption" align="center" display="block" sx={{ opacity: 0.9 }}>
-                          {distribuicaoHabilidades.distribuicao?.['em-desenvolvimento']?.percentual || 0}%
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-
-                  {/* Card 3 - Desenvolvido (Verde) */}
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Card 
-                      sx={{ 
-                        bgcolor: 'success.main',
-                        color: 'white',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s',
-                        border: habilidadesFiltro === 'desenvolvido' ? '3px solid #FFD700' : 'none',
-                        '&:hover': { 
-                          transform: 'scale(1.05)',
-                          boxShadow: 6
-                        }
-                      }}
-                      onClick={() => setHabilidadesFiltro(
-                        habilidadesFiltro === 'desenvolvido' ? 'todos' : 'desenvolvido'
-                      )}
-                    >
-                      <CardContent>
-                        <Typography 
-                          variant="h3" 
-                          align="center"
-                          sx={{
-                            fontWeight: 700,
-                            textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
-                            WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
-                          }}
-                        >
-                          {distribuicaoHabilidades.distribuicao?.['desenvolvido']?.quantidade || 0}
-                        </Typography>
-                        <Typography variant="body1" align="center" sx={{ mt: 1 }}>
-                          Desenvolvido
-                        </Typography>
-                        <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
-                        <Typography variant="caption" align="center" display="block" sx={{ opacity: 0.9 }}>
-                          {distribuicaoHabilidades.distribuicao?.['desenvolvido']?.percentual || 0}%
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-
-                  {/* Card 4 - Plenamente Desenvolvido (Azul Marinho) */}
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Card 
-                      sx={{ 
-                        bgcolor: '#0D47A1',
-                        color: 'white',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s',
-                        border: habilidadesFiltro === 'plenamente-desenvolvido' ? '3px solid #FFD700' : 'none',
-                        '&:hover': { 
-                          transform: 'scale(1.05)',
-                          boxShadow: 6
-                        }
-                      }}
-                      onClick={() => setHabilidadesFiltro(
-                        habilidadesFiltro === 'plenamente-desenvolvido' ? 'todos' : 'plenamente-desenvolvido'
-                      )}
-                    >
-                      <CardContent>
-                        <Typography 
-                          variant="h3" 
-                          align="center"
-                          sx={{
-                            fontWeight: 700,
-                            textShadow: '0 0 2px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.6)',
-                            WebkitTextStroke: '1.5px rgba(255,255,255,0.4)'
-                          }}
-                        >
-                          {distribuicaoHabilidades.distribuicao?.['plenamente-desenvolvido']?.quantidade || 0}
-                        </Typography>
-                        <Typography variant="body1" align="center" sx={{ mt: 1 }}>
-                          Plenamente Desenvolvido
-                        </Typography>
-                        <Divider sx={{ my: 1, bgcolor: 'rgba(255,255,255,0.3)' }} />
-                        <Typography variant="caption" align="center" display="block" sx={{ opacity: 0.9 }}>
-                          {distribuicaoHabilidades.distribuicao?.['plenamente-desenvolvido']?.percentual || 0}%
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                </Grid>
-
-                {/* Indicador de filtro ativo */}
-                {habilidadesFiltro !== 'todos' && (
-                  <Box sx={{ mt: 2, textAlign: 'center' }}>
-                    <Chip 
-                      label={`Filtro ativo: ${
-                        habilidadesFiltro === 'nao-desenvolvido' ? 'Não Desenvolvido' :
-                        habilidadesFiltro === 'em-desenvolvimento' ? 'Em Desenvolvimento' :
-                        habilidadesFiltro === 'desenvolvido' ? 'Desenvolvido' :
-                        'Plenamente Desenvolvido'
-                      }`}
-                      color="primary"
-                      onDelete={() => setHabilidadesFiltro('todos')}
-                      sx={{ fontWeight: 600 }}
-                    />
-                  </Box>
-                )}
-              </Box>
-            </Fade>
-          </Grid>
-        )}
-
-        {/* Gráficos de Habilidades */}
-        <Grid item xs={12} md={6}>
-          <Fade in={true} timeout={1100}>
-            <Paper 
-              sx={{ 
-                p: 3,
-                borderRadius: 3,
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
-                  transform: 'translateY(-2px)',
-                }
-              }}
-            >
-              <Typography 
-                variant="h6" 
-                gutterBottom 
-                fontWeight="600"
-                sx={{
-                  color: isDarkMode ? '#00CED1' : '#8B4513',
-                  borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
-                  paddingBottom: 1,
-                  marginBottom: 2
-                }}
-              >
-                📚 Evolução de Habilidades por Trimestre
-              </Typography>
-            <Box sx={{ height: 300 }}>
-              {chartDataEvolucaoHabilidades ? (
-                <Line 
-                  data={chartDataEvolucaoHabilidades} 
-                  options={{ 
-                    ...chartOptionsLine,
-                    scales: {
-                      ...chartOptionsLine.scales,
-                      y: {
-                        ...chartOptionsLine.scales.y,
-                        beginAtZero: true,
-                        max: 100,
-                        ticks: {
-                          ...chartOptionsLine.scales.y.ticks,
-                          callback: function(value) {
-                            return value + '%';
-                          }
-                        }
-                      }
-                    }
-                  }} 
-                />
-              ) : (
-                <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 10 }}>
-                  Nenhum dado de habilidades disponível
-                </Typography>
-              )}
-            </Box>
-          </Paper>
-          </Fade>
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <Fade in={true} timeout={1200}>
-            <Paper 
-              sx={{ 
-                p: 3,
-                borderRadius: 3,
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
-                  transform: 'translateY(-2px)',
-                }
-              }}
-            >
-              <Typography 
-                variant="h6" 
-                gutterBottom 
-                fontWeight="600"
-                sx={{
-                  color: isDarkMode ? '#00CED1' : '#8B4513',
-                  borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
-                  paddingBottom: 1,
-                  marginBottom: 2
-                }}
-              >
-                🎯 Distribuição de Níveis de Habilidades
-              </Typography>
-            <Box sx={{ height: 300, display: 'flex', justifyContent: 'center' }}>
-              {chartDataDistribuicaoHabilidades && distribuicaoHabilidades?.total > 0 ? (
-                <Pie 
-                  data={chartDataDistribuicaoHabilidades} 
-                  options={{ 
-                    ...chartOptionsPie,
-                    plugins: {
-                      ...chartOptionsPie.plugins,
-                      legend: {
-                        ...chartOptionsPie.plugins.legend,
-                        position: 'bottom'
-                      },
-                      tooltip: {
-                        ...tooltipGlobalConfig,
-                        callbacks: {
-                          label: function(context) {
-                            const label = context.label || '';
-                            const value = context.parsed || 0;
-                            const nivel = label.toLowerCase().replace(' ', '-');
-                            const percentual = distribuicaoHabilidades.distribuicao?.[nivel]?.percentual || 0;
-                            return `${label}: ${value} (${percentual}%)`;
-                          }
-                        }
-                      }
-                    }
-                  }} 
-                />
-              ) : (
-                <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 10 }}>
-                  Nenhuma habilidade avaliada
-                </Typography>
-              )}
-            </Box>
-          </Paper>
-          </Fade>
-        </Grid>
-
-        {distribuicaoHabilidades && distribuicaoHabilidades.total > 0 && (
-          <Grid item xs={12}>
-            <Fade in={true} timeout={1300}>
-              <Paper 
-                sx={{ 
-                  p: 3,
-                  borderRadius: 3,
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
-                    transform: 'translateY(-2px)',
-                  }
-                }}
-              >
-                <Typography 
-                  variant="h6" 
-                  gutterBottom 
-                  fontWeight="600"
-                  sx={{
-                    color: isDarkMode ? '#00CED1' : '#8B4513',
-                    borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
-                    paddingBottom: 1,
-                    marginBottom: 2
-                  }}
-                >
-                  📊 Estatísticas de Habilidades
-                </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card sx={{ bgcolor: 'error.light' }}>
-                    <CardContent>
-                      <Typography color="text.secondary" gutterBottom>
-                        Não Desenvolvido
-                      </Typography>
-                      <Typography variant="h4">
-                        {distribuicaoHabilidades.distribuicao?.['nao-desenvolvido']?.quantidade || 0}
-                      </Typography>
-                      <Typography variant="caption">
-                        {distribuicaoHabilidades.distribuicao?.['nao-desenvolvido']?.percentual || 0}%
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card sx={{ bgcolor: 'warning.light' }}>
-                    <CardContent>
-                      <Typography color="text.secondary" gutterBottom>
-                        Em Desenvolvimento
-                      </Typography>
-                      <Typography variant="h4">
-                        {distribuicaoHabilidades.distribuicao?.['em-desenvolvimento']?.quantidade || 0}
-                      </Typography>
-                      <Typography variant="caption">
-                        {distribuicaoHabilidades.distribuicao?.['em-desenvolvimento']?.percentual || 0}%
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card sx={{ bgcolor: 'info.light' }}>
-                    <CardContent>
-                      <Typography color="text.secondary" gutterBottom>
-                        Desenvolvido
-                      </Typography>
-                      <Typography variant="h4">
-                        {distribuicaoHabilidades.distribuicao?.['desenvolvido']?.quantidade || 0}
-                      </Typography>
-                      <Typography variant="caption">
-                        {distribuicaoHabilidades.distribuicao?.['desenvolvido']?.percentual || 0}%
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card sx={{ bgcolor: 'success.light' }}>
-                    <CardContent>
-                      <Typography color="text.secondary" gutterBottom>
-                        Plenamente Desenvolvido
-                      </Typography>
-                      <Typography variant="h4">
-                        {distribuicaoHabilidades.distribuicao?.['plenamente-desenvolvido']?.quantidade || 0}
-                      </Typography>
-                      <Typography variant="caption">
-                        {distribuicaoHabilidades.distribuicao?.['plenamente-desenvolvido']?.percentual || 0}%
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
-            </Paper>
-            </Fade>
-          </Grid>
-        )}
-
-        {/* Seção de Frequências em Tempo Real - Sempre renderiza, mesmo sem dados */}
         <Grid item xs={12}>
           <Fade in={true} timeout={1400}>
             <Paper 
@@ -2432,6 +2020,7 @@ const Dashboard = () => {
                   const opcoesComparacao = {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: chartConfig.cascadeAnimation,
                     plugins: {
                       legend: {
                         display: false,
@@ -2459,7 +2048,63 @@ const Dashboard = () => {
                             ];
                           }
                         }
-                      }
+                      },
+                      annotation: {
+                        annotations: {
+                          zonaCritica: {
+                            type: 'box',
+                            yMin: 0,
+                            yMax: 60,
+                            backgroundColor: isDarkMode ? 'rgba(244, 67, 54, 0.05)' : 'rgba(244, 67, 54, 0.08)',
+                            borderColor: isDarkMode ? 'rgba(244, 67, 54, 0.3)' : 'rgba(244, 67, 54, 0.4)',
+                            borderWidth: 1,
+                          },
+                          zonaAtencao: {
+                            type: 'box',
+                            yMin: 60,
+                            yMax: 80,
+                            backgroundColor: isDarkMode ? 'rgba(255, 152, 0, 0.05)' : 'rgba(255, 152, 0, 0.08)',
+                            borderColor: isDarkMode ? 'rgba(255, 152, 0, 0.3)' : 'rgba(255, 152, 0, 0.4)',
+                            borderWidth: 1,
+                          },
+                          zonaAdequada: {
+                            type: 'box',
+                            yMin: 80,
+                            yMax: 100,
+                            backgroundColor: isDarkMode ? 'rgba(76, 175, 80, 0.05)' : 'rgba(76, 175, 80, 0.08)',
+                            borderColor: isDarkMode ? 'rgba(76, 175, 80, 0.3)' : 'rgba(76, 175, 80, 0.4)',
+                            borderWidth: 1,
+                          },
+                          linhaMinima: {
+                            type: 'line',
+                            yMin: 75,
+                            yMax: 75,
+                            borderColor: isDarkMode ? '#4caf50' : '#2e7d32',
+                            borderWidth: 3,
+                            borderDash: [8, 6],
+                            label: {
+                              display: true,
+                              content: 'Frequência Mínima (75%)',
+                              position: 'start',
+                              backgroundColor: isDarkMode ? 'rgba(76, 175, 80, 0.8)' : 'rgba(46, 125, 50, 0.8)',
+                              color: '#ffffff',
+                              font: { size: 16, weight: 'bold' },
+                              padding: 8,
+                            },
+                          },
+                        },
+                      },
+                      zoom: {
+                        zoom: {
+                          wheel: { enabled: true, speed: 0.1 },
+                          pinch: { enabled: true },
+                          mode: 'xy',
+                        },
+                        pan: {
+                          enabled: true,
+                          mode: 'xy',
+                        },
+                      },
                     },
                     scales: {
                       y: {
@@ -2595,7 +2240,9 @@ const Dashboard = () => {
                         display: true,
                         position: 'top',
                         labels: {
-                          color: isDarkMode ? '#ffffff' : '#000000'
+                          color: isDarkMode ? '#ffffff' : '#000000',
+                          usePointStyle: true,
+                          padding: 15,
                         }
                       },
                       title: {
@@ -2617,7 +2264,81 @@ const Dashboard = () => {
                             ];
                           }
                         }
-                      }
+                      },
+                      datalabels: {
+                        display: false
+                      },
+                      annotation: {
+                        annotations: {
+                          zonaCritica: {
+                            type: 'box',
+                            xMin: 0,
+                            xMax: 1000,
+                            yMin: 0,
+                            yMax: 60,
+                            backgroundColor: isDarkMode ? 'rgba(244, 67, 54, 0.08)' : 'rgba(244, 67, 54, 0.12)',
+                            borderColor: 'transparent',
+                            label: {
+                              display: true,
+                              content: '⚠️ Zona Crítica',
+                              position: { x: 'end', y: 'start' },
+                              backgroundColor: 'rgba(244, 67, 54, 0.8)',
+                              color: '#ffffff',
+                              font: { size: 16, weight: 'bold' },
+                              padding: 10,
+                            },
+                          },
+                          zonaAtencao: {
+                            type: 'box',
+                            xMin: 0,
+                            xMax: 1000,
+                            yMin: 60,
+                            yMax: 75,
+                            backgroundColor: isDarkMode ? 'rgba(255, 152, 0, 0.08)' : 'rgba(255, 152, 0, 0.12)',
+                            borderColor: 'transparent',
+                            label: {
+                              display: true,
+                              content: '⚡ Zona de Atenção',
+                              position: { x: 'end', y: 'center' },
+                              backgroundColor: 'rgba(255, 152, 0, 0.8)',
+                              color: '#ffffff',
+                              font: { size: 16, weight: 'bold' },
+                              padding: 10,
+                            },
+                          },
+                          linhaMinima: {
+                            type: 'line',
+                            yMin: 75,
+                            yMax: 75,
+                            borderColor: isDarkMode ? '#4caf50' : '#2e7d32',
+                            borderWidth: 3,
+                            borderDash: [10, 5],
+                            label: {
+                              display: true,
+                              content: '✓ Frequência Mínima (75%)',
+                              position: 'start',
+                              backgroundColor: isDarkMode ? 'rgba(76, 175, 80, 0.9)' : 'rgba(46, 125, 50, 0.9)',
+                              color: '#ffffff',
+                              font: { size: 16, weight: 'bold' },
+                              padding: 10,
+                            },
+                          },
+                        },
+                      },
+                      zoom: {
+                        zoom: {
+                          wheel: { enabled: true, speed: 0.1 },
+                          pinch: { enabled: true },
+                          mode: 'xy',
+                        },
+                        pan: {
+                          enabled: true,
+                          mode: 'xy',
+                        },
+                        limits: {
+                          y: { min: 0, max: 100 },
+                        },
+                      },
                     },
                     scales: {
                       y: {
@@ -2903,6 +2624,7 @@ const Dashboard = () => {
                           indexAxis: 'y',
                           responsive: true,
                           maintainAspectRatio: false,
+                          animation: chartConfig.cascadeAnimation,
                           plugins: {
                             legend: {
                               display: false
@@ -2951,7 +2673,20 @@ const Dashboard = () => {
                                   ];
                                 }
                               }
-                            }
+                            },
+                            datalabels: {
+                              display: true,
+                              color: isDarkMode ? '#ffffff' : '#000000',
+                              font: { weight: 'bold', size: 11 },
+                              formatter: (value) => {
+                                if (sufixo === '%') return `${value.toFixed(1)}%`;
+                                if (sufixo === 'inconsistencia') return `${value} faltas`;
+                                return value;
+                              },
+                              anchor: 'end',
+                              align: 'end',
+                              offset: 4,
+                            },
                           },
                           scales: {
                             x: {
@@ -3556,6 +3291,1409 @@ const Dashboard = () => {
               </Fade>
             </Grid>
       </Grid>
+
+      {/* ========== SEÇÃO: DASHBOARD DE NOTAS POR ALUNO ========== */}
+      {!filters.turma || !filters.disciplina ? (
+        <Grid container spacing={3} sx={{ mt: 4 }}>
+          <Grid item xs={12}>
+            <Fade in timeout={800}>
+              <Paper 
+                sx={{ 
+                  p: 4, 
+                  borderRadius: 3,
+                  background: isDarkMode 
+                    ? 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)'
+                    : 'linear-gradient(135deg, #8B4513 0%, #A0522D 100%)',
+                  color: '#fff',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                  textAlign: 'center'
+                }}
+              >
+                <AssignmentIcon sx={{ fontSize: 80, mb: 2, opacity: 0.8 }} />
+                <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+                  📊 Dashboard de Notas por Aluno
+                </Typography>
+                <Typography variant="h6" sx={{ mt: 2, mb: 3, opacity: 0.9 }}>
+                  🎯 Selecione uma TURMA e uma DISCIPLINA nos filtros acima
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.8 }}>
+                  Para visualizar o dashboard de notas completo com estatísticas, tabela de alunos e gráficos, 
+                  selecione uma turma e disciplina nos filtros no topo da página.
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 2, opacity: 0.7 }}>
+                  💡 Dica: Você pode filtrar por trimestre e tipo de nota após selecionar turma e disciplina.
+                </Typography>
+              </Paper>
+            </Fade>
+          </Grid>
+        </Grid>
+      ) : (
+        <Grid container spacing={3} sx={{ mt: 4 }}>
+          <Grid item xs={12}>
+            <Paper 
+              sx={{ 
+                p: 3, 
+                borderRadius: 3,
+                background: isDarkMode 
+                  ? 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)'
+                  : 'linear-gradient(135deg, #8B4513 0%, #A0522D 100%)',
+                color: '#fff',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+              }}
+            >
+              <Typography 
+                variant="h4" 
+                gutterBottom 
+                sx={{ 
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2
+                }}
+              >
+                📊 Dashboard de Notas por Aluno
+              </Typography>
+              <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                Visualização individual das notas de todos os alunos com filtros por trimestre e tipo de avaliação
+              </Typography>
+            </Paper>
+          </Grid>
+
+          {/* Botões de Filtro de Trimestre */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3, borderRadius: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <FilterListIcon color="primary" sx={{ fontSize: 28 }} />
+                <Typography variant="h6" fontWeight="700" color="primary">
+                  Filtrar por Trimestre
+                </Typography>
+              </Box>
+              
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {/* Botão TODOS */}
+                <Button
+                  variant={filtroTrimestre === '' ? 'contained' : 'outlined'}
+                  onClick={() => setFiltroTrimestre('')}
+                  sx={{
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 3,
+                    borderWidth: 2,
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    textTransform: 'none',
+                    background: filtroTrimestre === ''
+                      ? 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'
+                      : 'transparent',
+                    '&:hover': {
+                      borderWidth: 2,
+                      transform: 'translateY(-2px)',
+                      boxShadow: 6,
+                    }
+                  }}
+                >
+                  TODOS OS TRIMESTRES
+                </Button>
+
+                {/* Botão 1º TRIMESTRE */}
+                <Button
+                  variant={filtroTrimestre === 1 ? 'contained' : 'outlined'}
+                  onClick={() => setFiltroTrimestre(1)}
+                  color="success"
+                  sx={{
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 3,
+                    borderWidth: 2,
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    textTransform: 'none',
+                    '&:hover': {
+                      borderWidth: 2,
+                      transform: 'translateY(-2px)',
+                      boxShadow: 6,
+                    }
+                  }}
+                >
+                  1º TRIMESTRE
+                </Button>
+
+                {/* Botão 2º TRIMESTRE */}
+                <Button
+                  variant={filtroTrimestre === 2 ? 'contained' : 'outlined'}
+                  color="warning"
+                  onClick={() => setFiltroTrimestre(2)}
+                  sx={{
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 3,
+                    borderWidth: 2,
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    textTransform: 'none',
+                    '&:hover': {
+                      borderWidth: 2,
+                      transform: 'translateY(-2px)',
+                      boxShadow: 6,
+                    }
+                  }}
+                >
+                  2º TRIMESTRE
+                </Button>
+
+                {/* Botão 3º TRIMESTRE */}
+                <Button
+                  variant={filtroTrimestre === 3 ? 'contained' : 'outlined'}
+                  color="error"
+                  onClick={() => setFiltroTrimestre(3)}
+                  sx={{
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 3,
+                    borderWidth: 2,
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    textTransform: 'none',
+                    '&:hover': {
+                      borderWidth: 2,
+                      transform: 'translateY(-2px)',
+                      boxShadow: 6,
+                    }
+                  }}
+                >
+                  3º TRIMESTRE
+                </Button>
+              </Box>
+
+              {filtroTrimestre && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  Exibindo apenas dados do <strong>{filtroTrimestre}º Trimestre</strong>
+                </Alert>
+              )}
+            </Paper>
+          </Grid>
+
+          {/* Cards Estatísticos */}
+          {loadingDashboardNotas ? (
+            <Grid item xs={12}>
+              <Alert severity="info">Carregando dashboard de notas...</Alert>
+            </Grid>
+          ) : (
+            <>
+              <Grid item xs={12} sm={6} md={2}>
+                <Card 
+                  sx={{ 
+                    bgcolor: '#0D47A1',
+                    color: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    border: filtroTipoNota === 'todos' ? '3px solid #FFD700' : 'none',
+                    '&:hover': { 
+                      transform: 'scale(1.05)',
+                      boxShadow: 6
+                    }
+                  }}
+                  onClick={() => setFiltroTipoNota('todos')}
+                >
+                  <CardContent>
+                    <Typography 
+                      variant="h2" 
+                      sx={{ 
+                        color: '#FFF', 
+                        fontWeight: 700,
+                        textShadow: '0 0 2px rgba(255,255,255,0.8)',
+                      }} 
+                      align="center"
+                    >
+                      {dashboardNotas.estatisticas.totalAlunos}
+                    </Typography>
+                    <Typography variant="body1" align="center">Total de Alunos</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={2}>
+                <Card 
+                  sx={{ 
+                    bgcolor: 'success.main',
+                    color: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    border: filtroTipoNota === 'pc1' ? '3px solid #FFD700' : 'none',
+                    '&:hover': { 
+                      transform: 'scale(1.05)',
+                      boxShadow: 6
+                    }
+                  }}
+                  onClick={() => setFiltroTipoNota('pc1')}
+                >
+                  <CardContent>
+                    <Typography 
+                      variant="h2" 
+                      sx={{ 
+                        color: '#FFF', 
+                        fontWeight: 700,
+                        textShadow: '0 0 2px rgba(255,255,255,0.8)',
+                      }} 
+                      align="center"
+                    >
+                      {dashboardNotas.estatisticas.mediaGeralPC1.toFixed(1)}
+                    </Typography>
+                    <Typography variant="body1" align="center">Média PC1</Typography>
+                    <Typography variant="caption" align="center" display="block">(0-3,0)</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={2}>
+                <Card 
+                  sx={{ 
+                    bgcolor: 'info.main',
+                    color: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    border: filtroTipoNota === 'pc2' ? '3px solid #FFD700' : 'none',
+                    '&:hover': { 
+                      transform: 'scale(1.05)',
+                      boxShadow: 6
+                    }
+                  }}
+                  onClick={() => setFiltroTipoNota('pc2')}
+                >
+                  <CardContent>
+                    <Typography 
+                      variant="h2" 
+                      sx={{ 
+                        color: '#FFF', 
+                        fontWeight: 700,
+                        textShadow: '0 0 2px rgba(255,255,255,0.8)',
+                      }} 
+                      align="center"
+                    >
+                      {dashboardNotas.estatisticas.mediaGeralPC2.toFixed(1)}
+                    </Typography>
+                    <Typography variant="body1" align="center">Média PC2</Typography>
+                    <Typography variant="caption" align="center" display="block">(0-3,0)</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={2}>
+                <Card 
+                  sx={{ 
+                    bgcolor: 'warning.main',
+                    color: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    border: filtroTipoNota === 'pc3' ? '3px solid #FFD700' : 'none',
+                    '&:hover': { 
+                      transform: 'scale(1.05)',
+                      boxShadow: 6
+                    }
+                  }}
+                  onClick={() => setFiltroTipoNota('pc3')}
+                >
+                  <CardContent>
+                    <Typography 
+                      variant="h2" 
+                      sx={{ 
+                        color: '#FFF', 
+                        fontWeight: 700,
+                        textShadow: '0 0 2px rgba(255,255,255,0.8)',
+                      }} 
+                      align="center"
+                    >
+                      {dashboardNotas.estatisticas.mediaGeralPC3.toFixed(1)}
+                    </Typography>
+                    <Typography variant="body1" align="center">Média PC3</Typography>
+                    <Typography variant="caption" align="center" display="block">(0-4,0)</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={2}>
+                <Card 
+                  sx={{ 
+                    bgcolor: '#9c27b0',
+                    color: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    border: filtroTipoNota === 'eac' ? '3px solid #FFD700' : 'none',
+                    '&:hover': { 
+                      transform: 'scale(1.05)',
+                      boxShadow: 6
+                    }
+                  }}
+                  onClick={() => setFiltroTipoNota('eac')}
+                >
+                  <CardContent>
+                    <Typography 
+                      variant="h2" 
+                      sx={{ 
+                        color: '#FFF', 
+                        fontWeight: 700,
+                        textShadow: '0 0 2px rgba(255,255,255,0.8)',
+                      }} 
+                      align="center"
+                    >
+                      {dashboardNotas.estatisticas.mediaGeralEAC.toFixed(1)}
+                    </Typography>
+                    <Typography variant="body1" align="center">Média EAC</Typography>
+                    <Typography variant="caption" align="center" display="block">(0-10,0)</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={2}>
+                <Card 
+                  sx={{ 
+                    bgcolor: '#ffc107',
+                    color: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    border: filtroTipoNota === 'notaFinal' ? '3px solid #FFD700' : 'none',
+                    '&:hover': { 
+                      transform: 'scale(1.05)',
+                      boxShadow: 6
+                    }
+                  }}
+                  onClick={() => setFiltroTipoNota('notaFinal')}
+                >
+                  <CardContent>
+                    <Typography 
+                      variant="h2" 
+                      sx={{ 
+                        color: '#FFF', 
+                        fontWeight: 700,
+                        textShadow: '0 0 2px rgba(255,255,255,0.8)',
+                      }} 
+                      align="center"
+                    >
+                      {dashboardNotas.estatisticas.mediaGeralNotaFinal.toFixed(1)}
+                    </Typography>
+                    <Typography variant="body1" align="center">Nota Final</Typography>
+                    <Typography variant="caption" align="center" display="block">(0-10,0)</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Cards de Habilidades Globais */}
+              {dashboardNotas?.estatisticas?.habilidadesGlobais && dashboardNotas.estatisticas.habilidadesGlobais.total > 0 && (
+                <>
+                  <Grid item xs={12}>
+                    <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1 }}>
+                      Estatísticas Globais de Habilidades
+                    </Typography>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card 
+                      sx={{ 
+                        bgcolor: '#4caf50',
+                        color: 'white',
+                        transition: 'all 0.3s',
+                        '&:hover': { 
+                          transform: 'scale(1.05)',
+                          boxShadow: 6
+                        }
+                      }}
+                    >
+                      <CardContent>
+                        <Box display="flex" alignItems="center" justifyContent="center" mb={1}>
+                          <Typography variant="h5" sx={{ mr: 1 }}>✅</Typography>
+                          <Typography variant="h4" sx={{ color: '#FFF', fontWeight: 700 }}>
+                            {dashboardNotas.estatisticas.habilidadesGlobais.adequado}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body1" align="center">Adequado</Typography>
+                        <Typography variant="caption" align="center" display="block">
+                          {dashboardNotas.estatisticas.habilidadesGlobais.total > 0 
+                            ? `${((dashboardNotas.estatisticas.habilidadesGlobais.adequado / dashboardNotas.estatisticas.habilidadesGlobais.total) * 100).toFixed(1)}%`
+                            : '0%'}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card 
+                      sx={{ 
+                        bgcolor: '#2196f3',
+                        color: 'white',
+                        transition: 'all 0.3s',
+                        '&:hover': { 
+                          transform: 'scale(1.05)',
+                          boxShadow: 6
+                        }
+                      }}
+                    >
+                      <CardContent>
+                        <Box display="flex" alignItems="center" justifyContent="center" mb={1}>
+                          <Typography variant="h5" sx={{ mr: 1 }}>👍</Typography>
+                          <Typography variant="h4" sx={{ color: '#FFF', fontWeight: 700 }}>
+                            {dashboardNotas.estatisticas.habilidadesGlobais.proficiente}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body1" align="center">Proficiente</Typography>
+                        <Typography variant="caption" align="center" display="block">
+                          {dashboardNotas.estatisticas.habilidadesGlobais.total > 0 
+                            ? `${((dashboardNotas.estatisticas.habilidadesGlobais.proficiente / dashboardNotas.estatisticas.habilidadesGlobais.total) * 100).toFixed(1)}%`
+                            : '0%'}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card 
+                      sx={{ 
+                        bgcolor: '#ff9800',
+                        color: 'white',
+                        transition: 'all 0.3s',
+                        '&:hover': { 
+                          transform: 'scale(1.05)',
+                          boxShadow: 6
+                        }
+                      }}
+                    >
+                      <CardContent>
+                        <Box display="flex" alignItems="center" justifyContent="center" mb={1}>
+                          <Typography variant="h5" sx={{ mr: 1 }}>⚠️</Typography>
+                          <Typography variant="h4" sx={{ color: '#FFF', fontWeight: 700 }}>
+                            {dashboardNotas.estatisticas.habilidadesGlobais.alerta}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body1" align="center">Alerta</Typography>
+                        <Typography variant="caption" align="center" display="block">
+                          {dashboardNotas.estatisticas.habilidadesGlobais.total > 0 
+                            ? `${((dashboardNotas.estatisticas.habilidadesGlobais.alerta / dashboardNotas.estatisticas.habilidadesGlobais.total) * 100).toFixed(1)}%`
+                            : '0%'}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card 
+                      sx={{ 
+                        bgcolor: '#f44336',
+                        color: 'white',
+                        transition: 'all 0.3s',
+                        '&:hover': { 
+                          transform: 'scale(1.05)',
+                          boxShadow: 6
+                        }
+                      }}
+                    >
+                      <CardContent>
+                        <Box display="flex" alignItems="center" justifyContent="center" mb={1}>
+                          <Typography variant="h5" sx={{ mr: 1 }}>🚨</Typography>
+                          <Typography variant="h4" sx={{ color: '#FFF', fontWeight: 700 }}>
+                            {dashboardNotas.estatisticas.habilidadesGlobais.intervencao}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body1" align="center">Intervenção</Typography>
+                        <Typography variant="caption" align="center" display="block">
+                          {dashboardNotas.estatisticas.habilidadesGlobais.total > 0 
+                            ? `${((dashboardNotas.estatisticas.habilidadesGlobais.intervencao / dashboardNotas.estatisticas.habilidadesGlobais.total) * 100).toFixed(1)}%`
+                            : '0%'}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Indicador de Filtro Ativo */}
+          {filtroTipoNota !== 'todos' && (
+            <Grid item xs={12}>
+              <Alert severity="info" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  Filtro ativo: <strong>
+                    {filtroTipoNota === 'pc1' ? 'PC1' : 
+                     filtroTipoNota === 'pc2' ? 'PC2' : 
+                     filtroTipoNota === 'pc3' ? 'PC3' : 
+                     filtroTipoNota === 'eac' ? 'EAC' : 
+                     'NOTA FINAL'}
+                  </strong>
+                </Box>
+                <Button 
+                  size="small" 
+                  variant="outlined" 
+                  onClick={() => setFiltroTipoNota('todos')}
+                >
+                  Limpar Filtro
+                </Button>
+              </Alert>
+            </Grid>
+          )}
+
+          {/* Tabela de Alunos com Notas */}
+          {filters.turma && filters.disciplina && dashboardNotas.alunosPorNota.length > 0 && (
+            <Grid item xs={12}>
+              <Paper sx={{ p: 3, borderRadius: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" fontWeight="700">
+                    📋 Notas Individuais por Aluno
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {dashboardNotas.alunosPorNota.length} aluno(s)
+                  </Typography>
+                </Box>
+
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 700 }}>Aluno</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700 }}>PC1 (3,0)</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700 }}>PC2 (3,0)</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700 }}>PC3 (4,0)</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700 }}>Média Final</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700 }}>EAC (10,0)</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700 }}>Nota Final</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700 }}>Classificação</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700 }}>Habilidades</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {dashboardNotas.alunosPorNota.map((item, index) => {
+                        // Determinar cor da classificação
+                        const getClassificacaoConfig = (classificacao) => {
+                          const configs = {
+                            'adequado': { color: '#4caf50', bgcolor: 'rgba(76, 175, 80, 0.1)', label: '✅ Adequado' },
+                            'proficiente': { color: '#2196f3', bgcolor: 'rgba(33, 150, 243, 0.1)', label: '👍 Proficiente' },
+                            'em-alerta': { color: '#ff9800', bgcolor: 'rgba(255, 152, 0, 0.1)', label: '⚠️ Em Alerta' },
+                            'intervencao-imediata': { color: '#f44336', bgcolor: 'rgba(244, 67, 54, 0.1)', label: '🚨 Intervenção' },
+                            'sem-avaliacao': { color: '#9e9e9e', bgcolor: 'rgba(158, 158, 158, 0.1)', label: '➖ Sem Avaliação' }
+                          };
+                          return configs[classificacao] || configs['sem-avaliacao'];
+                        };
+
+                        const config = getClassificacaoConfig(item.classificacao);
+
+                        // Destacar linha se tiver filtro ativo
+                        const isDestacado = 
+                          (filtroTipoNota === 'pc1' && item.pc1 > 0) ||
+                          (filtroTipoNota === 'pc2' && item.pc2 > 0) ||
+                          (filtroTipoNota === 'pc3' && item.pc3 > 0) ||
+                          (filtroTipoNota === 'eac' && item.eac > 0) ||
+                          (filtroTipoNota === 'notaFinal' && item.notaFinal > 0) ||
+                          filtroTipoNota === 'todos';
+
+                        return (
+                          <TableRow 
+                            key={item.aluno._id}
+                            sx={{ 
+                              '&:nth-of-type(odd)': { bgcolor: 'action.hover' },
+                              opacity: isDestacado ? 1 : 0.4,
+                              transition: 'all 0.3s ease',
+                            }}
+                          >
+                            <TableCell>
+                              <Box>
+                                <Typography variant="body2" fontWeight="600">
+                                  {item.aluno.nome}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  Mat: {item.aluno.matricula}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Chip 
+                                label={item.pc1.toFixed(1)}
+                                size="small"
+                                sx={{ 
+                                  bgcolor: item.pc1 >= 2.0 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)',
+                                  color: item.pc1 >= 2.0 ? '#4caf50' : '#f44336',
+                                  fontWeight: filtroTipoNota === 'pc1' ? 700 : 400,
+                                  border: filtroTipoNota === 'pc1' ? '2px solid #FFD700' : 'none'
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell align="center">
+                              <Chip 
+                                label={item.pc2.toFixed(1)}
+                                size="small"
+                                sx={{ 
+                                  bgcolor: item.pc2 >= 2.0 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)',
+                                  color: item.pc2 >= 2.0 ? '#4caf50' : '#f44336',
+                                  fontWeight: filtroTipoNota === 'pc2' ? 700 : 400,
+                                  border: filtroTipoNota === 'pc2' ? '2px solid #FFD700' : 'none'
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell align="center">
+                              <Chip 
+                                label={item.pc3.toFixed(1)}
+                                size="small"
+                                sx={{ 
+                                  bgcolor: item.pc3 >= 2.5 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)',
+                                  color: item.pc3 >= 2.5 ? '#4caf50' : '#f44336',
+                                  fontWeight: filtroTipoNota === 'pc3' ? 700 : 400,
+                                  border: filtroTipoNota === 'pc3' ? '2px solid #FFD700' : 'none'
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell align="center">
+                              <Typography 
+                                variant="body2" 
+                                fontWeight={filtroTipoNota === 'mediaFinal' ? 700 : 400}
+                                sx={{ 
+                                  color: item.mediaFinal >= 6.0 ? '#4caf50' : '#f44336',
+                                  border: filtroTipoNota === 'mediaFinal' ? '2px solid #FFD700' : 'none',
+                                  borderRadius: 1,
+                                  p: 0.5
+                                }}
+                              >
+                                {item.mediaFinal.toFixed(1)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Chip 
+                                label={item.eac.toFixed(1)}
+                                size="small"
+                                sx={{ 
+                                  bgcolor: item.eac >= 6.0 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)',
+                                  color: item.eac >= 6.0 ? '#4caf50' : '#f44336',
+                                  fontWeight: filtroTipoNota === 'eac' ? 700 : 400,
+                                  border: filtroTipoNota === 'eac' ? '2px solid #FFD700' : 'none'
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell align="center">
+                              <Typography 
+                                variant="h6" 
+                                fontWeight="700"
+                                sx={{ 
+                                  color: config.color,
+                                  border: filtroTipoNota === 'notaFinal' ? '3px solid #FFD700' : 'none',
+                                  borderRadius: 1,
+                                  p: 0.5
+                                }}
+                              >
+                                {item.notaFinal.toFixed(1)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Chip
+                                label={config.label}
+                                sx={{
+                                  bgcolor: config.bgcolor,
+                                  color: config.color,
+                                  fontWeight: 600,
+                                  fontSize: '0.75rem'
+                                }}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell align="center">
+                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+                                {item.habilidades && item.habilidades.total > 0 ? (
+                                  <>
+                                    {item.habilidades.adequado > 0 && (
+                                      <Chip
+                                        label={`✅ ${item.habilidades.adequado}`}
+                                        size="small"
+                                        sx={{
+                                          bgcolor: 'rgba(76, 175, 80, 0.2)',
+                                          color: '#4caf50',
+                                          fontWeight: 700,
+                                          fontSize: '0.7rem',
+                                          height: 20
+                                        }}
+                                      />
+                                    )}
+                                    {item.habilidades.proficiente > 0 && (
+                                      <Chip
+                                        label={`👍 ${item.habilidades.proficiente}`}
+                                        size="small"
+                                        sx={{
+                                          bgcolor: 'rgba(33, 150, 243, 0.2)',
+                                          color: '#2196f3',
+                                          fontWeight: 700,
+                                          fontSize: '0.7rem',
+                                          height: 20
+                                        }}
+                                      />
+                                    )}
+                                    {item.habilidades.alerta > 0 && (
+                                      <Chip
+                                        label={`⚠️ ${item.habilidades.alerta}`}
+                                        size="small"
+                                        sx={{
+                                          bgcolor: 'rgba(255, 152, 0, 0.2)',
+                                          color: '#ff9800',
+                                          fontWeight: 700,
+                                          fontSize: '0.7rem',
+                                          height: 20
+                                        }}
+                                      />
+                                    )}
+                                    {item.habilidades.intervencao > 0 && (
+                                      <Chip
+                                        label={`🚨 ${item.habilidades.intervencao}`}
+                                        size="small"
+                                        sx={{
+                                          bgcolor: 'rgba(244, 67, 54, 0.2)',
+                                          color: '#f44336',
+                                          fontWeight: 700,
+                                          fontSize: '0.7rem',
+                                          height: 20
+                                        }}
+                                      />
+                                    )}
+                                    <Chip
+                                      label={`Total: ${item.habilidades.total}`}
+                                      size="small"
+                                      sx={{
+                                        bgcolor: 'rgba(156, 39, 176, 0.2)',
+                                        color: '#9c27b0',
+                                        fontWeight: 700,
+                                        fontSize: '0.7rem',
+                                        height: 20
+                                      }}
+                                    />
+                                  </>
+                                ) : (
+                                  <Typography variant="caption" color="text.secondary">
+                                    Sem habilidades
+                                  </Typography>
+                                )}
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                {/* Legenda */}
+                <Alert severity="info" icon={<InfoIcon />} sx={{ mt: 2 }}>
+                  <Typography variant="body2">
+                    <strong>PC1 e PC2:</strong> 0-3,0 pontos | <strong>PC3:</strong> 0-4,0 pontos | 
+                    <strong> Média Final:</strong> PC1 + PC2 + PC3 | <strong> EAC:</strong> 0-10,0 pontos | 
+                    <strong> Nota Final:</strong> Maior entre Média Final e EAC
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    <strong>Habilidades:</strong> ✅ Adequado (8.0-10.0) | 👍 Proficiente (6.0-7.9) | 
+                    ⚠️ Alerta (4.0-5.9) | 🚨 Intervenção (&lt;4.0) | 
+                    <strong> Total:</strong> Soma de todas as habilidades trabalhadas
+                  </Typography>
+                </Alert>
+              </Paper>
+            </Grid>
+          )}
+
+          {/* Gráficos de Notas */}
+          {filters.turma && filters.disciplina && dashboardNotas.alunosPorNota.length > 0 && (
+            <>
+              {/* Gráfico de Distribuição por Classificação */}
+              <Grid item xs={12} md={6}>
+                <Fade in={true} timeout={1000}>
+                  <Paper 
+                    sx={{ 
+                      p: 3,
+                      borderRadius: 3,
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+                        transform: 'translateY(-2px)',
+                      }
+                    }}
+                  >
+                    <ChartWithExport
+                      data={{
+                        labels: ['✅ Adequado', '👍 Proficiente', '⚠️ Em Alerta', '🚨 Intervenção', '➖ Sem Avaliação'],
+                        datasets: [{
+                          data: [
+                            dashboardNotas.estatisticas.distribuicao.adequado,
+                            dashboardNotas.estatisticas.distribuicao.proficiente,
+                            dashboardNotas.estatisticas.distribuicao.alerta,
+                            dashboardNotas.estatisticas.distribuicao.intervencao,
+                            dashboardNotas.estatisticas.distribuicao.semAvaliacao
+                          ],
+                          backgroundColor: [
+                            'rgba(76, 175, 80, 0.8)',   // Verde - Adequado
+                            'rgba(33, 150, 243, 0.8)',  // Azul - Proficiente
+                            'rgba(255, 152, 0, 0.8)',   // Laranja - Alerta
+                            'rgba(244, 67, 54, 0.8)',   // Vermelho - Intervenção
+                            'rgba(158, 158, 158, 0.8)'  // Cinza - Sem Avaliação
+                          ],
+                          borderColor: [
+                            'rgba(76, 175, 80, 1)',
+                            'rgba(33, 150, 243, 1)',
+                            'rgba(255, 152, 0, 1)',
+                            'rgba(244, 67, 54, 1)',
+                            'rgba(158, 158, 158, 1)'
+                          ],
+                          borderWidth: 2
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                          animateRotate: true,
+                          animateScale: true,
+                          duration: 1200,
+                          easing: 'easeInOutQuart',
+                        },
+                        plugins: {
+                          legend: {
+                            position: 'bottom',
+                            labels: {
+                              color: isDarkMode ? '#fff' : '#333',
+                              font: { size: 11, weight: '600' },
+                              padding: 10,
+                              usePointStyle: true,
+                              pointStyle: 'circle',
+                            },
+                            onClick: (e, legendItem, legend) => {
+                              const index = legendItem.datasetIndex;
+                              const chart = legend.chart;
+                              const meta = chart.getDatasetMeta(index);
+                              meta.hidden = meta.hidden === null ? !chart.data.datasets[index].hidden : null;
+                              chart.update();
+                            },
+                          },
+                          tooltip: {
+                            backgroundColor: isDarkMode ? 'rgba(21, 26, 35, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                            titleColor: isDarkMode ? '#00CED1' : '#8B4513',
+                            bodyColor: isDarkMode ? '#ffffff' : '#000000',
+                            borderColor: isDarkMode ? '#00CED1' : '#8B4513',
+                            borderWidth: 2,
+                            padding: 12,
+                            boxPadding: 6,
+                            callbacks: {
+                              label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return `${label}: ${value} aluno(s) (${percentage}%)`;
+                              }
+                            }
+                          },
+                          datalabels: {
+                            color: '#ffffff',
+                            font: {
+                              weight: 'bold',
+                              size: 12,
+                            },
+                            formatter: (value, context) => {
+                              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                              return value > 0 ? `${percentage}%` : '';
+                            },
+                            anchor: 'center',
+                            align: 'center',
+                          },
+                        }
+                      }}
+                      title="📊 Distribuição por Classificação"
+                      chartType="pie"
+                      isDarkMode={isDarkMode}
+                      height={300}
+                    />
+                  </Paper>
+                </Fade>
+              </Grid>
+
+              {/* Gráfico de Evolução por Trimestre (se houver dados) */}
+              {!filtroTrimestre && dashboardNotas.dadosPorTrimestre.length > 0 && (
+                <Grid item xs={12} md={6}>
+                  <Fade in={true} timeout={1100}>
+                    <Paper 
+                      sx={{ 
+                        p: 3,
+                        borderRadius: 3,
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+                          transform: 'translateY(-2px)',
+                        }
+                      }}
+                    >
+                      <Typography 
+                        variant="h6" 
+                        gutterBottom 
+                        fontWeight="600"
+                        sx={{
+                          color: isDarkMode ? '#00CED1' : '#8B4513',
+                          borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
+                          paddingBottom: 1,
+                          marginBottom: 2
+                        }}
+                      >
+                        📈 Evolução das Médias por Trimestre
+                      </Typography>
+                      <Box sx={{ height: 300 }}>
+                        <Line
+                          data={{
+                            labels: dashboardNotas.dadosPorTrimestre.map(d => `${d.trimestre}º Trimestre`),
+                            datasets: [{
+                              label: 'Média Geral',
+                              data: dashboardNotas.dadosPorTrimestre.map(d => d.mediaGeral),
+                              borderColor: 'rgb(33, 150, 243)',
+                              backgroundColor: 'rgba(33, 150, 243, 0.5)',
+                              tension: 0.3,
+                              fill: true,
+                              pointRadius: 6,
+                              pointHoverRadius: 8,
+                              pointBackgroundColor: 'rgb(33, 150, 243)',
+                              pointBorderColor: '#fff',
+                              pointBorderWidth: 2
+                            }]
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                  color: isDarkMode ? '#fff' : '#333',
+                                  font: { size: 12, weight: '600' }
+                                }
+                              },
+                              tooltip: {
+                                callbacks: {
+                                  label: function(context) {
+                                    return `Média: ${context.parsed.y.toFixed(1)}`;
+                                  }
+                                }
+                              }
+                            },
+                            scales: {
+                              y: {
+                                beginAtZero: true,
+                                max: 10,
+                                ticks: {
+                                  color: isDarkMode ? '#fff' : '#333',
+                                  callback: function(value) {
+                                    return value.toFixed(1);
+                                  }
+                                },
+                                grid: {
+                                  color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                                }
+                              },
+                              x: {
+                                ticks: {
+                                  color: isDarkMode ? '#fff' : '#333'
+                                },
+                                grid: {
+                                  color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                                }
+                              }
+                            }
+                          }}
+                        />
+                      </Box>
+                    </Paper>
+                  </Fade>
+                </Grid>
+              )}
+
+              {/* Gráfico de Médias por Tipo de Avaliação */}
+              <Grid item xs={12} md={filtroTrimestre || dashboardNotas.dadosPorTrimestre.length === 0 ? 6 : 12}>
+                <Fade in={true} timeout={1200}>
+                  <Paper 
+                    sx={{ 
+                      p: 3,
+                      borderRadius: 3,
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+                        transform: 'translateY(-2px)',
+                      }
+                    }}
+                  >
+                    <Typography 
+                      variant="h6" 
+                      gutterBottom 
+                      fontWeight="600"
+                      sx={{
+                        color: isDarkMode ? '#00CED1' : '#8B4513',
+                        borderBottom: theme.palette.mode === 'light' ? '3px solid #003366' : '3px solid white',
+                        paddingBottom: 1,
+                        marginBottom: 2
+                      }}
+                    >
+                      📊 Médias Gerais por Tipo de Avaliação
+                    </Typography>
+                    <Box sx={{ height: 300 }}>
+                      <Bar
+                        data={{
+                          labels: ['PC1 (3,0)', 'PC2 (3,0)', 'PC3 (4,0)', 'EAC (10,0)', 'Nota Final (10,0)'],
+                          datasets: [{
+                            label: 'Média Geral',
+                            data: [
+                              dashboardNotas.estatisticas.mediaGeralPC1,
+                              dashboardNotas.estatisticas.mediaGeralPC2,
+                              dashboardNotas.estatisticas.mediaGeralPC3,
+                              dashboardNotas.estatisticas.mediaGeralEAC,
+                              dashboardNotas.estatisticas.mediaGeralNotaFinal
+                            ],
+                            backgroundColor: [
+                              'rgba(76, 175, 80, 0.8)',   // Verde - PC1
+                              'rgba(33, 150, 243, 0.8)',  // Azul - PC2
+                              'rgba(255, 152, 0, 0.8)',   // Laranja - PC3
+                              'rgba(156, 39, 176, 0.8)',  // Roxo - EAC
+                              'rgba(255, 193, 7, 0.8)'    // Dourado - Nota Final
+                            ],
+                            borderColor: [
+                              'rgba(76, 175, 80, 1)',
+                              'rgba(33, 150, 243, 1)',
+                              'rgba(255, 152, 0, 1)',
+                              'rgba(156, 39, 176, 1)',
+                              'rgba(255, 193, 7, 1)'
+                            ],
+                            borderWidth: 2
+                          }]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          animation: {
+                            duration: 1200,
+                            easing: 'easeInOutQuart',
+                            delay: (context) => {
+                              let delay = 0;
+                              if (context.type === 'data' && context.mode === 'default') {
+                                delay = context.dataIndex * 150;
+                              }
+                              return delay;
+                            },
+                          },
+                          plugins: {
+                            legend: {
+                              display: false
+                            },
+                            tooltip: {
+                              backgroundColor: isDarkMode ? 'rgba(21, 26, 35, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                              titleColor: isDarkMode ? '#00CED1' : '#8B4513',
+                              bodyColor: isDarkMode ? '#ffffff' : '#000000',
+                              borderColor: isDarkMode ? '#00CED1' : '#8B4513',
+                              borderWidth: 2,
+                              padding: 12,
+                              boxPadding: 6,
+                              callbacks: {
+                                label: function(context) {
+                                  const value = context.parsed.y;
+                                  const maxValue = context.label.match(/\((\d+)/)?.[1] || 10;
+                                  return [
+                                    `Média: ${value.toFixed(2)}`,
+                                    `De ${maxValue}`
+                                  ];
+                                }
+                              }
+                            },
+                            datalabels: {
+                              color: isDarkMode ? '#ffffff' : '#000000',
+                              font: {
+                                weight: 'bold',
+                                size: 11,
+                              },
+                              formatter: (value) => value.toFixed(1),
+                              anchor: 'end',
+                              align: 'top',
+                              offset: 4,
+                            },
+                            annotation: {
+                              annotations: {
+                                aprovacaoLine: {
+                                  type: 'line',
+                                  yMin: 7.0,
+                                  yMax: 7.0,
+                                  borderColor: isDarkMode ? '#4caf50' : '#2e7d32',
+                                  borderWidth: 2,
+                                  borderDash: [6, 6],
+                                  label: {
+                                    display: true,
+                                    content: 'Meta 7.0',
+                                    position: 'end',
+                                    backgroundColor: isDarkMode ? 'rgba(76, 175, 80, 0.8)' : 'rgba(46, 125, 50, 0.8)',
+                                    color: '#ffffff',
+                                    font: {
+                                      size: 10,
+                                      weight: 'bold',
+                                    },
+                                    padding: 4,
+                                  },
+                                },
+                              },
+                            },
+                          },
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              max: 10,
+                              ticks: {
+                                color: isDarkMode ? '#fff' : '#333',
+                                callback: function(value) {
+                                  return value.toFixed(1);
+                                }
+                              },
+                              grid: {
+                                color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                              }
+                            },
+                            x: {
+                              ticks: {
+                                color: isDarkMode ? '#fff' : '#333',
+                                font: { weight: '600' }
+                              },
+                              grid: {
+                                display: false
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </Box>
+                  </Paper>
+                </Fade>
+              </Grid>
+            </>
+          )}
+
+          {/* ==================== v2.17 - GRÁFICOS AVANÇADOS ==================== */}
+          {filters.turma && filters.disciplina && dashboardNotas.alunosPorNota.length > 0 && (
+            <>
+              {/* Separador Visual */}
+              <Grid item xs={12}>
+                <Divider sx={{ my: 4 }}>
+                  <Chip 
+                    label="📊 GRÁFICOS AVANÇADOS v2.17" 
+                    color="primary" 
+                    sx={{ 
+                      fontSize: '1rem', 
+                      fontWeight: 700,
+                      px: 3,
+                      py: 2
+                    }} 
+                  />
+                </Divider>
+              </Grid>
+
+              {/* Gráfico de Composição de Notas (Stacked Bar) */}
+              <Grid item xs={12}>
+                <Fade in={true} timeout={1300}>
+                  <Paper 
+                    sx={{ 
+                      p: 3,
+                      borderRadius: 3,
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                      background: isDarkMode 
+                        ? 'linear-gradient(135deg, rgba(13, 71, 161, 0.05) 0%, rgba(0, 0, 0, 0) 100%)'
+                        : 'linear-gradient(135deg, rgba(139, 69, 19, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+                        transform: 'translateY(-2px)',
+                      }
+                    }}
+                  >
+                    <Typography 
+                      variant="h6" 
+                      gutterBottom 
+                      fontWeight="700"
+                      sx={{
+                        color: isDarkMode ? '#00CED1' : '#8B4513',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        mb: 3
+                      }}
+                    >
+                      📊 Composição de Notas por Aluno (PC1 + PC2 + PC3)
+                    </Typography>
+                    <GraficoStackedBar 
+                      turmaId={filters.turma}
+                      trimestre={filtroTrimestre || 1}
+                      isDarkMode={isDarkMode}
+                      apiUrl={process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}
+                    />
+                  </Paper>
+                </Fade>
+              </Grid>
+
+              {/* Gráfico de Evolução Temporal (Mixed Chart) */}
+              <Grid item xs={12}>
+                <Fade in={true} timeout={1400}>
+                  <Paper 
+                    sx={{ 
+                      p: 3,
+                      borderRadius: 3,
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                      background: isDarkMode 
+                        ? 'linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(0, 0, 0, 0) 100%)'
+                        : 'linear-gradient(135deg, rgba(255, 152, 0, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+                        transform: 'translateY(-2px)',
+                      }
+                    }}
+                  >
+                    <Typography 
+                      variant="h6" 
+                      gutterBottom 
+                      fontWeight="700"
+                      sx={{
+                        color: isDarkMode ? '#00CED1' : '#8B4513',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        mb: 3
+                      }}
+                    >
+                      📈 Evolução Temporal das Notas (Tendências)
+                    </Typography>
+                    <GraficoMixed 
+                      turmaId={filters.turma}
+                      disciplinaId={filters.disciplina}
+                      isDarkMode={isDarkMode}
+                      apiUrl={process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}
+                    />
+                  </Paper>
+                </Fade>
+              </Grid>
+
+              {/* Gráficos Side-by-Side: Correlação e Perfil */}
+              <Grid item xs={12} md={6}>
+                <Fade in={true} timeout={1500}>
+                  <Paper 
+                    sx={{ 
+                      p: 3,
+                      borderRadius: 3,
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                      background: isDarkMode 
+                        ? 'linear-gradient(135deg, rgba(156, 39, 176, 0.05) 0%, rgba(0, 0, 0, 0) 100%)'
+                        : 'linear-gradient(135deg, rgba(76, 175, 80, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+                        transform: 'translateY(-2px)',
+                      }
+                    }}
+                  >
+                    <Typography 
+                      variant="h6" 
+                      gutterBottom 
+                      fontWeight="700"
+                      sx={{
+                        color: isDarkMode ? '#00CED1' : '#8B4513',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        mb: 3
+                      }}
+                    >
+                      📉 Análise de Correlação entre Variáveis
+                    </Typography>
+                    <GraficoScatterCorrelacao 
+                      turmaId={filters.turma}
+                      variavel1="nota"
+                      variavel2="frequencia"
+                      isDarkMode={isDarkMode}
+                      apiUrl={process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}
+                    />
+                  </Paper>
+                </Fade>
+              </Grid>
+
+              {/* Gráfico Radar - Perfil Multidimensional */}
+              {dashboardNotas.alunosPorNota.length > 0 && dashboardNotas.alunosPorNota[0].aluno && (
+                <Grid item xs={12} md={6}>
+                  <Fade in={true} timeout={1600}>
+                    <Paper 
+                      sx={{ 
+                        p: 3,
+                        borderRadius: 3,
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                        background: isDarkMode 
+                          ? 'linear-gradient(135deg, rgba(255, 152, 0, 0.05) 0%, rgba(0, 0, 0, 0) 100%)'
+                          : 'linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+                          transform: 'translateY(-2px)',
+                        }
+                      }}
+                    >
+                      <Typography 
+                        variant="h6" 
+                        gutterBottom 
+                        fontWeight="700"
+                        sx={{
+                          color: isDarkMode ? '#00CED1' : '#8B4513',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          mb: 3
+                        }}
+                      >
+                        🎯 Perfil Multidimensional do Primeiro Aluno
+                      </Typography>
+                      <GraficoRadar 
+                        alunoId={dashboardNotas.alunosPorNota[0].aluno}
+                        trimestre={filtroTrimestre || 1}
+                        isDarkMode={isDarkMode}
+                        apiUrl={process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}
+                      />
+                    </Paper>
+                  </Fade>
+                </Grid>
+              )}
+
+              {/* Informações sobre os novos gráficos */}
+              <Grid item xs={12}>
+                <Alert 
+                  severity="info" 
+                  icon={<InfoIcon />}
+                  sx={{ 
+                    mt: 2,
+                    borderLeft: '4px solid',
+                    borderColor: 'info.main'
+                  }}
+                >
+                  <Typography variant="body2" gutterBottom fontWeight="600">
+                    📊 Novos Gráficos Avançados v2.17:
+                  </Typography>
+                  <Typography variant="body2" component="div">
+                    • <strong>Composição de Notas:</strong> Visualize como PC1, PC2 e PC3 contribuem para a nota final de cada aluno<br/>
+                    • <strong>Evolução Temporal:</strong> Acompanhe tendências de crescimento ou queda das notas ao longo dos trimestres<br/>
+                    • <strong>Análise de Correlação:</strong> Descubra relações entre variáveis (ex: nota × frequência, PC1 × PC2)<br/>
+                    • <strong>Perfil Multidimensional:</strong> Compare o desempenho do aluno em todas as disciplinas simultaneamente<br/>
+                    • <strong>💾 Todos os gráficos possuem botões de exportação</strong> (PNG, JPEG, CSV, Excel, Clipboard, Print, Estatísticas)
+                  </Typography>
+                </Alert>
+              </Grid>
+            </>
+          )}
+          {/* ==================== FIM - GRÁFICOS AVANÇADOS ==================== */}
+
+          {/* Mensagem quando não há dados */}
+          {filters.turma && filters.disciplina && dashboardNotas.alunosPorNota.length === 0 && !loadingDashboardNotas && (
+            <Grid item xs={12}>
+              <Alert severity="warning">
+                Nenhuma avaliação encontrada para a turma e disciplina selecionadas.
+              </Alert>
+            </Grid>
+          )}
+        </Grid>
+      )}
 
       {/* Modal de Histórico de Frequência */}
       <ModalHistoricoFrequencia
